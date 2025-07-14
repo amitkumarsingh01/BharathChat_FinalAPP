@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import 'dart:convert';
 import 'package:carousel_slider/carousel_slider.dart';
 import '../live/live_audio_screen.dart';
+import '../auth/pending.dart';
 
 class AudioChatScreen extends StatefulWidget {
   const AudioChatScreen({Key? key}) : super(key: key);
@@ -22,7 +23,19 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
   @override
   void initState() {
     super.initState();
+    _checkUserActive();
     _loadAudioRooms();
+  }
+
+  void _checkUserActive() async {
+    final isActive = await ApiService.isCurrentUserActive();
+    if (!isActive && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingScreen()),
+        (route) => false,
+      );
+    }
   }
 
   void _loadAudioRooms() async {

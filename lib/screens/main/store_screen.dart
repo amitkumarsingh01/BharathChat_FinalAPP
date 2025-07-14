@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../services/api_service.dart';
 import 'main_screen.dart';
+import '../auth/pending.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 class StoreScreen extends StatefulWidget {
   const StoreScreen({Key? key}) : super(key: key);
@@ -19,8 +22,20 @@ class _StoreScreenState extends State<StoreScreen> {
   @override
   void initState() {
     super.initState();
+    _checkUserActive();
     _loadShopItems();
     _loadUserData();
+  }
+
+  void _checkUserActive() async {
+    final isActive = await ApiService.isCurrentUserActive();
+    if (!isActive && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingScreen()),
+        (route) => false,
+      );
+    }
   }
 
   void _loadUserData() async {
@@ -152,30 +167,159 @@ class _StoreScreenState extends State<StoreScreen> {
     );
   }
 
-  void _processPurchase(Map<String, dynamic> item) async {
-    try {
-      await ApiService.addDiamonds(item['diamond_count']);
-
-      // Refresh user data to update the balance
-      _loadUserData();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Successfully purchased ${item['diamond_count']} diamonds!',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Purchase failed. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+void _processPurchase(Map<String, dynamic> item) async {
+  try {
+    final user = await ApiService.getCurrentUser();
+    final userId = user['id'];
+    final shopId = item['id'] ?? item['shop_id'];
+    
+    print('Input user: ' + user.toString());
+    print('Input userId: ' + userId.toString());
+    print('Input shopId: ' + shopId.toString());
+    print('Input item: ' + item.toString());
+    
+    final response = await http.post(
+      Uri.parse('https://server.bharathchat.com/initiate-shop-payment'),
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'user_id': userId,
+        'shop_id': shopId,
+      }),
+    );
+    
+    print('API response status: ${response.statusCode}');
+    print('API response body: ${response.body}');
+    
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final redirectUrl = data['redirect_url'];
+      
+      print('redirectUrl: $redirectUrl');
+      
+      if (redirectUrl != null) {
+        print('Trying to launch: $redirectUrl');
+        
+        // Try different launch modes
+        try {
+          // Method 1: Try external application first
+          final launched = await launchUrl(
+            Uri.parse(redirectUrl),
+            mode: LaunchMode.externalApplication,
+          );
+          
+          if (!launched) {
+            // Method 2: Try platform default
+            final launched2 = await launchUrl(
+              Uri.parse(redirectUrl),
+              mode: LaunchMode.platformDefault,
+            );
+            
+            if (!launched2) {
+              // Method 3: Try in-app web view as fallback
+              await launchUrl(
+                Uri.parse(redirectUrl),
+                mode: LaunchMode.inAppWebView,
+              );
+            }
+          }
+          
+          print('Payment URL launched successfully');
+          
+        } catch (launchError) {
+          print('Error launching URL: $launchError');
+          
+          // Fallback: Show a dialog with the URL for manual opening
+          _showManualUrlDialog(redirectUrl);
+        }
+      } else {
+        print('No redirect URL received in response');
+        throw Exception('No redirect URL received');
+      }
+    } else {
+      print('Failed to initiate payment, status: ${response.statusCode}');
+      throw Exception('Failed to initiate payment');
     }
+  } catch (e) {
+    print('Error in _processPurchase: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Purchase failed: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
+// Add this helper method to show manual URL dialog
+void _showManualUrlDialog(String url) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Complete Payment',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Please copy and paste this URL in your browser to complete the payment:',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            SelectableText(
+              url,
+              style: const TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Copy URL to clipboard
+              Clipboard.setData(ClipboardData(text: url));
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Payment URL copied to clipboard'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              'Copy URL',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {

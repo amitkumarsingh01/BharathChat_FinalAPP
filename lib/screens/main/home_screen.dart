@@ -12,6 +12,7 @@ import 'store_screen.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'search_screen.dart';
+import '../auth/pending.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -215,10 +216,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkUserActive();
     _loadData();
     _userProfileFuture = ApiService.getCurrentUser();
     // Start periodic refresh of live streams
     _startLiveStreamRefresh();
+  }
+
+  void _checkUserActive() async {
+    final isActive = await ApiService.isCurrentUserActive();
+    if (!isActive && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingScreen()),
+        (route) => false,
+      );
+    }
   }
 
   void _startLiveStreamRefresh() {
@@ -1121,230 +1134,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-
-                    const SizedBox(height: 30),
-
-                    // Live Audio Streams (from LiveStreamService)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Live Audio Streams',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AnimatedBuilder(
-                      animation: _liveStreamService,
-                      builder: (context, _) {
-                        final audioStreams =
-                            _liveStreamService.streams
-                                .where(
-                                  (stream) =>
-                                      stream.type == LiveStreamType.audio,
-                                )
-                                .toList();
-
-                        if (audioStreams.isEmpty) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'No live audio streams. Start one or check back later!',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: audioStreams.length,
-                          itemBuilder: (context, index) {
-                            final stream = audioStreams[index];
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[900],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange),
-                              ),
-                              child: ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: Colors.orange,
-                                  child: Icon(Icons.mic, color: Colors.white),
-                                ),
-                                title: Text(
-                                  stream.channelName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  'Host: ${stream.host}',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.orange,
-                                        foregroundColor: Colors.white,
-                                        minimumSize: const Size(60, 32),
-                                      ),
-                                      onPressed: () {
-                                        joinLiveStream(
-                                          stream.channelName,
-                                          stream.userId,
-                                          false,
-                                        );
-                                      },
-                                      child: const Text('Join'),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: Colors.orange,
-                                        minimumSize: const Size(60, 32),
-                                      ),
-                                      onPressed: () {
-                                        joinLiveStream(
-                                          stream.channelName,
-                                          stream.userId,
-                                          false,
-                                        );
-                                      },
-                                      child: const Text('Listen'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Test Live Streaming Button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Test live streaming with a consistent live ID
-                          joinLiveStream('test_live_stream_123', 0, true);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Test Live Streaming (Host)',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Create Test Live Stream Button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton(
-                        onPressed: createTestLiveStream,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Create Test Live Stream on Server',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Refresh Live Streams Button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          _loadData();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Live streams refreshed!'),
-                              backgroundColor: Colors.blue,
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Refresh Live Streams',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Test Join Live Streaming Button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Test joining live streaming as audience with the same ID
-                          joinLiveStream('test_live_stream_123', 0, false);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Test Join Live Streaming (Audience)',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
                     const SizedBox(height: 20),
                   ],
                 ),

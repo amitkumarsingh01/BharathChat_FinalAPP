@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import '../main/main_screen.dart';
 import '../../services/api_service.dart';
+import 'pending.dart';
 
 class RegistrationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -49,6 +50,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _checkProfileStatus() async {
     try {
       final userData = await ApiService.getCurrentUser();
+      if (userData['is_active'] == false) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const PendingScreen()),
+          (route) => false,
+        );
+        return;
+      }
       if (userData['first_name'] != null &&
           userData['last_name'] != null &&
           userData['username'] != null) {

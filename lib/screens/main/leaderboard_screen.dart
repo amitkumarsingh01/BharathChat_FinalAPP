@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/main/main_screen.dart';
+import '../auth/pending.dart';
 
 class User {
   final int id;
@@ -86,9 +87,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   @override
   void initState() {
     super.initState();
+    _checkUserActive();
     _tabController = TabController(length: 4, vsync: this);
     _fetchUsers();
     _fetchCurrentUser();
+  }
+
+  void _checkUserActive() async {
+    final isActive = await ApiService.isCurrentUserActive();
+    if (!isActive && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingScreen()),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _fetchCurrentUser() async {

@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../main/main_screen.dart';
 import 'registration_screen.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
+import 'pending.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phoneNumber;
@@ -40,6 +41,16 @@ class _OtpScreenState extends State<OtpScreen> {
 
       await ApiService.setToken(response['access_token']);
       await ApiService.setUserId(response['user_id']);
+
+      // Fetch user data to check is_active
+      final userData = await ApiService.getCurrentUser();
+      if (userData['is_active'] == false) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PendingScreen()),
+        );
+        return;
+      }
 
       if (response['is_profile_complete'] == true) {
         Navigator.pushReplacement(

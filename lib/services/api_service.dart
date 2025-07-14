@@ -445,4 +445,9 @@ class ApiService {
       throw Exception('Failed to load users');
     }
   }
+
+  static Future<bool> isCurrentUserActive() async {
+    final user = _currentUserData ?? await getCurrentUser();
+    return user['is_active'] == true;
+  }
 }

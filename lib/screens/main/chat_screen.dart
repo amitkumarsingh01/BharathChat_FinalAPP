@@ -7,6 +7,7 @@ import 'invite_screen.dart';
 import 'blocked_users_screen.dart';
 import 'main_screen.dart';
 import 'search_screen.dart';
+import '../auth/pending.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -43,8 +44,20 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
+    _checkUserActive();
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
+  }
+
+  void _checkUserActive() async {
+    final isActive = await ApiService.isCurrentUserActive();
+    if (!isActive && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingScreen()),
+        (route) => false,
+      );
+    }
   }
 
   void _loadData() async {
