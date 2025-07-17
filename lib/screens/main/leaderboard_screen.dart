@@ -5,6 +5,32 @@ import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/main/main_screen.dart';
 import '../auth/pending.dart';
 
+class DiamondHistory {
+  final int id;
+  final int userId;
+  final String datetime;
+  final int amount;
+  final String status;
+
+  DiamondHistory({
+    required this.id,
+    required this.userId,
+    required this.datetime,
+    required this.amount,
+    required this.status,
+  });
+
+  factory DiamondHistory.fromJson(Map<String, dynamic> json) {
+    return DiamondHistory(
+      id: json['id'],
+      userId: json['user_id'],
+      datetime: json['datetime'],
+      amount: json['amount'],
+      status: json['status'],
+    );
+  }
+}
+
 class User {
   final int id;
   final String? firstName;
@@ -14,6 +40,8 @@ class User {
   final String? profilePic;
   final int diamonds;
   final bool isOnline;
+  final int creditedDiamonds;
+  final int debitedDiamonds;
 
   User({
     required this.id,
@@ -24,18 +52,22 @@ class User {
     this.profilePic,
     required this.diamonds,
     required this.isOnline,
+    this.creditedDiamonds = 0,
+    this.debitedDiamonds = 0,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
+  factory User.fromJson(Map<String, dynamic> userJson, Map<String, dynamic> summary) {
     return User(
-      id: json['id'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      username: json['username'],
-      phoneNumber: json['phone_number'],
-      profilePic: json['profile_pic'],
-      diamonds: json['diamonds'] ?? 0,
-      isOnline: json['is_online'] ?? false,
+      id: userJson['id'],
+      firstName: userJson['first_name'],
+      lastName: userJson['last_name'],
+      username: userJson['username'],
+      phoneNumber: userJson['phone_number'],
+      profilePic: userJson['profile_pic'],
+      diamonds: userJson['diamonds'] ?? 0,
+      isOnline: userJson['is_online'] ?? false,
+      creditedDiamonds: summary['total_credited'] ?? 0,
+      debitedDiamonds: summary['total_debited'] ?? 0,
     );
   }
 
@@ -67,7 +99,25 @@ class User {
     }
     return diamonds.toString();
   }
+
+  String getFormattedCreditedDiamonds() {
+    if (creditedDiamonds >= 1000) {
+      double k = creditedDiamonds / 1000.0;
+      return '${k.toStringAsFixed(1)}K';
+    }
+    return creditedDiamonds.toString();
+  }
+
+  String getFormattedDebitedDiamonds() {
+    if (debitedDiamonds >= 1000) {
+      double k = debitedDiamonds / 1000.0;
+      return '${k.toStringAsFixed(1)}K';
+    }
+    return debitedDiamonds.toString();
+  }
 }
+
+enum FilterType { total, credited, debited }
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({Key? key}) : super(key: key);
@@ -76,21 +126,36 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
+enum PeriodType { daily, weekly, monthly }
+
 class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<User> users = [];
+  List<User> filteredUsers = [];
   bool isLoading = true;
   Map<String, dynamic>? currentUserData;
   bool isCurrentUserLoading = true;
+  FilterType selectedFilter = FilterType.total;
+  PeriodType selectedPeriod = PeriodType.daily;
 
   @override
   void initState() {
     super.initState();
     _checkUserActive();
-    _tabController = TabController(length: 4, vsync: this);
-    _fetchUsers();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    _fetchLeaderboard();
     _fetchCurrentUser();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    setState(() {
+      selectedPeriod = PeriodType.values[_tabController.index];
+      isLoading = true;
+    });
+    _fetchLeaderboard();
   }
 
   void _checkUserActive() async {
@@ -118,25 +183,96 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     }
   }
 
-  Future<void> _fetchUsers() async {
+  String _periodToString(PeriodType period) {
+    switch (period) {
+      case PeriodType.daily:
+        return 'daily';
+      case PeriodType.weekly:
+        return 'weekly';
+      case PeriodType.monthly:
+        return 'monthly';
+    }
+  }
+
+  Future<void> _fetchLeaderboard() async {
+    final periodStr = _periodToString(selectedPeriod);
     try {
       final response = await http.get(
-        Uri.parse('https://server.bharathchat.com/users/'),
+        Uri.parse('https://server.bharathchat.com/user-diamond-history?period=$periodStr'),
+        headers: {'accept': 'application/json'},
       );
       if (response.statusCode == 200) {
-        final List<dynamic> userList = json.decode(response.body);
+        final data = json.decode(response.body);
+        final List<User> loadedUsers = [];
+        for (var entry in data['users']) {
+          final userJson = entry['user'];
+          final summary = entry['summary'];
+          loadedUsers.add(User.fromJson(userJson, summary));
+        }
         setState(() {
-          users = userList.map((user) => User.fromJson(user)).toList();
-          users.sort((a, b) => b.diamonds.compareTo(a.diamonds));
+          users = loadedUsers;
+          _applyFilter();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
           isLoading = false;
         });
       }
     } catch (e) {
-      print('Error fetching users: $e');
+      print('Error fetching leaderboard: $e');
       setState(() {
         isLoading = false;
       });
     }
+  }
+
+  void _applyFilter() {
+    setState(() {
+      switch (selectedFilter) {
+        case FilterType.total:
+          filteredUsers = List.from(users);
+          filteredUsers.sort((a, b) => b.diamonds.compareTo(a.diamonds));
+          break;
+        case FilterType.credited:
+          filteredUsers = List.from(users);
+          filteredUsers.sort((a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds));
+          break;
+        case FilterType.debited:
+          filteredUsers = List.from(users);
+          filteredUsers.sort((a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds));
+          break;
+      }
+    });
+  }
+
+  String _getFilterValue(User user) {
+    switch (selectedFilter) {
+      case FilterType.total:
+        return user.getFormattedDiamonds();
+      case FilterType.credited:
+        return user.getFormattedCreditedDiamonds();
+      case FilterType.debited:
+        return user.getFormattedDebitedDiamonds();
+    }
+  }
+
+  String _getCurrentUserFilterValue() {
+    if (currentUserData == null) return '0';
+    final currentUser = users.firstWhere(
+      (u) => u.id == currentUserData!['id'],
+      orElse: () => User(
+        id: currentUserData!['id'],
+        firstName: currentUserData!['first_name'],
+        lastName: currentUserData!['last_name'],
+        username: currentUserData!['username'],
+        phoneNumber: currentUserData!['phone_number'],
+        profilePic: currentUserData!['profile_pic'],
+        diamonds: currentUserData!['diamonds'] ?? 0,
+        isOnline: currentUserData!['is_online'] ?? false,
+      ),
+    );
+    return _getFilterValue(currentUser);
   }
 
   @override
@@ -148,7 +284,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          ),
         ),
         title: const Text(
           'Leaderboard',
@@ -170,26 +309,62 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: TabBar(
-              controller: _tabController,
-              indicatorColor: Colors.orange,
-              indicatorWeight: 3,
-              labelColor: Colors.orange,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+          preferredSize: const Size.fromHeight(100),
+          child: Column(
+            children: [
+              // Filter buttons
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildFilterButton(
+                        'Total',
+                        FilterType.total,
+                        selectedFilter == FilterType.total,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildFilterButton(
+                        'Credited',
+                        FilterType.credited,
+                        selectedFilter == FilterType.credited,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildFilterButton(
+                        'Debited',
+                        FilterType.debited,
+                        selectedFilter == FilterType.debited,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              unselectedLabelColor: Colors.white54,
-              isScrollable: false,
-              tabs: const [
-                Tab(text: 'Daily'),
-                Tab(text: 'Weekly'),
-                Tab(text: 'Monthly'),
-              ],
-            ),
+              // Time period tabs
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.orange,
+                  indicatorWeight: 3,
+                  labelColor: Colors.orange,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  unselectedLabelColor: Colors.white54,
+                  isScrollable: false,
+                  tabs: const [
+                    Tab(text: 'Daily'),
+                    Tab(text: 'Weekly'),
+                    Tab(text: 'Monthly'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -201,10 +376,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               : Column(
                 children: [
                   SizedBox(height: 15),
-                  if (users.length >= 3) _buildPodium(users.sublist(0, 3)),
+                  if (filteredUsers.length >= 3) _buildPodium(filteredUsers.sublist(0, 3)),
                   Expanded(
                     child: _buildLeaderboardList(
-                      users.length > 3 ? users.sublist(3) : [],
+                      filteredUsers.length > 3 ? filteredUsers.sublist(3) : [],
                     ),
                   ),
                   if (currentUserData != null) _buildBottomBar(),
@@ -224,6 +399,37 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                   ),
                 ],
               ),
+    );
+  }
+
+  Widget _buildFilterButton(String text, FilterType filterType, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedFilter = filterType;
+          _applyFilter();
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.orange : Colors.grey[800],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.orange : Colors.grey[600]!,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.white,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 
@@ -371,7 +577,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               const Icon(Icons.diamond, color: Colors.purple, size: 16),
               const SizedBox(width: 4),
               Text(
-                user.getFormattedDiamonds(),
+                _getFilterValue(user),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -492,7 +698,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    user.getFormattedDiamonds(),
+                    _getFilterValue(user),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -584,7 +790,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${currentUserData!['diamonds'] ?? 0}',
+                _getCurrentUserFilterValue(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
