@@ -169,7 +169,9 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
                 radius: 28,
                 backgroundColor: Colors.grey[900],
                 backgroundImage: user['profile_pic'] != null && user['profile_pic'].isNotEmpty
-                    ? MemoryImage(base64Decode(user['profile_pic']))
+                    ? (user['profile_pic'].startsWith('http')
+                        ? NetworkImage(user['profile_pic'])
+                        : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
                     : null,
                 child: (user['profile_pic'] == null || user['profile_pic'].isEmpty)
                     ? Text(

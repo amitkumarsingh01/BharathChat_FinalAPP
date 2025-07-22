@@ -748,12 +748,12 @@ class _LivePageState extends State<LivePage>
                         ).createShader(bounds);
                       },
                       child: const Text(
-                        'Bharat Chat',
+                        'Bharath Chat',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color:
-                              Colors.white, // This will be replaced by gradient
+                              Colors.white,
                           letterSpacing: 1.1,
                         ),
                       ),

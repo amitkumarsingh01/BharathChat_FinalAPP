@@ -101,12 +101,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     'Remove Profile Image',
                     style: TextStyle(color: Colors.red),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
                     setState(() {
                       _pickedImage = null;
                       _profilePicPath = null;
                     });
+                    // Try to call API to remove profile pic
+                    final userId = ApiService.currentUserId;
+                    if (userId != null) {
+                      try {
+                        await ApiService.removeUserProfilePic(userId);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Profile picture removed successfully'), backgroundColor: Colors.green),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to remove profile picture'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    }
                   },
                 ),
               ],

@@ -773,7 +773,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                       ).createShader(bounds);
                     },
                     child: const Text(
-                      'Bharat Chat',
+                      'Bharath Chat',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

@@ -25,7 +25,7 @@ class _BlockedUserState extends State<BlockedUser> {
     });
     try {
       final currentUserId = ApiService.currentUserId;
-      final relations = await ApiService.getUserRelations(currentUserId);
+      final relations = await ApiService.getUserSimpleRelations(currentUserId);
       final blockedIds = List<int>.from(relations['blocked'] ?? []);
       final allUsers = await ApiService.getAllUsers();
       final blockedUsers =
@@ -145,12 +145,11 @@ class _BlockedUserState extends State<BlockedUser> {
                               radius: 28,
                               backgroundColor: Colors.grey[900],
                               backgroundImage:
-                                  user['profile_pic'] != null &&
-                                          user['profile_pic'].isNotEmpty
-                                      ? MemoryImage(
-                                        base64Decode(user['profile_pic']),
-                                      )
-                                      : null,
+                                  user['profile_pic'] != null && user['profile_pic'].isNotEmpty
+    ? (user['profile_pic'].startsWith('http')
+        ? NetworkImage(user['profile_pic'])
+        : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
+    : null,
                               child:
                                   (user['profile_pic'] == null ||
                                           user['profile_pic'].isEmpty)

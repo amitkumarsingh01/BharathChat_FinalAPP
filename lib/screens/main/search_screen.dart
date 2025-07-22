@@ -29,7 +29,9 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       final users = await ApiService.getAllUsers();
       final currentUserId = ApiService.currentUserId;
-      final relations = await ApiService.getUserRelations(currentUserId);
+      // Use the new /users/{user_id}/relations API
+      final relations = await ApiService.getUserSimpleRelations(currentUserId);
+      // relations['following'] and relations['blocked'] are lists of user IDs
       setState(() {
         _users = users.where((u) => u['id'] != currentUserId).toList();
         _following = Set<int>.from(relations['following'] ?? []);
@@ -64,12 +66,17 @@ class _SearchScreenState extends State<SearchScreen> {
       }
       await _loadUsersAndRelations();
     } catch (e) {
+      String errorMsg = 'Failed to follow/unfollow user';
+      if (e is Exception && e.toString().contains('Exception:')) {
+        errorMsg = e.toString().replaceFirst('Exception: ', '');
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to follow/unfollow user'),
+        SnackBar(
+          content: Text(errorMsg),
           backgroundColor: Colors.red,
         ),
       );
+      await _loadUsersAndRelations();
     }
   }
 
@@ -86,12 +93,17 @@ class _SearchScreenState extends State<SearchScreen> {
         );
         await _loadUsersAndRelations();
       } catch (e) {
+        String errorMsg = 'Failed to unblock user';
+        if (e is Exception && e.toString().contains('Exception:')) {
+          errorMsg = e.toString().replaceFirst('Exception: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to unblock user'),
+          SnackBar(
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
           ),
         );
+        await _loadUsersAndRelations();
       }
       return;
     }
@@ -161,12 +173,17 @@ class _SearchScreenState extends State<SearchScreen> {
         );
         await _loadUsersAndRelations();
       } catch (e) {
+        String errorMsg = 'Failed to block user';
+        if (e is Exception && e.toString().contains('Exception:')) {
+          errorMsg = e.toString().replaceFirst('Exception: ', '');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to block user'),
+          SnackBar(
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
           ),
         );
+        await _loadUsersAndRelations();
       }
     }
   }
@@ -255,11 +272,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                     radius: 28,
                                     backgroundColor: Colors.grey[800],
                                     backgroundImage:
-                                        user['profile_pic'] != null &&
-                                                user['profile_pic'].isNotEmpty
-                                            ? MemoryImage(
-                                              base64Decode(user['profile_pic']),
-                                            )
+                                        (user['profile_pic'] != null && user['profile_pic'].isNotEmpty)
+                                            ? (user['profile_pic'].startsWith('http')
+                                                ? NetworkImage(user['profile_pic'])
+                                                : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
                                             : null,
                                     child:
                                         (user['profile_pic'] == null ||

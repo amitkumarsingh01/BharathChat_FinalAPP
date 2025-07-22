@@ -94,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'Remove Profile Image',
                     style: TextStyle(color: Colors.red),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
                     setState(() {
                       _pickedImage = null;
@@ -103,6 +103,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _user!['profile_pic'] = null;
                       }
                     });
+                    if (_user != null && _user!['id'] != null) {
+                      try {
+                        await ApiService.removeUserProfilePic(_user!['id']);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Profile picture removed successfully'), backgroundColor: Colors.green),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to remove profile picture'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    }
                   },
                 ),
               ],

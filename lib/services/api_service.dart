@@ -566,6 +566,19 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getUserSimpleRelations(int? userId) async {
+    if (userId == null) throw Exception('User ID is null');
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/$userId/relations'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch user relations');
+    }
+  }
+
   // Fetch user types
   static Future<List<dynamic>> getUserTypes() async {
     final response = await http.get(
@@ -718,6 +731,18 @@ class ApiService {
       return data['profile_pic'];
     } else {
       throw Exception('Failed to upload profile picture');
+    }
+  }
+
+  static Future<Map<String, dynamic>> removeUserProfilePic(int userId) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/users/$userId/remove-profile-pic'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to remove profile picture');
     }
   }
 }
