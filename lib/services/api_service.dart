@@ -325,6 +325,7 @@ class ApiService {
         'music_id': liveData['music_id'],
         'background_img': liveData['background_img'],
         'live_url': liveData['live_url'],
+        if (liveData['language'] != null) 'language': liveData['language'],
       };
 
       final response = await http.post(
@@ -356,6 +357,7 @@ class ApiService {
                 ? liveData['hashtag']
                 : [liveData['hashtag']],
         'live_url': liveData['live_url'],
+        if (liveData['language'] != null) 'language': liveData['language'],
       };
 
       final response = await http.post(
@@ -630,47 +632,47 @@ class ApiService {
     }
   }
 
-  // Get withdraw diamond info (min, conversion rate)
-  static Future<Map<String, dynamic>> getWithdrawDiamondInfo() async {
+  // Get withdraw star info (min, conversion rate)
+  static Future<Map<String, dynamic>> getWithdrawStarInfo() async {
     final response = await http.get(
-      Uri.parse('$baseUrl/withdraw-diamond-info'),
+      Uri.parse('$baseUrl/withdraw-star-info'),
       headers: _headers,
     );
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to fetch withdraw diamond info');
+      throw Exception('Failed to fetch withdraw star info');
     }
   }
 
-  // Get all withdrawals for the current user
-  static Future<List<Map<String, dynamic>>> getUserWithdrawals(int userId) async {
+  // Get all star withdrawals for the current user
+  static Future<List<Map<String, dynamic>>> getUserStarWithdrawals(int userId) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/withdraw-diamond'),
+      Uri.parse('$baseUrl/withdraw-star'),
       headers: _headers,
     );
     if (response.statusCode == 200) {
       final List<dynamic> all = json.decode(response.body);
       return all.where((w) => w['user_id'] == userId).cast<Map<String, dynamic>>().toList();
     } else {
-      throw Exception('Failed to fetch withdrawals');
+      throw Exception('Failed to fetch star withdrawals');
     }
   }
 
-  // Create a new withdraw diamond request
-  static Future<Map<String, dynamic>> createWithdrawDiamond({required int userId, required int diamondCount}) async {
+  // Create a new withdraw star request
+  static Future<Map<String, dynamic>> createWithdrawStar({required int userId, required int starCount}) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/withdraw-diamond'),
+      Uri.parse('$baseUrl/withdraw-star'),
       headers: _headers,
       body: json.encode({
         'user_id': userId,
-        'diamond_count': diamondCount,
+        'star_count': starCount,
       }),
     );
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to create withdraw request');
+      throw Exception('Failed to create withdraw star request');
     }
   }
 

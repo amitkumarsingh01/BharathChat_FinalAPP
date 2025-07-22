@@ -395,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       );
                     }),
-                    _buildProfileOption('Withdraw Diamonds', Icons.money, () {
+                    _buildProfileOption('Withdraw Stars', Icons.money, () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(

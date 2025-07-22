@@ -163,18 +163,6 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
-  ImageProvider? _getProfileImage(String? profilePic) {
-    if (profilePic != null && profilePic.isNotEmpty) {
-      try {
-        return MemoryImage(base64Decode(profilePic));
-      } catch (e) {
-        print('Error decoding profile image: $e');
-        return null;
-      }
-    }
-    return null;
-  }
-
   Widget _buildUserTile(dynamic user) {
     // For conversations tab
     if (user['last_message'] != null) {
@@ -189,19 +177,17 @@ class _ChatScreenState extends State<ChatScreen>
           leading: CircleAvatar(
             radius: 25,
             backgroundColor: Colors.grey[800],
-            backgroundImage: _getProfileImage(user['user']['profile_pic']),
-            child:
-                _getProfileImage(user['user']['profile_pic']) == null
-                    ? Text(
-                      (user['user']['first_name'] ?? 'U')
-                          .substring(0, 1)
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                    : null,
+            child: (user['user']['profile_pic'] != null && user['user']['profile_pic'].isNotEmpty)
+                ? (user['user']['profile_pic'].startsWith('http')
+                    ? ClipOval(child: Image.network(user['user']['profile_pic'], width: 50, height: 50, fit: BoxFit.cover))
+                    : ClipOval(child: Image.network('https://server.bharathchat.com/' + user['user']['profile_pic'], width: 50, height: 50, fit: BoxFit.cover)))
+                : Text(
+                    (user['user']['first_name'] ?? 'U').substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
           title: Text(
             user['user']['first_name'] ?? 'User ${user['user']['id']}',
@@ -324,17 +310,17 @@ class _ChatScreenState extends State<ChatScreen>
         leading: CircleAvatar(
           radius: 25,
           backgroundColor: Colors.grey[800],
-          backgroundImage: _getProfileImage(user['profile_pic']),
-          child:
-              _getProfileImage(user['profile_pic']) == null
-                  ? Text(
-                    (user['first_name'] ?? 'U').substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                  : null,
+          child: (user['profile_pic'] != null && user['profile_pic'].isNotEmpty)
+              ? (user['profile_pic'].startsWith('http')
+                  ? ClipOval(child: Image.network(user['profile_pic'], width: 50, height: 50, fit: BoxFit.cover))
+                  : ClipOval(child: Image.network('https://server.bharathchat.com/' + user['profile_pic'], width: 50, height: 50, fit: BoxFit.cover)))
+              : Text(
+                  (user['first_name'] ?? 'U').substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
         title: Text(
           user['first_name'] ?? 'User ${user['id']}',
@@ -634,24 +620,17 @@ class _ChatScreenState extends State<ChatScreen>
                                     CircleAvatar(
                                       radius: 50,
                                       backgroundColor: Colors.grey[800],
-                                      backgroundImage: _getProfileImage(
-                                        user['profile_pic'],
-                                      ),
-                                      child:
-                                          _getProfileImage(
-                                                    user['profile_pic'],
-                                                  ) ==
-                                                  null
-                                              ? Text(
-                                                (user['first_name'] ?? 'U')
-                                                    .substring(0, 1)
-                                                    .toUpperCase(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              )
-                                              : null,
+                                      child: (user['profile_pic'] != null && user['profile_pic'].isNotEmpty)
+                                          ? (user['profile_pic'].startsWith('http')
+                                              ? ClipOval(child: Image.network(user['profile_pic'], width: 100, height: 100, fit: BoxFit.cover))
+                                              : ClipOval(child: Image.network('https://server.bharathchat.com/' + user['profile_pic'], width: 100, height: 100, fit: BoxFit.cover)))
+                                          : Text(
+                                              (user['first_name'] ?? 'U').substring(0, 1).toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                     ),
                                     if (user['is_online'] == true)
                                       Positioned(
@@ -899,21 +878,17 @@ class _ChatScreenState extends State<ChatScreen>
                               leading: CircleAvatar(
                                 radius: 26,
                                 backgroundColor: Colors.grey[800],
-                                backgroundImage: _getProfileImage(
-                                  u['profile_pic'],
-                                ),
-                                child:
-                                    _getProfileImage(u['profile_pic']) == null
-                                        ? Text(
-                                          (u['first_name'] ?? 'U')
-                                              .substring(0, 1)
-                                              .toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        )
-                                        : null,
+                                child: (u['profile_pic'] != null && u['profile_pic'].isNotEmpty)
+                                    ? (u['profile_pic'].startsWith('http')
+                                        ? ClipOval(child: Image.network(u['profile_pic'], width: 52, height: 52, fit: BoxFit.cover))
+                                        : ClipOval(child: Image.network('https://server.bharathchat.com/' + u['profile_pic'], width: 52, height: 52, fit: BoxFit.cover)))
+                                    : Text(
+                                        (u['first_name'] ?? 'U').substring(0, 1).toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                               title: Row(
                                 children: [

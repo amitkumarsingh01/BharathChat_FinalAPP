@@ -372,30 +372,30 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
                                         child:
-                                            profilePic != null &&
-                                                    profilePic.isNotEmpty
-                                                ? Image.memory(
-                                                  base64Decode(
-                                                    profilePic.contains(',')
-                                                        ? profilePic
-                                                            .split(',')
-                                                            .last
-                                                        : profilePic,
-                                                  ),
-                                                  width: 90,
-                                                  height: 90,
-                                                  fit: BoxFit.cover,
-                                                )
+                                            profilePic != null && profilePic.isNotEmpty
+                                                ? (profilePic.startsWith('http')
+                                                    ? Image.network(
+                                                        profilePic,
+                                                        width: 90,
+                                                        height: 90,
+                                                        fit: BoxFit.cover,
+                                                      )
+                                                    : Image.network(
+                                                        'https://server.bharathchat.com/' + profilePic,
+                                                        width: 90,
+                                                        height: 90,
+                                                        fit: BoxFit.cover,
+                                                      ))
                                                 : Container(
-                                                  width: 90,
-                                                  height: 90,
-                                                  color: Colors.black,
-                                                  child: const Icon(
-                                                    Icons.person,
-                                                    color: Colors.white,
-                                                    size: 50,
+                                                    width: 90,
+                                                    height: 90,
+                                                    color: Colors.black,
+                                                    child: const Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                      size: 50,
+                                                    ),
                                                   ),
-                                                ),
                                       ),
                                     ),
                                     Positioned(

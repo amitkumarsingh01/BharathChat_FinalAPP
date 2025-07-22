@@ -13,6 +13,7 @@ import 'package:just_audio/just_audio.dart';
 import '../live/live_video_screen.dart';
 import '../live/live_audio_screen.dart';
 import '../../services/live_stream_service.dart';
+import '../../common.dart';
 
 // Removed main() and MyApp. Only HomePage is exported for navigation.
 
@@ -216,6 +217,8 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   String? selectedMusic;
   final _audioPlayer = AudioPlayer();
   bool isPlaying = false;
+
+  Language selectedLanguage = languages[0];
 
   // Request permissions before joining live stream
   Future<bool> requestPermissions() async {
@@ -474,23 +477,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   ),
                 ),
 
-                // Settings toggles
-                if (isVideoMode)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      children: [
-                        _buildToggleRow('Video ON', videoOn, (value) {
-                          setState(() => videoOn = value);
-                        }),
-                        const SizedBox(height: 8),
-                        _buildToggleRow('Auto Call', autoCall, (value) {
-                          setState(() => autoCall = value);
-                        }),
-                      ],
-                    ),
-                  ),
-
                 if (!isVideoMode) ...[
                   // Background Image Selection
                   // Padding(
@@ -677,6 +663,71 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   //   ),
                   // ),
                 ],
+
+                const SizedBox(height: 20),
+
+                // Language Selection
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Language',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: languages.map((lang) {
+                            final isSelected = selectedLanguage.code == lang.code;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => selectedLanguage = lang);
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? lang.backgroundColor : Colors.grey[900],
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.white : Colors.grey,
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      lang.nativeName,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      lang.name,
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 const SizedBox(height: 20),
 
@@ -923,6 +974,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
           'category': selectedCategory,
           'hashtag': [selectedHashtag],
           'live_url': liveUrl,
+          'language': selectedLanguage.code,
         };
       } else {
         // Get music ID if music is selected
@@ -942,6 +994,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
           'music_id': musicId,
           'background_img': selectedBackgroundImage,
           'live_url': liveUrl,
+          'language': selectedLanguage.code,
         };
       }
 

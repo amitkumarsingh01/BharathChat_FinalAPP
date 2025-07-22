@@ -50,7 +50,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   final String appSign =
       "12e07321bd8231dda371ea9235e274178403bd97a7ccabcb09e22474c42da3a4"; // Your ZEGOCLOUD AppSign
 
-  bool showGiftPanel = false;
   List<Map<String, dynamic>> giftAnimations = [];
   Map<String, dynamic>? currentUser;
   Map<String, dynamic>? hostUser;
@@ -182,23 +181,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         }
       }
     }
-  }
-
-  void _showGiftPanel() {
-    setState(() {
-      showGiftPanel = true;
-    });
-  }
-
-  void _hideGiftPanel() {
-    setState(() {
-      showGiftPanel = false;
-    });
-  }
-
-  void _onGiftSent() {
-    _hideGiftPanel();
-    // You can add additional logic here, like showing a notification
   }
 
   void _showGiftAnimation(String giftName, String gifUrl, String senderName) {
@@ -495,7 +477,9 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               maximumSize: Size(buttonSize, buttonSize),
               elevation: 0,
             ),
-            onPressed: _showGiftPanel,
+            onPressed: () {
+              // Removed _showGiftPanel()
+            },
             child: const Icon(
               Icons.card_giftcard,
               color: Colors.white,
@@ -741,131 +725,8 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             ),
           ),
 
-          // Horizontal gift list above the bottom buttons
-          if (!_giftsLoading && _gifts.isNotEmpty)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 60,
-              child: SizedBox(
-                height: 56,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _gifts.length,
-                  separatorBuilder: (context, idx) => const SizedBox(width: 12),
-                  itemBuilder: (context, idx) {
-                    final gift = _gifts[idx];
-                    final canAfford =
-                        currentUser != null &&
-                        currentUser!['diamonds'] >= gift['diamond_amount'];
-                    return GestureDetector(
-                      onTap:
-                          canAfford && !_sendingGift
-                              ? () => _showGiftConfirmationDialog(
-                                gift,
-                                () => _sendGiftFromList(gift),
-                              )
-                              : null,
-                      child: Opacity(
-                        opacity: canAfford ? 1.0 : 0.5,
-                        child: Container(
-                          width: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.all(4),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: CachedNetworkImage(
-                                  imageUrl:
-                                      'https://server.bharathchat.com/uploads/gifts/' +
-                                      gift['gif_filename'],
-                                  width: 28,
-                                  height: 28,
-                                  fit: BoxFit.cover,
-                                  placeholder:
-                                      (context, url) => Container(
-                                        color: Colors.grey[700],
-                                        child: const Icon(
-                                          Icons.card_giftcard,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                  errorWidget:
-                                      (context, url, error) => Container(
-                                        color: Colors.grey[700],
-                                        child: const Icon(
-                                          Icons.card_giftcard,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'assets/diamond.png',
-                                    width: 12,
-                                    height: 12,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${gift['diamond_amount']}',
-                                    style: TextStyle(
-                                      color:
-                                          canAfford
-                                              ? Colors.orange
-                                              : Colors.grey[500],
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-
           // Overlay active gift animations
-          ..._activeGiftAnimations,
-
-          // Gift Panel
-          if (showGiftPanel)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: _hideGiftPanel,
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: FractionallySizedBox(
-                      heightFactor: 0.5,
-                      child: GiftPanel(
-                        receiverId: widget.hostId,
-                        roomId: widget.liveID,
-                        onGiftSent: _hideGiftPanel,
-                        onGiftAnimation: _showGiftAnimation,
-                        onClose: _hideGiftPanel,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          // ..._activeGiftAnimations,
 
           // Gift Animations
           ...giftAnimations.map(

@@ -14,26 +14,13 @@ import 'package:permission_handler/permission_handler.dart';
 import 'search_screen.dart';
 import '../auth/pending.dart';
 import '../live/creator_invitation_screen.dart';
+import '../../common.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class Language {
-  final String name;
-  final String nativeName;
-  final String code;
-  final Color backgroundColor;
-
-  Language({
-    required this.name,
-    required this.nativeName,
-    required this.code,
-    required this.backgroundColor,
-  });
 }
 
 class Category {
@@ -51,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   final LiveStreamService _liveStreamService = LiveStreamService();
   Language selectedLanguage = languages[0]; // Default to Hindi
-  String goLiveButtonText = 'Go Live'; // Default
+  String goLiveButtonText = 'No Live'; // Default
   bool goLiveButtonLoading = false;
 
   Future<Map<String, dynamic>> _userProfileFuture = Future.value({});
@@ -61,13 +48,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Category selector support
   final List<Category> categories = [
+    Category(name: 'All', icon: '🌐', type: 'all'),
     Category(name: 'Live Show', icon: '🎥', type: 'live'),
     Category(name: 'Party Room', icon: '🎉', type: 'party'),
     Category(name: 'Singing', icon: '🎤', type: 'singing'),
     Category(name: 'Dance', icon: '💃', type: 'dance'),
     Category(name: 'Comedy', icon: '😄', type: 'comedy'),
   ];
-  String selectedCategory = 'Live Show';
+  String selectedCategory = 'All';
 
   // Zego App credentials - replace with your actual values
   static const int appID = 615877954; // Replace with your App ID
@@ -164,57 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
-  static final List<Language> languages = [
-    Language(
-      name: 'Hindi',
-      nativeName: 'हिंदी',
-      code: 'hi',
-      backgroundColor: const Color(0xFF8B4513), // Brown
-    ),
-    Language(
-      name: 'Telugu',
-      nativeName: 'తెలుగు',
-      code: 'te',
-      backgroundColor: const Color(0xFF008080), // Teal
-    ),
-    Language(
-      name: 'Tamil',
-      nativeName: 'தமிழ்',
-      code: 'ta',
-      backgroundColor: const Color(0xFF556B2F), // Olive
-    ),
-    Language(
-      name: 'Bengali',
-      nativeName: 'বাংলা',
-      code: 'bn',
-      backgroundColor: const Color(0xFF800000), // Maroon
-    ),
-    Language(
-      name: 'Marathi',
-      nativeName: 'मराठी',
-      code: 'mr',
-      backgroundColor: const Color(0xFF8B4513), // Brown
-    ),
-    Language(
-      name: 'Punjabi',
-      nativeName: 'ਪੰਜਾਬੀ',
-      code: 'pa',
-      backgroundColor: const Color(0xFF000080), // Navy
-    ),
-    Language(
-      name: 'Kannada',
-      nativeName: 'ಕನ್ನಡ',
-      code: 'kn',
-      backgroundColor: const Color(0xFF4B0082), // Purple
-    ),
-    Language(
-      name: 'Malayalam',
-      nativeName: 'മലയാളം',
-      code: 'ml',
-      backgroundColor: const Color(0xFF006400), // Dark Green
-    ),
-  ];
 
   @override
   void initState() {
@@ -430,13 +367,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } else if (type == 'premium') {
       setState(() {
-        goLiveButtonText = 'Premium Live';
+        goLiveButtonText = 'Go Live';
       });
     } else {
       final approvalList = await ApiService.getLiveApproval();
       final approved = approvalList.any((e) => e['user_id'] == userId);
       setState(() {
-        goLiveButtonText = approved ? 'Go Live' : 'Request Live';
+        goLiveButtonText = approved ? 'No Live' : 'Request Live';
       });
     }
   }
@@ -1254,7 +1191,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .reversed
                                 .toList();
 
-                        if (videoStreams.isEmpty) {
+                        // Filter by selected language and category
+                        final filteredVideoStreams = videoStreams.where((stream) {
+                          final user = _usersById[stream.userId];
+                          // Find the matching live data from _videoLives by live_url or id
+                          final live = _videoLives.firstWhere(
+                            (l) => (l['live_url'] == stream.channelName) || (l['id'] == stream.liveId),
+                            orElse: () => null,
+                          );
+                          final languageCode = live != null ? live['language'] : null;
+                          final category = live != null ? live['category'] : null;
+                          final matchesLanguage = languageCode == selectedLanguage.code;
+                          final matchesCategory = selectedCategory == 'All' || category == selectedCategory;
+                          return matchesLanguage && matchesCategory;
+                        }).toList();
+
+                        if (filteredVideoStreams.isEmpty) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
@@ -1275,9 +1227,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
                               ),
-                          itemCount: videoStreams.length,
+                          itemCount: filteredVideoStreams.length,
                           itemBuilder: (context, index) {
-                            final stream = videoStreams[index];
+                            final stream = filteredVideoStreams[index];
                             final user = _usersById[stream.userId];
                             final userName =
                                 user != null

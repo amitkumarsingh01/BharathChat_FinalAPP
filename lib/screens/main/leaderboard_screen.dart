@@ -120,7 +120,7 @@ class User {
   }
 }
 
-enum FilterType { total, credited, debited }
+enum FilterType { credited, debited }
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({Key? key}) : super(key: key);
@@ -139,7 +139,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   bool isLoading = true;
   Map<String, dynamic>? currentUserData;
   bool isCurrentUserLoading = true;
-  FilterType selectedFilter = FilterType.total;
+  FilterType selectedFilter = FilterType.credited; // Default to Hoster
   PeriodType selectedPeriod = PeriodType.daily;
 
   @override
@@ -199,11 +199,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   Future<void> _fetchLeaderboard() async {
     final periodStr = _periodToString(selectedPeriod);
+    String url;
+    if (selectedFilter == FilterType.credited) {
+      url = 'https://server.bharathchat.com/user-star-history?period=$periodStr';
+    } else {
+      url = 'https://server.bharathchat.com/user-diamond-history?period=$periodStr';
+    }
     try {
       final response = await http.get(
-        Uri.parse(
-          'https://server.bharathchat.com/user-diamond-history?period=$periodStr',
-        ),
+        Uri.parse(url),
         headers: {'accept': 'application/json'},
       );
       if (response.statusCode == 200) {
@@ -216,7 +220,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         }
         setState(() {
           users = loadedUsers;
-          _applyFilter();
+          filteredUsers = List.from(users);
+          // Sort by credited or debited
+          if (selectedFilter == FilterType.credited) {
+            filteredUsers.sort((a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds));
+          } else {
+            filteredUsers.sort((a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds));
+          }
           isLoading = false;
         });
       } else {
@@ -235,10 +245,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   void _applyFilter() {
     setState(() {
       switch (selectedFilter) {
-        case FilterType.total:
-          filteredUsers = List.from(users);
-          filteredUsers.sort((a, b) => b.diamonds.compareTo(a.diamonds));
-          break;
         case FilterType.credited:
           filteredUsers = List.from(users);
           filteredUsers.sort(
@@ -257,8 +263,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   String _getFilterValue(User user) {
     switch (selectedFilter) {
-      case FilterType.total:
-        return user.getFormattedDiamonds();
       case FilterType.credited:
         return user.getFormattedCreditedDiamonds();
       case FilterType.debited:
@@ -328,14 +332,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    // Expanded(
-                    //   child: _buildFilterButton(
-                    //     'Total',
-                    //     FilterType.total,
-                    //     selectedFilter == FilterType.total,
-                    //   ),
-                    // ),
-                    const SizedBox(width: 8),
                     Expanded(
                       child: _buildFilterButton(
                         'Hoster',
@@ -423,8 +419,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       onTap: () {
         setState(() {
           selectedFilter = filterType;
-          _applyFilter();
+          isLoading = true;
         });
+        _fetchLeaderboard();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -590,8 +587,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // const Icon(Icons.diamond, color: Colors.purple, size: 16),
-              Image.asset('assets/diamond.png', width: 16, height: 16),
+              if (selectedFilter == FilterType.credited) ...[
+                Image.asset('assets/star.png', width: 16, height: 16),
+                const SizedBox(width: 4),
+                // const Text('Stars', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ] else ...[
+                Image.asset('assets/diamond.png', width: 16, height: 16),
+                const SizedBox(width: 4),
+                // const Text('Diamonds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
               const SizedBox(width: 4),
               Text(
                 _getFilterValue(user),
@@ -723,8 +727,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // const Icon(Icons.diamond, color: Colors.purple, size: 18),
-                  Image.asset('assets/diamond.png', width: 18, height: 18),
+                  if (selectedFilter == FilterType.credited) ...[
+                    Image.asset('assets/star.png', width: 18, height: 18),
+                    const SizedBox(width: 4),
+                    // const Text('Stars', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ] else ...[
+                    Image.asset('assets/diamond.png', width: 18, height: 18),
+                    const SizedBox(width: 4),
+                    // const Text('Diamonds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
                 ],
               ),
               const SizedBox(width: 16),
@@ -816,8 +827,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                 ),
               ),
               const SizedBox(width: 4),
-              // const Icon(Icons.diamond, color: Colors.purple, size: 18),
-              Image.asset('assets/diamond.png', width: 18, height: 18),
+              if (selectedFilter == FilterType.credited) ...[
+                Image.asset('assets/star.png', width: 18, height: 18),
+                const SizedBox(width: 4),
+                // const Text('Stars', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ] else ...[
+                Image.asset('assets/diamond.png', width: 18, height: 18),
+                const SizedBox(width: 4),
+                // const Text('Diamonds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
             ],
           ),
           const SizedBox(width: 12),

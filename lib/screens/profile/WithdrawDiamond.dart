@@ -37,13 +37,13 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
     try {
       final userId = ApiService.currentUserId;
       if (userId == null) throw Exception('User not found');
-      final info = await ApiService.getWithdrawDiamondInfo();
-      final withdrawals = await ApiService.getUserWithdrawals(userId);
+      final info = await ApiService.getWithdrawStarInfo();
+      final withdrawals = await ApiService.getUserStarWithdrawals(userId);
       final user = await ApiService.getCurrentUser();
       setState(() {
         _info = info;
         _withdrawals = withdrawals;
-        _userDiamonds = user['diamonds'] ?? 0;
+        _userDiamonds = user['stars'] ?? 0;
       });
     } catch (e) {
       setState(() {
@@ -62,8 +62,8 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
     try {
       final userId = ApiService.currentUserId;
       if (userId == null) throw Exception('User not found');
-      final diamondCount = int.parse(_diamondController.text);
-      await ApiService.createWithdrawDiamond(userId: userId, diamondCount: diamondCount);
+      final starCount = int.parse(_diamondController.text);
+      await ApiService.createWithdrawStar(userId: userId, starCount: starCount);
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Withdrawal request submitted!'), backgroundColor: Colors.green));
       _diamondController.clear();
       _loadData();
@@ -84,7 +84,7 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Withdraw Diamonds', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Withdraw Stars', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -98,19 +98,19 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
     if (_info == null || _userDiamonds == null) {
       return const Center(child: Text('Failed to load data', style: TextStyle(color: Colors.white)));
     }
-    final min = _info!['minimum_diamond'] ?? 0;
+    final min = _info!['minimum_star'] ?? 0;
     final rate = _info!['conversion_rate'] ?? 1.0;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your Diamonds: $_userDiamonds', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Your Stars: $_userDiamonds', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Text('Minimum to withdraw: $min', style: const TextStyle(color: Colors.white70)),
-          Text('Conversion rate: 1 Diamond = $rate', style: const TextStyle(color: Colors.white70)),
+          Text('Conversion rate: 1 Star = $rate', style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 20),
-          _userDiamonds! >= min ? _buildForm(min, rate) : Text('You need at least $min diamonds to withdraw.', style: const TextStyle(color: Colors.red)),
+          _userDiamonds! >= min ? _buildForm(min, rate) : Text('You need at least $min stars to withdraw.', style: const TextStyle(color: Colors.red)),
           const SizedBox(height: 30),
           const Text('Your Withdrawal Requests:', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 10),
@@ -131,12 +131,12 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.white),
             decoration: const InputDecoration(
-              labelText: 'Diamonds to withdraw',
+              labelText: 'Stars to withdraw',
               labelStyle: TextStyle(color: Color(0xFFCACACA)),
               border: OutlineInputBorder(),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Enter diamond count';
+              if (value == null || value.isEmpty) return 'Enter star count';
               final n = int.tryParse(value);
               if (n == null) return 'Enter a valid number';
               if (n < min) return 'Minimum is $min';
@@ -175,10 +175,10 @@ class _WithdrawDiamondState extends State<WithdrawDiamond> {
       separatorBuilder: (_, __) => const Divider(color: Colors.white24),
       itemBuilder: (context, i) {
         final wd = _withdrawals[i];
-        final diamonds = wd['diamond_count'] ?? 0;
-        final amount = (diamonds * rate).toStringAsFixed(2);
+        final stars = wd['star_count'] ?? 0;
+        final amount = (stars * rate).toStringAsFixed(2);
         return ListTile(
-          title: Text('Diamonds: $diamonds  |  Amount: $amount', style: const TextStyle(color: Colors.white)),
+          title: Text('Stars: $stars  |  Amount: $amount', style: const TextStyle(color: Colors.white)),
           subtitle: Text('Status: ${wd['status']}\nRequested: ${wd['created_at']}', style: const TextStyle(color: Colors.white70)),
         );
       },
