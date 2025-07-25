@@ -369,6 +369,10 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         goLiveButtonText = 'Go Live';
       });
+    } else if (type == 'super') {
+      setState(() {
+        goLiveButtonText = 'Premium Live';
+      });
     } else {
       final approvalList = await ApiService.getLiveApproval();
       final approved = approvalList.any((e) => e['user_id'] == userId);

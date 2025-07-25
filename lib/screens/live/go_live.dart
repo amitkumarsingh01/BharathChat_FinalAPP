@@ -966,6 +966,21 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
       final liveUrl =
           'live_${timestamp}_${nameController.text.isNotEmpty ? nameController.text.toLowerCase().replaceAll(' ', '_') : 'host'}';
 
+      // Fetch user type
+      String liveType = categories.firstWhere((cat) => cat.name == selectedCategory, orElse: () => categories[0]).type;
+      final userId = ApiService.currentUserId;
+      if (userId != null) {
+        final userTypes = await ApiService.getUserTypes();
+        final userTypeEntry = userTypes.firstWhere(
+          (e) => e['user_id'] == userId,
+          orElse: () => null,
+        );
+        final userType = userTypeEntry != null ? userTypeEntry['type'] : null;
+        if (userType == 'premium' || userType == 'super') {
+          liveType = userType;
+        }
+      }
+
       // Prepare the base data
       Map<String, dynamic> data;
 
@@ -975,6 +990,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
           'hashtag': [selectedHashtag],
           'live_url': liveUrl,
           'language': selectedLanguage.code,
+          'types': liveType,
         };
       } else {
         // Get music ID if music is selected
@@ -995,6 +1011,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
           'background_img': selectedBackgroundImage,
           'live_url': liveUrl,
           'language': selectedLanguage.code,
+          'types': liveType,
         };
       }
 

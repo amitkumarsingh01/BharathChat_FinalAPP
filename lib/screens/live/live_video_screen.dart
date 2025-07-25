@@ -12,6 +12,7 @@ import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
 import 'package:finalchat/common.dart';
 import 'package:finalchat/constants.dart';
 import 'live_page.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_button.dart';
 
 class LiveVideoScreen extends StatefulWidget {
   final String liveID;
@@ -100,8 +101,7 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
             );
           },
         ),
-        // Gift Button (audience only, PK battle active)
-        // (Removed: FloatingActionButton for gifts)
+        // PK Battle Button (host only)
         // Gift Panel
         if (showGiftPanel)
           Positioned.fill(

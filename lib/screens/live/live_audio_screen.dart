@@ -555,238 +555,240 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background image if provided
-          if (widget.backgroundImage != null)
-            Image.network(
-              'https://server.bharathchat.com/uploads/backgrounds/${widget.backgroundImage}',
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-            ),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Background image if provided
+            if (widget.backgroundImage != null)
+              Image.network(
+                'https://server.bharathchat.com/uploads/backgrounds/${widget.backgroundImage}',
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
 
-          // Zego UI Kit for audio streaming
-          ZegoUIKitPrebuiltLiveStreaming(
-            appID: appID,
-            appSign: appSign,
-            userID: widget.localUserID,
-            userName:
-                currentUser != null
-                    ? (currentUser!['username'] ??
-                        currentUser!['first_name'] ??
-                        'User_${widget.localUserID}')
-                    : 'User_${widget.localUserID}',
-            liveID: widget.liveID,
-            config: config,
-            events: ZegoUIKitPrebuiltLiveStreamingEvents(
-              onError: (ZegoUIKitError error) {
-                debugPrint('onError: [33m$error [0m');
-              },
-              onStateUpdated: (state) {
-                debugPrint('onStateUpdated: [33m$state [0m');
-              },
-              onLeaveConfirmation: (
-                ZegoLiveStreamingLeaveConfirmationEvent event,
-                Future<bool> Function() defaultAction,
-              ) async {
-                return await showDialog<bool>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          backgroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: const Text(
-                            "Leave the room",
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
+            // Zego UI Kit for audio streaming
+            ZegoUIKitPrebuiltLiveStreaming(
+              appID: appID,
+              appSign: appSign,
+              userID: widget.localUserID,
+              userName:
+                  currentUser != null
+                      ? (currentUser!['username'] ??
+                          currentUser!['first_name'] ??
+                          'User_${widget.localUserID}')
+                      : 'User_${widget.localUserID}',
+              liveID: widget.liveID,
+              config: config,
+              events: ZegoUIKitPrebuiltLiveStreamingEvents(
+                onError: (ZegoUIKitError error) {
+                  debugPrint('onError: [33m$error [0m');
+                },
+                onStateUpdated: (state) {
+                  debugPrint('onStateUpdated: [33m$state [0m');
+                },
+                onLeaveConfirmation: (
+                  ZegoLiveStreamingLeaveConfirmationEvent event,
+                  Future<bool> Function() defaultAction,
+                ) async {
+                  return await showDialog<bool>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            backgroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                          ),
-                          content: const Text(
-                            "Are you sure you want to leave the live audio room?",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          actions: [
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                backgroundColor: Colors.black,
-                                foregroundColor: Colors.orange,
-                                side: const BorderSide(color: Colors.orange),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                            title: const Text(
+                              "Leave the room",
+                              style: TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: const Text(
+                              "Are you sure you want to leave the live audio room?",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            actions: [
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.orange,
+                                  side: const BorderSide(color: Colors.orange),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () => Navigator.of(context).pop(false),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(color: Colors.orange),
                                 ),
                               ),
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text(
-                                'Cancel',
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () => Navigator.of(context).pop(true),
+                                child: const Text(
+                                  'Leave',
+                                  style: TextStyle(color: Colors.white),
                                 ),
                               ),
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text(
-                                'Leave',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ) ??
-                    false;
-              },
-            ),
-          ),
-
-          // Background music control (only for host)
-          if (widget.isHost && widget.backgroundMusic != null)
-            Positioned(
-              top: 100,
-              right: 16,
-              child: GestureDetector(
-                onTap: _toggleBackgroundMusic,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
+                            ],
+                          );
+                        },
+                      ) ??
+                      false;
+                },
               ),
             ),
 
-          // User avatars
-          if (_zegoUsers.isNotEmpty)
-            Positioned(
-              top: 40,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children:
-                    _zegoUsers.map<Widget>((zUser) {
-                      final userId =
-                          zUser.id ??
-                          zUser.userID ??
-                          zUser['userID'] ??
-                          zUser['id'];
-                      final user = _userProfiles[userId];
-                      final profilePic =
-                          user != null ? user['profile_pic'] : null;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundImage:
-                              profilePic != null && profilePic.isNotEmpty
-                                  ? MemoryImage(
-                                    base64Decode(
-                                      profilePic.contains(',')
-                                          ? profilePic.split(',').last
-                                          : profilePic,
-                                    ),
-                                  )
-                                  : null,
-                          child:
-                              (profilePic == null || profilePic.isEmpty)
-                                  ? Icon(Icons.person, size: 40)
-                                  : null,
-                        ),
-                      );
-                    }).toList(),
-              ),
-            ),
-
-          // Burst hearts overlay
-          ..._burstHearts.map(
-            (w) => Positioned(
-              bottom: 80,
-              left:
-                  MediaQuery.of(context).size.width / 2 -
-                  20 +
-                  (Random().nextDouble() * 40 - 20),
-              child: w,
-            ),
-          ),
-
-          // Overlay active gift animations
-          // ..._activeGiftAnimations,
-
-          // Gift Animations
-          ...giftAnimations.map(
-            (anim) => GiftAnimation(
-              giftName: anim['giftName'],
-              gifUrl: anim['gifUrl'],
-              senderName: anim['senderName'],
-              onAnimationComplete: () => _removeGiftAnimation(anim['id']),
-            ),
-          ),
-
-          // Watermark logo in top left
-          Positioned(
-            top: 100,
-            left: 12,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Opacity(
-                  opacity: 0.5,
+            // Background music control (only for host)
+            if (widget.isHost && widget.backgroundMusic != null)
+              Positioned(
+                top: 100,
+                right: 16,
+                child: GestureDetector(
+                  onTap: _toggleBackgroundMusic,
                   child: Container(
-                    margin: const EdgeInsets.only(left: 28),
-                    child: Image.asset(
-                      'assets/logo.png',
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.contain,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Icon(
+                      _isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 24,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Opacity(
-                  opacity: 0.5,
-                  child: ShaderMask(
-                    shaderCallback: (Rect bounds) {
-                      return const LinearGradient(
-                        colors: [
-                          Color(0xFFffa030),
-                          Color(0xFFfe9b00),
-                          Color(0xFFf67d00),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ).createShader(bounds);
-                    },
-                    child: const Text(
-                      'Bharath Chat',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 1.1,
+              ),
+
+            // User avatars
+            if (_zegoUsers.isNotEmpty)
+              Positioned(
+                top: 40,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children:
+                      _zegoUsers.map<Widget>((zUser) {
+                        final userId =
+                            zUser.id ??
+                            zUser.userID ??
+                            zUser['userID'] ??
+                            zUser['id'];
+                        final user = _userProfiles[userId];
+                        final profilePic =
+                            user != null ? user['profile_pic'] : null;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundImage:
+                                profilePic != null && profilePic.isNotEmpty
+                                    ? MemoryImage(
+                                      base64Decode(
+                                        profilePic.contains(',')
+                                            ? profilePic.split(',').last
+                                            : profilePic,
+                                      ),
+                                    )
+                                    : null,
+                            child:
+                                (profilePic == null || profilePic.isEmpty)
+                                    ? Icon(Icons.person, size: 40)
+                                    : null,
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ),
+
+            // Burst hearts overlay
+            ..._burstHearts.map(
+              (w) => Positioned(
+                bottom: 80,
+                left:
+                    MediaQuery.of(context).size.width / 2 -
+                    20 +
+                    (Random().nextDouble() * 40 - 20),
+                child: w,
+              ),
+            ),
+
+            // Overlay active gift animations
+            // ..._activeGiftAnimations,
+
+            // Gift Animations
+            ...giftAnimations.map(
+              (anim) => GiftAnimation(
+                giftName: anim['giftName'],
+                gifUrl: anim['gifUrl'],
+                senderName: anim['senderName'],
+                onAnimationComplete: () => _removeGiftAnimation(anim['id']),
+              ),
+            ),
+
+            // Watermark logo in top left
+            Positioned(
+              top: 100,
+              left: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Opacity(
+                    opacity: 0.5,
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 28),
+                      child: Image.asset(
+                        'assets/logo.png',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Opacity(
+                    opacity: 0.5,
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return const LinearGradient(
+                          colors: [
+                            Color(0xFFffa030),
+                            Color(0xFFfe9b00),
+                            Color(0xFFf67d00),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds);
+                      },
+                      child: const Text(
+                        'Bharath Chat',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,5 +1,5 @@
 import 'dart:ffi';
-
+import 'package:finalchat/services/api_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -177,7 +177,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
           targetHostIDs: [anotherHostUserID],
           isAutoAccept: isAutoAcceptedNotifier.value,
         )
-        .then((ret) {
+        .then((ret) async {
           if (ret.error != null) {
             showDialog(
               context: context,
@@ -207,6 +207,40 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                   .requestID] = [anotherHostUserID];
             }
             widget.requestingHostsMapRequestIDNotifier.notifyListeners();
+
+            // Add PK battle API call here
+            try {
+              final leftUsername = ZegoUIKit().getLocalUser().id;
+              final rightUsername = anotherHostUserID;
+              final leftHostId = await ApiService.getUserIdByUsername(leftUsername);
+              final rightHostId = await ApiService.getUserIdByUsername(rightUsername);
+              if (leftHostId != null && rightHostId != null) {
+                await ApiService.startPKBattle(
+                  leftHostId: leftHostId,
+                  rightHostId: rightHostId,
+                  leftStreamId: 0,
+                  rightStreamId: 0,
+                );
+              } else {
+                throw Exception('Could not resolve user IDs for PK battle');
+              }
+            } catch (e) {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return CupertinoAlertDialog(
+                    title: const Text('PK Battle API failed'),
+                    content: Text('Error: ${e.toString()}'),
+                    actions: [
+                      CupertinoDialogAction(
+                        onPressed: Navigator.of(context).pop,
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
           }
         });
   }

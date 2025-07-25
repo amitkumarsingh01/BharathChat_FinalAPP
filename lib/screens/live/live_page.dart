@@ -8,13 +8,13 @@ import 'package:finalchat/pk_widgets/events.dart';
 import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
 import 'package:finalchat/pk_widgets/surface.dart';
 import 'dart:math';
-import 'dart:async';
 import 'package:finalchat/screens/main/store_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:zego_uikit/zego_uikit.dart';
 import 'dart:convert';
 import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/live/gift_animation.dart';
+import 'dart:async';
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -38,6 +38,64 @@ class LivePage extends StatefulWidget {
   State<LivePage> createState() => _LivePageState();
 }
 
+// class AutoProgressBar extends StatefulWidget {
+//   final Duration duration;
+//   final VoidCallback? onCompleted; // optional callback when done
+
+//   const AutoProgressBar({
+//     Key? key,
+//     this.duration = const Duration(seconds: 5),
+//     this.onCompleted,
+//   }) : super(key: key);
+
+//   @override
+//   State<AutoProgressBar> createState() => _AutoProgressBarState();
+// }
+
+// class _AutoProgressBarState extends State<AutoProgressBar>
+//     with SingleTickerProviderStateMixin {
+//   late AnimationController _controller;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _controller = AnimationController(
+//       vsync: this,
+//       duration: widget.duration,
+//     )..forward(); // Start animation automatically
+
+//     _controller.addStatusListener((status) {
+//       if (status == AnimationStatus.completed) {
+//         widget.onCompleted?.call(); // Call when done
+//       }
+//     });
+//   }
+
+//   @override
+//   void dispose() {
+//     _controller.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       height: 8,
+//       child: AnimatedBuilder(
+//         animation: _controller,
+//         builder: (context, child) {
+//           return LinearProgressIndicator(
+//             value: _controller.value,
+//             backgroundColor: Colors.grey.shade300,
+//             valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }
+
+
 class _LivePageState extends State<LivePage>
     with SingleTickerProviderStateMixin {
   final liveStateNotifier = ValueNotifier<ZegoLiveStreamingState>(
@@ -48,6 +106,12 @@ class _LivePageState extends State<LivePage>
       ValueNotifier<Map<String, List<String>>>({});
   final requestIDNotifier = ValueNotifier<String>('');
   PKEvents? pkEvents;
+
+  // PK battle state
+  int? pkBattleId; // Set this when PK battle starts or is joined
+  int leftScore = 0;
+  int rightScore = 0;
+  bool isLoadingPK = false;
 
   // Like animation state
   late AnimationController _likeController;
@@ -62,6 +126,9 @@ class _LivePageState extends State<LivePage>
   bool _sendingGift = false;
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
+  bool isLiveStarted = false; // <-- Add this state variable
+  Timer? _pkBattleTimer;
+  final TextEditingController _pkBattleIdController = TextEditingController();
 
   @override
   void initState() {
@@ -88,6 +155,13 @@ class _LivePageState extends State<LivePage>
       }
     });
     _fetchGiftsAndUser();
+    if (pkBattleId != null) {
+      fetchPKBattleState();
+      _pkBattleTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        print('Timer tick: fetching PK battle state');
+        fetchPKBattleState();
+      });
+    }
   }
 
   Future<void> _fetchGiftsAndUser() async {
@@ -121,91 +195,86 @@ class _LivePageState extends State<LivePage>
       );
       return;
     }
-
-    // Check if we're in PK battle mode
-    final isPKBattle =
-        liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
-
-    if (isPKBattle && !widget.isHost) {
-      // Show host selection dialog for PK battle
-      final selectedHost = await _showHostSelectionDialog();
-      if (selectedHost == null) return; // User cancelled
-
-      await _sendGiftToHost(gift, selectedHost);
-
-      // Update PK progress bar diamond count
-      _updatePKDiamondCount(selectedHost, gift['diamond_amount']);
-    } else {
-      // Normal gift sending (not in PK battle or host sending)
-      await _sendGiftToHost(gift, widget.receiverId);
-    }
-  }
-
-  Future<void> _sendGiftToHost(dynamic gift, int receiverId) async {
     setState(() {
       _sendingGift = true;
       _currentUser!['diamonds'] -= gift['diamond_amount'];
     });
     try {
-      final success = await ApiService.sendGift(
-        receiverId: receiverId,
-        giftId: gift['id'],
-        liveStreamId: int.tryParse(widget.liveID) ?? 0,
-        liveStreamType: widget.isHost ? 'host' : 'audience',
-      );
-      if (success) {
-        // Send ZEGOCLOUD in-room command for gift notification
-        final message = jsonEncode({
-          "type": "gift",
-          "sender_id": _currentUser?['id'],
-          "sender_name": _currentUser?['first_name'] ?? 'User',
-          "gift_id": gift['id'],
-          "gift_name": gift['name'],
-          "gift_amount": gift['diamond_amount'],
-          "gif_filename": gift['gif_filename'],
-          "timestamp": DateTime.now().millisecondsSinceEpoch,
-        });
-        await ZegoUIKit().sendInRoomCommand(widget.liveID, [message]);
-
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${gift['name']} sent successfully!'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+      bool pkGiftSent = false;
+      // If PK battle is active, send PK battle gift
+      if (pkBattleId != null) {
+        final result = await ApiService.sendPKBattleGift(
+          pkBattleId: pkBattleId!,
+          senderId: _currentUser!['id'],
+          receiverId: widget.receiverId,
+          giftId: gift['id'],
+          amount: gift['diamond_amount'],
+        );
+        if (result.containsKey('left_score') && result.containsKey('right_score')) {
+          setState(() {
+            leftScore = result['left_score'] ?? 0;
+            rightScore = result['right_score'] ?? 0;
+          });
         }
-        // Trigger gift animation (same as gift panel)
-        final gifUrl =
-            'https://server.bharathchat.com/uploads/gifts/' +
-            gift['gif_filename'];
-        final senderName = _currentUser?['first_name'] ?? 'User';
-        setState(() {
-          _activeGiftAnimations.add(
-            GiftAnimation(
-              key: ValueKey('gift_anim_${_giftAnimKey++}'),
-              giftName: gift['name'],
-              gifUrl: gifUrl,
-              senderName: senderName,
-              onAnimationComplete: () {
-                setState(() {
-                  _activeGiftAnimations.removeWhere(
-                    (w) =>
-                        (w.key as ValueKey).value ==
-                        'gift_anim_${_giftAnimKey - 1}',
-                  );
-                });
-              },
-            ),
-          );
-        });
-        // Optionally: refresh user data
-        setState(() {});
-      } else {
-        throw Exception('Gift send failed');
+        pkGiftSent = true;
       }
+      if (!pkGiftSent) {
+        final success = await ApiService.sendGift(
+          receiverId: widget.receiverId, // <-- use this!
+          giftId: gift['id'],
+          liveStreamId: int.tryParse(widget.liveID) ?? 0,
+          liveStreamType: widget.isHost ? 'host' : 'audience',
+        );
+        if (!success) throw Exception('Gift send failed');
+      }
+      // Send ZEGOCLOUD in-room command for gift notification
+      final message = jsonEncode({
+        "type": "gift",
+        "sender_id": _currentUser?['id'],
+        "sender_name": _currentUser?['first_name'] ?? 'User',
+        "gift_id": gift['id'],
+        "gift_name": gift['name'],
+        "gift_amount": gift['diamond_amount'],
+        "gif_filename": gift['gif_filename'],
+        "timestamp": DateTime.now().millisecondsSinceEpoch,
+      });
+      await ZegoUIKit().sendInRoomCommand(widget.liveID, [message]);
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${gift['name']} sent successfully!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      // Trigger gift animation (same as gift panel)
+      final gifUrl =
+          'https://server.bharathchat.com/uploads/gifts/' +
+          gift['gif_filename'];
+      final senderName = _currentUser?['first_name'] ?? 'User';
+      setState(() {
+        _activeGiftAnimations.add(
+          GiftAnimation(
+            key: ValueKey('gift_anim_${_giftAnimKey++}'),
+            giftName: gift['name'],
+            gifUrl: gifUrl,
+            senderName: senderName,
+            onAnimationComplete: () {
+              setState(() {
+                _activeGiftAnimations.removeWhere(
+                  (w) =>
+                      (w.key as ValueKey).value ==
+                      'gift_anim_${_giftAnimKey - 1}',
+                );
+              });
+            },
+          ),
+        );
+      });
+      // Optionally: refresh user data
+      setState(() {});
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -223,145 +292,41 @@ class _LivePageState extends State<LivePage>
     }
   }
 
-  Future<int?> _showHostSelectionDialog() async {
-    return await showDialog<int>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            'Choose Host',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            'Which host would you like to send the gift to?',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.blue.withOpacity(0.2),
-                foregroundColor: Colors.blue,
-                side: BorderSide(color: Colors.blue),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(1), // Host 1
-              child: const Text(
-                'Host 1',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.pink.withOpacity(0.2),
-                foregroundColor: Colors.pink,
-                side: BorderSide(color: Colors.pink),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(2), // Host 2
-              child: const Text(
-                'Host 2',
-                style: TextStyle(
-                  color: Colors.pink,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(null), // Cancel
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-          ],
-        );
-      },
-    );
+  // Call this method from parent when live is started
+  void startLive() {
+    setState(() {
+      isLiveStarted = true;
+    });
   }
 
-  Future<void> _showGiftConfirmationDialog(
-    dynamic gift,
-    VoidCallback onConfirm,
-  ) async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Send Gift',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Do you want to send "${gift['name']}"?',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.orange,
-                side: BorderSide(color: Colors.orange),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.orange),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                onConfirm();
-              },
-              child: const Text('Send', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
+  Future<void> fetchPKBattleState() async {
+    if (pkBattleId == null) {
+      print('PK Battle ID is null, not fetching state');
+      return;
+    }
+    print('Fetching PK battle state for id: $pkBattleId');
+    setState(() { isLoadingPK = true; });
+    final data = await ApiService.getPKBattleById(pkBattleId!);
+    print('API response: $data');
+    if (data != null) {
+      setState(() {
+        leftScore = data['left_score'] ?? 0;
+        rightScore = data['right_score'] ?? 0;
+        isLoadingPK = false;
+      });
+      print('Scores updated: leftScore=$leftScore, rightScore=$rightScore');
+    } else {
+      setState(() { isLoadingPK = false; });
+      print('Failed to fetch PK battle state for id: $pkBattleId');
+    }
   }
 
   @override
   void dispose() {
+    _pkBattleTimer?.cancel();
     _likeController.dispose();
+    _pkBattleIdController.dispose();
     super.dispose();
-  }
-
-  void _updatePKDiamondCount(int hostNumber, int diamonds) {
-    // This method will be called when gifts are sent during PK battles
-    // The surface widget will handle the actual diamond count updates
-    // For now, we'll just log the update
-    print('PK Battle: Host $hostNumber received $diamonds diamonds');
   }
 
   void _triggerLike() {
@@ -504,7 +469,9 @@ class _LivePageState extends State<LivePage>
 
     if (widget.isHost) {
       config.bottomMenuBar.hostExtendButtons = [
-        // No gift, like, or diamond buttons for host
+        giftButton,
+        likeButton,
+        diamondButton,
       ];
     } else {
       config.bottomMenuBar.audienceExtendButtons = [
@@ -531,185 +498,182 @@ class _LivePageState extends State<LivePage>
                 onStateUpdated: (state) {
                   liveStateNotifier.value = state;
                 },
-                onLeaveConfirmation: (
-                  ZegoLiveStreamingLeaveConfirmationEvent event,
-                  Future<bool> Function() defaultAction,
-                ) async {
-                  return await showDialog<bool>(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: const Text(
-                              "Leave the room",
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            content: const Text(
-                              "Are you sure you want to leave the live room?",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            actions: [
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  backgroundColor: Colors.black,
-                                  foregroundColor: Colors.orange,
-                                  side: const BorderSide(color: Colors.orange),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                onPressed:
-                                    () => Navigator.of(context).pop(false),
-                                child: const Text(
-                                  'Cancel',
-                                  style: TextStyle(color: Colors.orange),
-                                ),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                onPressed:
-                                    () => Navigator.of(context).pop(true),
-                                child: const Text(
-                                  'Leave',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ) ??
-                      false;
-                },
               ),
             ),
-            // Burst hearts overlay (audience only)
-            if (!widget.isHost)
-              ..._burstHearts.map(
-                (w) => Positioned(
-                  bottom: 80,
-                  left:
-                      MediaQuery.of(context).size.width / 2 -
-                      20 +
-                      (Random().nextDouble() * 40 - 20),
-                  child: w,
+            // Burst hearts overlay
+            ..._burstHearts.map(
+              (w) => Positioned(
+                bottom: 80,
+                left:
+                    MediaQuery.of(context).size.width / 2 -
+                    20 +
+                    (Random().nextDouble() * 40 - 20),
+                child: w,
+              ),
+            ),
+            // Add this new widget to display the PK battle status
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 260,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Left: '
+                            ' $leftScore',
+                            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        Text('Right: '
+                            ' $rightScore',
+                            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                        IconButton(
+                          icon: Icon(Icons.refresh),
+                          onPressed: fetchPKBattleState,
+                          tooltip: 'Refresh PK Battle',
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: (leftScore + rightScore) > 0
+                          ? leftScore / (leftScore + rightScore)
+                          : 0.5,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                      minHeight: 10,
+                    ),
+                  ],
                 ),
               ),
-            // Horizontal gift list above the bottom buttons (audience only)
-            if (!widget.isHost && !_giftsLoading && _gifts.isNotEmpty)
+            ),
+            // in all case display with 1 second update here 
+
+            // Horizontal gift list above the bottom buttons
+            if (!_giftsLoading && _gifts.isNotEmpty && isLiveStarted)
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 100, // Moved higher above the bottom bar
-                child: SizedBox(
-                  height: 56, // keep height
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    itemCount: _gifts.length,
-                    separatorBuilder:
-                        (context, idx) => const SizedBox(width: 12),
-                    itemBuilder: (context, idx) {
-                      final gift = _gifts[idx];
-                      final canAfford =
-                          _currentUser != null &&
-                          _currentUser!['diamonds'] >= gift['diamond_amount'];
-                      return GestureDetector(
-                        onTap:
-                            canAfford && !_sendingGift
-                                ? () => _showGiftConfirmationDialog(
-                                  gift,
-                                  () => _sendGiftFromList(gift),
-                                )
-                                : null,
-                        child: Opacity(
-                          opacity: canAfford ? 1.0 : 0.5,
-                          child: Container(
-                            width: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(12),
-                              // No border
-                            ),
-                            padding: const EdgeInsets.all(4),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                bottom: 60,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pkBattleId != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(
-                                    imageUrl:
-                                        'https://server.bharathchat.com/uploads/gifts/' +
-                                        gift['gif_filename'],
-                                    width: 28,
-                                    height: 28,
-                                    fit: BoxFit.cover,
-                                    placeholder:
-                                        (context, url) => Container(
-                                          color: Colors.grey[700],
-                                          child: const Icon(
-                                            Icons.card_giftcard,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ),
-                                    errorWidget:
-                                        (context, url, error) => Container(
-                                          color: Colors.grey[700],
-                                          child: const Icon(
-                                            Icons.card_giftcard,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        ),
-                                  ),
+                                Text('Left: $leftScore', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                Text('Right: $rightScore', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            LinearProgressIndicator(
+                              value: (leftScore + rightScore) > 0
+                                  ? leftScore / (leftScore + rightScore)
+                                  : 0.5,
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                              minHeight: 10,
+                            ),
+                          ],
+                        ),
+                      ),
+                    SizedBox(
+                      height: 56, // keep height
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        itemCount: _gifts.length,
+                        separatorBuilder:
+                            (context, idx) => const SizedBox(width: 12),
+                        itemBuilder: (context, idx) {
+                          final gift = _gifts[idx];
+                          final canAfford =
+                              _currentUser != null &&
+                              _currentUser!['diamonds'] >= gift['diamond_amount'];
+                          return GestureDetector(
+                            onTap:
+                                canAfford && !_sendingGift
+                                    ? () => _sendGiftFromList(gift)
+                                    : null,
+                            child: Opacity(
+                              opacity: canAfford ? 1.0 : 0.5,
+                              child: Container(
+                                width: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                const SizedBox(height: 2),
-                                Row(
+                                padding: const EdgeInsets.all(4),
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Image.asset(
-                                      'assets/diamond.png',
-                                      width: 12,
-                                      height: 12,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '${gift['diamond_amount']}',
-                                      style: TextStyle(
-                                        color:
-                                            canAfford
-                                                ? Colors.orange
-                                                : Colors.grey[500],
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: 'https://server.bharathchat.com/uploads/gifts/' +
+                                            gift['gif_filename'],
+                                        width: 28,
+                                        height: 28,
+                                        fit: BoxFit.cover,
+                                        placeholder:
+                                            (context, url) => Container(
+                                              color: Colors.grey[700],
+                                              child: const Icon(
+                                                Icons.card_giftcard,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                        errorWidget:
+                                            (context, url, error) => Container(
+                                              color: Colors.grey[700],
+                                              child: const Icon(
+                                                Icons.card_giftcard,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
                                       ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Image.asset(
+                                          'assets/diamond.png',
+                                          width: 12,
+                                          height: 12,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${gift['diamond_amount']}',
+                                          style: TextStyle(
+                                            color: canAfford ? Colors.orange : Colors.grey[500],
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
-
-            // Overlay active gift animations (host and audience)
+            // Overlay active gift animations
             ..._activeGiftAnimations,
             // Watermark logo in top left, even further below, with transparent gradient text
             Positioned(
@@ -753,11 +717,54 @@ class _LivePageState extends State<LivePage>
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color:
-                              Colors.white,
+                              Colors.white, // This will be replaced by gradient
                           letterSpacing: 1.1,
                         ),
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            // Manual test UI for pkBattleId
+            Positioned(
+              top: 100,
+              right: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _pkBattleIdController,
+                          decoration: InputDecoration(
+                            labelText: 'PK Battle ID',
+                            hintText: 'Enter PK Battle ID',
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          final id = int.tryParse(_pkBattleIdController.text);
+                          if (id != null) {
+                            setState(() {
+                              pkBattleId = id;
+                              leftScore = 0;
+                              rightScore = 0;
+                            });
+                            fetchPKBattleState();
+                            _pkBattleTimer?.cancel();
+                            _pkBattleTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+                              print('Timer tick: fetching PK battle state');
+                              fetchPKBattleState();
+                            });
+                          }
+                        },
+                        child: Text('Set PK Battle ID'),
+                      ),
+                    ],
                   ),
                 ],
               ),
