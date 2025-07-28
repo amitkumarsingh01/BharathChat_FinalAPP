@@ -37,7 +37,7 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
   bool showGiftPanel = false;
   List<Map<String, dynamic>> giftAnimations = [];
   Map<String, dynamic>? currentUser;
-  bool isPKBattleActive = true; // TODO: Replace with real PK state
+  bool isPKBattleActive = false; // Will be updated based on actual PK state
 
   @override
   void initState() {
@@ -103,17 +103,6 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
           profilePic: currentUser?['profile_pic'],
           receiverId: widget.hostId, // <-- pass hostId
         ),
-        // Gift Button (PK battle active)
-        if (isPKBattleActive)
-          Positioned(
-            bottom: 300,
-            left: 30,
-            child: FloatingActionButton(
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.card_giftcard, color: Colors.white),
-              onPressed: _showGiftPanel,
-            ),
-          ),
         // Gift Panel
         if (showGiftPanel)
           Positioned.fill(

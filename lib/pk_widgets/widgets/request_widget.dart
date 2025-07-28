@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
+import 'package:finalchat/services/api_service.dart';
 
 class PKRequestWidget extends StatefulWidget {
   final ValueNotifier<Map<String, List<String>>>
@@ -177,14 +178,14 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
           targetHostIDs: [anotherHostUserID],
           isAutoAccept: isAutoAcceptedNotifier.value,
         )
-        .then((ret) {
+        .then((ret) async {
           if (ret.error != null) {
             showDialog(
               context: context,
               builder: (context) {
                 return CupertinoAlertDialog(
                   title: const Text('sendPKBattleRequest failed'),
-                  content: Text('Error: ${ret.error}'),
+                  content: Text('Error:  [ret.error]'),
                   actions: [
                     CupertinoDialogAction(
                       onPressed: Navigator.of(context).pop,
@@ -207,6 +208,49 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                   .requestID] = [anotherHostUserID];
             }
             widget.requestingHostsMapRequestIDNotifier.notifyListeners();
+
+            // --- PK Battle API Integration ---
+            try {
+              // Assume current user is left host, anotherHostUserID is right host username
+              final leftHostUsername = ApiService.currentUserData?['username'] as String?;
+              final rightHostUsername = anotherHostUserID;
+              if (leftHostUsername == null || rightHostUsername.isEmpty) {
+                throw Exception('Host usernames not available');
+              }
+              final leftHostId = await ApiService.getUserIdByUsername(leftHostUsername);
+              final rightHostId = await ApiService.getUserIdByUsername(rightHostUsername);
+              if (leftHostId == null || rightHostId == null) {
+                throw Exception('Could not fetch host user IDs');
+              }
+              final pkBattleId = await ApiService.startPKBattle(
+                leftHostId: leftHostId,
+                rightHostId: rightHostId,
+                leftStreamId: 0,
+                rightStreamId: 0,
+              );
+              if (pkBattleId != null) {
+                await ApiService.savePKBattleId(pkBattleId);
+              } else {
+                throw Exception('No pk_battle_id returned from server');
+              }
+            } catch (e) {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return CupertinoAlertDialog(
+                    title: const Text('PK Battle Start Failed'),
+                    content: Text('Error:  [e.toString()]'),
+                    actions: [
+                      CupertinoDialogAction(
+                        onPressed: Navigator.of(context).pop,
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            }
+            // --- End PK Battle API Integration ---
           }
         });
   }

@@ -35,7 +35,7 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
   bool showGiftPanel = false;
   List<Map<String, dynamic>> giftAnimations = [];
   Map<String, dynamic>? user;
-  bool isPKBattleActive = true; // TODO: Replace with real PK state
+  bool isPKBattleActive = false; // Will be updated based on actual PK state
 
   @override
   void initState() {

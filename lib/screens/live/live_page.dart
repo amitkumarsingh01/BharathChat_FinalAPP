@@ -15,6 +15,7 @@ import 'package:zego_uikit/zego_uikit.dart';
 import 'dart:convert';
 import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/live/gift_animation.dart';
+import 'package:http/http.dart' as http;
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -63,6 +64,11 @@ class _LivePageState extends State<LivePage>
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
 
+  // PK Battle state
+  bool _isPKBattleActive = false;
+  int? _pkBattleId;
+  Timer? _pkBattleCheckTimer;
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +94,12 @@ class _LivePageState extends State<LivePage>
       }
     });
     _fetchGiftsAndUser();
+    _checkPKBattleStatus();
+    
+    // Start periodic PK battle status check
+    _pkBattleCheckTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _checkPKBattleStatus();
+    });
   }
 
   Future<void> _fetchGiftsAndUser() async {
@@ -105,6 +117,29 @@ class _LivePageState extends State<LivePage>
     } catch (e) {
       setState(() {
         _giftsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkPKBattleStatus() async {
+    try {
+      final pkBattleId = await ApiService.getPKBattleId();
+      if (pkBattleId != null) {
+        final pkBattleData = await ApiService.getPKBattleInfo(pkBattleId);
+        setState(() {
+          _pkBattleId = pkBattleId;
+          _isPKBattleActive = pkBattleData['status'] == 'active';
+        });
+      } else {
+        setState(() {
+          _isPKBattleActive = false;
+          _pkBattleId = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isPKBattleActive = false;
+        _pkBattleId = null;
       });
     }
   }
@@ -354,6 +389,7 @@ class _LivePageState extends State<LivePage>
   @override
   void dispose() {
     _likeController.dispose();
+    _pkBattleCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -362,6 +398,8 @@ class _LivePageState extends State<LivePage>
     // The surface widget will handle the actual diamond count updates
     // For now, we'll just log the update
     print('PK Battle: Host $hostNumber received $diamonds diamonds');
+    // Refresh PK battle status after gift is sent
+    _checkPKBattleStatus();
   }
 
   void _triggerLike() {
@@ -607,6 +645,16 @@ class _LivePageState extends State<LivePage>
                   child: w,
                 ),
               ),
+
+// Progress Bar Add on - Only show when PK battle is active
+            // if (_isPKBattleActive)
+            //   Positioned(
+            //     left: 0,
+            //     right: 0,
+            //     bottom: 200,
+            //     child: PKBattleProgressBar(),
+            //   ),
+
             // Horizontal gift list above the bottom buttons (audience only)
             if (!widget.isHost && !_giftsLoading && _gifts.isNotEmpty)
               Positioned(

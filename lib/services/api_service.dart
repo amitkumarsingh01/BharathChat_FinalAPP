@@ -745,4 +745,81 @@ class ApiService {
       throw Exception('Failed to remove profile picture');
     }
   }
+
+  // PK Battle: Get user ID by username
+  static Future<int?> getUserIdByUsername(String username) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user-id-by-username?username=$username'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['id'] as int?;
+    } else {
+      throw Exception('Failed to get user ID by username');
+    }
+  }
+
+  // PK Battle: Start PK battle and return pk_battle_id
+  static Future<int?> startPKBattle({
+    required int leftHostId,
+    required int rightHostId,
+    int leftStreamId = 0,
+    int rightStreamId = 0,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/pk-battle/start'),
+      headers: _headers,
+      body: json.encode({
+        'left_host_id': leftHostId,
+        'right_host_id': rightHostId,
+        'left_stream_id': leftStreamId,
+        'right_stream_id': rightStreamId,
+      }),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = json.decode(response.body);
+      return data['pk_battle_id'] as int?;
+    } else {
+      throw Exception('Failed to start PK battle: ${response.body}');
+    }
+  }
+
+  // PK Battle: Save pk_battle_id to shared preferences
+  // static Future<void> savePKBattleId(int pkBattleId) async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   await prefs.setInt('pk_battle_id', pkBattleId);
+  // }
+
+  // PK Battle: Save (pk_battle_id + 1) to shared preferences
+  static Future<void> savePKBattleId(int pkBattleId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('pk_battle_id', pkBattleId);
+  }
+
+
+  // PK Battle: Retrieve pk_battle_id from shared preferences
+  static Future<int?> getPKBattleId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('pk_battle_id');
+  }
+
+  // PK Battle: Clear pk_battle_id from shared preferences
+  static Future<void> clearPKBattleId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('pk_battle_id');
+  }
+
+  // PK Battle: Get PK battle info by ID
+  static Future<Map<String, dynamic>> getPKBattleInfo(int pkBattleId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pk-battle/$pkBattleId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch PK battle info');
+    }
+  }
 }
