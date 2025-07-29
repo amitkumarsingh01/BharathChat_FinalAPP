@@ -326,6 +326,7 @@ class ApiService {
         'background_img': liveData['background_img'],
         'live_url': liveData['live_url'],
         if (liveData['language'] != null) 'language': liveData['language'],
+        if (liveData['types'] != null) 'types': liveData['types'],
       };
 
       final response = await http.post(
@@ -358,6 +359,7 @@ class ApiService {
                 : [liveData['hashtag']],
         'live_url': liveData['live_url'],
         if (liveData['language'] != null) 'language': liveData['language'],
+        if (liveData['types'] != null) 'types': liveData['types'],
       };
 
       final response = await http.post(
@@ -438,6 +440,80 @@ class ApiService {
       return true;
     } else {
       throw Exception('Failed to send gift: \\${response.body}');
+    }
+  }
+
+  /// Start a PK battle
+  static Future<Map<String, dynamic>> startPKBattle({
+    required int leftHostId,
+    required int rightHostId,
+    required int leftStreamId,
+    required int rightStreamId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/pk-battle/start'),
+      headers: _headers,
+      body: json.encode({
+        'left_host_id': leftHostId,
+        'right_host_id': rightHostId,
+        'left_stream_id': leftStreamId,
+        'right_stream_id': rightStreamId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to start PK battle: \\${response.body}');
+    }
+  }
+
+  /// End a PK battle
+  static Future<Map<String, dynamic>> endPKBattle({
+    required int pkBattleId,
+    required int leftScore,
+    required int rightScore,
+    required int winnerId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/pk-battle/end'),
+      headers: _headers,
+      body: json.encode({
+        'pk_battle_id': pkBattleId,
+        'left_score': leftScore,
+        'right_score': rightScore,
+        'winner_id': winnerId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to end PK battle: \\${response.body}');
+    }
+  }
+
+  /// Send a gift during PK battle
+  static Future<Map<String, dynamic>> sendPKBattleGift({
+    required int pkBattleId,
+    required int senderId,
+    required int receiverId,
+    required int giftId,
+    required int amount,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/pk-battle/gift'),
+      headers: _headers,
+      body: json.encode({
+        'pk_battle_id': pkBattleId,
+        'sender_id': senderId,
+        'receiver_id': receiverId,
+        'gift_id': giftId,
+        'amount': amount,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to send PK battle gift: ${response.body}');
     }
   }
 
@@ -743,6 +819,44 @@ class ApiService {
       return json.decode(response.body);
     } else {
       throw Exception('Failed to remove profile picture');
+    }
+  }
+
+  /// Fetch all active live streams (video and audio)
+  static Future<List<dynamic>> getAllLiveStreams() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/live-streams/'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to fetch all live streams');
+    }
+  }
+
+  static Future<int?> getUserIdByUsername(String username) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/user-id-by-username?username=$username'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['id'] as int?;
+    } else {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getPKBattleById(int pkBattleId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pk-battle/$pkBattleId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return null;
     }
   }
 }
