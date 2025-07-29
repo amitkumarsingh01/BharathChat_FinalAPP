@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
+import 'package:finalchat/services/api_service.dart';
 
 import 'widgets/quit_button.dart';
 import 'widgets/request_widget.dart';
@@ -16,12 +17,14 @@ class PKV2Surface extends StatefulWidget {
   requestingHostsMapRequestIDNotifier;
   final ValueNotifier<String> requestIDNotifier;
   final ValueNotifier<ZegoLiveStreamingState> liveStateNotifier;
+  final String? remoteUserName;
 
   const PKV2Surface({
     Key? key,
     required this.requestIDNotifier,
     required this.liveStateNotifier,
     required this.requestingHostsMapRequestIDNotifier,
+    this.remoteUserName,
   }) : super(key: key);
 
   @override
@@ -51,18 +54,30 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
     // Listen to live streaming state changes for PK battle
     widget.liveStateNotifier.addListener(() {
       final state = widget.liveStateNotifier.value;
+      print('printfromzego: ==========================================');
+      print('printfromzego: LIVE STATE CHANGED');
+      print('printfromzego: Current state: $state');
+      print('printfromzego: Is PK Battle Active: ${state == ZegoLiveStreamingState.inPKBattle}');
+      
       setState(() {
         _isPKBattleActive = state == ZegoLiveStreamingState.inPKBattle;
         if (_isPKBattleActive) {
+          print('printfromzego: PK Battle state detected - calling _startPKBattle');
           _startPKBattle();
         } else {
+          print('printfromzego: PK Battle not active - calling _stopPKBattle');
           _stopPKBattle();
         }
       });
+      print('printfromzego: ==========================================');
     });
   }
 
-  void _startPKBattle() {
+  void _startPKBattle() async {
+    print('printfromzego: ==========================================');
+    print('printfromzego: PK BATTLE STARTING');
+    print('printfromzego: _startPKBattle called');
+    
     // Reset diamond counts
     _leftHostDiamonds = 0;
     _rightHostDiamonds = 0;
@@ -72,7 +87,17 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
     _rightHostId = 'host_2';
     _leftHostName = 'Host 1';
     _rightHostName = 'Host 2';
+
+    print('printfromzego: PK Battle state initialized');
+    print('printfromzego: Left Host: $_leftHostName (ID: $_leftHostId)');
+    print('printfromzego: Right Host: $_rightHostName (ID: $_rightHostId)');
+
+    // API is now called from events when PK request is accepted
+    print('printfromzego: PK Battle state initialized - API will be called from events');
+    print('printfromzego: ==========================================');
   }
+
+
 
   void _stopPKBattle() {
     setState(() {
@@ -104,6 +129,16 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
       });
     }
   }
+
+  // Test method to manually trigger API call
+  void testAPICall() {
+    print('printfromzego: ==========================================');
+    print('printfromzego: MANUAL API TEST TRIGGERED');
+    print('printfromzego: API is now called from events when PK request is accepted');
+    print('printfromzego: ==========================================');
+  }
+
+
 
   @override
   void dispose() {

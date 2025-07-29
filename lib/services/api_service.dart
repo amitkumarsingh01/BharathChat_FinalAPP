@@ -3,6 +3,7 @@ import 'package:finalchat/models/diamond_history_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 // import 'package:video_live/models/diamond_history_model.dart';
 
 class StarHistoryEntry {
@@ -39,6 +40,7 @@ class ApiService {
 
   static int? get currentUserId => _currentUserId;
   static Map<String, dynamic>? get currentUserData => _currentUserData;
+  static String? get token => _token;
 
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
@@ -748,43 +750,109 @@ class ApiService {
 
   // PK Battle: Get user ID by username
   static Future<int?> getUserIdByUsername(String username) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/user-id-by-username?username=$username'),
-      headers: _headers,
-    );
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data['id'] as int?;
-    } else {
-      throw Exception('Failed to get user ID by username');
+    print('printfromserver: ==========================================');
+    print('printfromserver: CALLING GET USER ID API');
+    print('printfromserver: Username: $username');
+    print('printfromserver: API URL: $baseUrl/user-id-by-username?username=$username');
+    
+    // Use minimal headers for this endpoint (no auth required based on curl test)
+    final headers = {
+      'Content-Type': 'application/json',
+      'accept': 'application/json',
+    };
+    print('printfromserver: Headers: $headers');
+    
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/user-id-by-username?username=$username'),
+        headers: headers,
+      );
+      
+      print('printfromserver: RESPONSE RECEIVED');
+      print('printfromserver: Status Code: ${response.statusCode}');
+      print('printfromserver: Response Body: ${response.body}');
+      print('printfromserver: ==========================================');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('printfromserver: Decoded data: $data');
+        print('printfromserver: Data type: ${data.runtimeType}');
+        print('printfromserver: ID value: ${data['id']}');
+        print('printfromserver: ID type: ${data['id'].runtimeType}');
+        
+        // Handle both string and int types for the ID
+        final idValue = data['id'];
+        int? userId;
+        if (idValue is int) {
+          userId = idValue;
+        } else if (idValue is String) {
+          userId = int.tryParse(idValue);
+        }
+        
+        print('printfromserver: User ID found: $userId');
+        return userId;
+      } else {
+        print('printfromserver: ERROR - Failed to get user ID');
+        print('printfromserver: Status: ${response.statusCode}');
+        print('printfromserver: Error body: ${response.body}');
+        throw Exception('Failed to get user ID by username: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('printfromserver: EXCEPTION in getUserIdByUsername: $e');
+      print('printfromserver: Exception type: ${e.runtimeType}');
+      rethrow;
     }
   }
 
-  // PK Battle: Start PK battle and return pk_battle_id
   static Future<int?> startPKBattle({
     required int leftHostId,
     required int rightHostId,
     int leftStreamId = 0,
     int rightStreamId = 0,
   }) async {
+    final requestBody = {
+      'left_host_id': leftHostId,
+      'right_host_id': rightHostId,
+      'left_stream_id': leftStreamId,
+      'right_stream_id': rightStreamId,
+    };
+
+    print('================ START PK BATTLE ====================');
+    print('API Endpoint     : $baseUrl/pk-battle/start');
+    print('HTTP Method      : POST');
+    print('Request Headers  : $_headers');
+    print('Request Body     : ${jsonEncode(requestBody)}');
+    print('=====================================================');
+
     final response = await http.post(
       Uri.parse('$baseUrl/pk-battle/start'),
       headers: _headers,
-      body: json.encode({
-        'left_host_id': leftHostId,
-        'right_host_id': rightHostId,
-        'left_stream_id': leftStreamId,
-        'right_stream_id': rightStreamId,
-      }),
+      body: json.encode(requestBody),
     );
+
+    print('================ RESPONSE ===========================');
+    print('Status Code      : ${response.statusCode}');
+    print('Response Body    : ${response.body}');
+    print('=====================================================');
+
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = json.decode(response.body);
-      return data['pk_battle_id'] as int?;
+
+      final pkBattleIdValue = data['pk_battle_id'];
+      int? pkBattleId;
+      if (pkBattleIdValue is int) {
+        pkBattleId = pkBattleIdValue;
+      } else if (pkBattleIdValue is String) {
+        pkBattleId = int.tryParse(pkBattleIdValue);
+      }
+
+      print('PK Battle ID     : $pkBattleId');
+      return pkBattleId;
     } else {
+      print('ERROR: Failed to start PK battle');
       throw Exception('Failed to start PK battle: ${response.body}');
     }
   }
-
   // PK Battle: Save pk_battle_id to shared preferences
   // static Future<void> savePKBattleId(int pkBattleId) async {
   //   final prefs = await SharedPreferences.getInstance();

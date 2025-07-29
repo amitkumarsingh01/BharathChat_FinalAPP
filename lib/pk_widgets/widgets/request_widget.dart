@@ -103,7 +103,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
               controller: _hostIDController,
               style: TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Host ID',
+                hintText: 'Username',
                 hintStyle: TextStyle(color: Colors.white54),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.5),
@@ -172,13 +172,22 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
     BuildContext context,
     String anotherHostUserID,
   ) async {
+    debugPrint('responsefromzego: Sending PK battle request');
+    debugPrint('responsefromzego: Target host ID: $anotherHostUserID');
+    debugPrint('responsefromzego: Auto accept: ${isAutoAcceptedNotifier.value}');
+    
     await ZegoUIKitPrebuiltLiveStreamingController().pk
         .sendRequest(
           targetHostIDs: [anotherHostUserID],
           isAutoAccept: isAutoAcceptedNotifier.value,
         )
         .then((ret) async {
+          debugPrint('responsefromzego: PK request send result received');
+          debugPrint('responsefromzego: Request ID: ${ret.requestID}');
+          debugPrint('responsefromzego: Error: ${ret.error}');
+          
           if (ret.error != null) {
+            debugPrint('responsefromzego: PK request failed with error: ${ret.error}');
             showDialog(
               context: context,
               builder: (context) {
@@ -195,6 +204,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
               },
             );
           } else {
+            debugPrint('responsefromzego: PK request sent successfully');
             widget.requestIDNotifier.value = ret.requestID;
 
             if (widget.requestingHostsMapRequestIDNotifier.value.containsKey(
@@ -207,6 +217,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                   .requestID] = [anotherHostUserID];
             }
             widget.requestingHostsMapRequestIDNotifier.notifyListeners();
+            debugPrint('responsefromzego: Request ID stored: ${ret.requestID}');
           }
         });
   }

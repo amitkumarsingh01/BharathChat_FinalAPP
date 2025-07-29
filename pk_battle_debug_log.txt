@@ -1,0 +1,248 @@
+==========================================
+PK BATTLE DEBUG LOG
+==========================================
+
+API ENDPOINTS USED:
+==================
+1. Get User ID by Username:
+   - URL: https://server.bharathchat.com/user-id-by-username?username={username}
+   - Method: GET
+   - Headers: Authorization: Bearer {token}, Content-Type: application/json
+   - Response: {"id": user_id}
+
+2. Start PK Battle:
+   - URL: https://server.bharathchat.com/pk-battle/start
+   - Method: POST
+   - Headers: Authorization: Bearer {token}, Content-Type: application/json
+   - Request Body: {
+       "left_host_id": leftHostId,
+       "right_host_id": rightHostId,
+       "left_stream_id": leftStreamId,
+       "right_stream_id": rightStreamId
+     }
+   - Response: {"pk_battle_id": battle_id}
+
+3. Save PK Battle ID:
+   - Local Storage: SharedPreferences
+   - Key: 'pk_battle_id'
+   - Value: battle_id
+
+4. Clear PK Battle ID:
+   - Local Storage: SharedPreferences
+   - Key: 'pk_battle_id'
+   - Action: Remove
+
+==========================================
+CONSOLE LOG OUTPUTS
+==========================================
+
+ZEGO EVENTS (responsefromzego:):
+================================
+
+1. PK REQUEST SENT:
+responsefromzego: Sending PK battle request
+responsefromzego: Target host ID: {target_user_id}
+responsefromzego: Auto accept: false
+responsefromzego: PK request send result received
+responsefromzego: Request ID: {request_id}
+responsefromzego: Error: null
+responsefromzego: PK request sent successfully
+responsefromzego: Request ID stored: {request_id}
+
+2. INCOMING REQUEST RECEIVED:
+responsefromzego: onIncomingPKBattleRequestReceived
+responsefromzego: Request ID: {request_id}
+responsefromzego: From Host: {host_name} (ID: {host_id})
+responsefromzego: From Live ID: {live_id}
+responsefromzego: Event data: {event_object}
+responsefromzego: Remote user info stored: {host_name}
+responsefromzego: Remote user info stored in live page: {host_name}
+
+3. OUTGOING REQUEST ACCEPTED:
+responsefromzego: onOutgoingPKBattleRequestAccepted
+responsefromzego: Request ID: {request_id}
+responsefromzego: From Host: {host_name} (ID: {host_id})
+responsefromzego: From Live ID: {live_id}
+responsefromzego: Event data: {event_object}
+responsefromzego: Outgoing request accepted - waiting for PK battle to start
+
+4. PK BATTLE STARTING:
+responsefromzego: PK Battle starting - _startPKBattle called
+responsefromzego: PK Battle state initialized
+responsefromzego: Left Host: Host 1 (ID: host_1)
+responsefromzego: Right Host: Host 2 (ID: host_2)
+responsefromzego: Starting PK battle API call
+responsefromzego: Local user: {local_username} (ID: {local_user_id})
+responsefromzego: Remote user: {remote_username}
+responsefromzego: Request ID: {request_id}
+
+5. REQUEST CANCELLED/TIMEOUT:
+responsefromzego: onIncomingPKBattleRequestCancelled
+responsefromzego: Request ID: {request_id}
+responsefromzego: Event data: {event_object}
+
+responsefromzego: onIncomingPKBattleRequestTimeout
+responsefromzego: Request ID: {request_id}
+responsefromzego: Event data: {event_object}
+
+responsefromzego: onOutgoingPKBattleRequestRejected
+responsefromzego: Request ID: {request_id}
+responsefromzego: From Host: {host_name} (ID: {host_id})
+responsefromzego: Event data: {event_object}
+
+responsefromzego: onOutgoingPKBattleRequestTimeout
+responsefromzego: Request ID: {request_id}
+responsefromzego: From Host: {host_name} (ID: {host_id})
+responsefromzego: Event data: {event_object}
+
+6. PK BATTLE ENDED:
+responsefromzego: onPKBattleEnded
+responsefromzego: Request ID: {request_id}
+responsefromzego: From Host: {host_name} (ID: {host_id})
+responsefromzego: Event data: {event_object}
+responsefromzego: PK Battle ID cleared from storage
+
+==========================================
+
+SERVER API RESPONSES (responsefromserver:):
+==========================================
+
+1. GET USER ID BY USERNAME:
+responsefromserver: Calling getUserIdByUsername API for username: {username}
+responsefromserver: API URL: https://server.bharathchat.com/user-id-by-username?username={username}
+responsefromserver: getUserIdByUsername response status: 200
+responsefromserver: getUserIdByUsername response body: {"id": user_id}
+responsefromserver: User ID found: {user_id}
+
+2. START PK BATTLE:
+responsefromserver: Calling startPKBattle API
+responsefromserver: API URL: https://server.bharathchat.com/pk-battle/start
+responsefromserver: Request headers: {headers_object}
+responsefromserver: Request body: {"left_host_id":123,"right_host_id":456,"left_stream_id":0,"right_stream_id":0}
+responsefromserver: startPKBattle response status: 200
+responsefromserver: startPKBattle response body: {"pk_battle_id":789}
+responsefromserver: PK Battle ID from response: 789
+responsefromserver: PK Battle started successfully with ID: 789
+responsefromserver: PK Battle ID saved to local storage
+
+3. ERROR RESPONSES:
+responsefromserver: Failed to get user ID by username - Status: 404
+responsefromserver: Failed to start PK battle - Status: 400
+responsefromserver: Error response: {"error": "Invalid user IDs"}
+responsefromserver: PK Battle API Error: Exception: Failed to start PK battle
+
+==========================================
+
+COMPLETE FLOW EXAMPLE:
+==========================================
+
+USER A SENDS REQUEST TO USER B:
+
+1. User A sends request:
+responsefromzego: Sending PK battle request
+responsefromzego: Target host ID: user_b
+responsefromzego: Auto accept: false
+responsefromzego: PK request send result received
+responsefromzego: Request ID: req_123456
+responsefromzego: Error: null
+responsefromzego: PK request sent successfully
+responsefromzego: Request ID stored: req_123456
+
+2. User B receives request:
+responsefromzego: onIncomingPKBattleRequestReceived
+responsefromzego: Request ID: req_123456
+responsefromzego: From Host: user_a (ID: user_a_id)
+responsefromzego: From Live ID: live_123
+responsefromzego: Event data: {event_object}
+responsefromzego: Remote user info stored: user_a
+responsefromzego: Remote user info stored in live page: user_a
+
+3. User B accepts request:
+responsefromzego: onOutgoingPKBattleRequestAccepted
+responsefromzego: Request ID: req_123456
+responsefromzego: From Host: user_a (ID: user_a_id)
+responsefromzego: From Live ID: live_123
+responsefromzego: Event data: {event_object}
+responsefromzego: Outgoing request accepted - waiting for PK battle to start
+
+4. PK Battle starts:
+responsefromzego: PK Battle starting - _startPKBattle called
+responsefromzego: PK Battle state initialized
+responsefromzego: Left Host: Host 1 (ID: host_1)
+responsefromzego: Right Host: Host 2 (ID: host_2)
+responsefromzego: Starting PK battle API call
+responsefromzego: Local user: user_b (ID: user_b_id)
+responsefromzego: Remote user: user_a
+responsefromzego: Request ID: req_123456
+
+5. API calls:
+responsefromserver: Calling getUserIdByUsername API for username: user_b
+responsefromserver: API URL: https://server.bharathchat.com/user-id-by-username?username=user_b
+responsefromserver: getUserIdByUsername response status: 200
+responsefromserver: getUserIdByUsername response body: {"id":456}
+responsefromserver: User ID found: 456
+
+responsefromserver: Calling getUserIdByUsername API for username: user_a
+responsefromserver: API URL: https://server.bharathchat.com/user-id-by-username?username=user_a
+responsefromserver: getUserIdByUsername response status: 200
+responsefromserver: getUserIdByUsername response body: {"id":123}
+responsefromserver: User ID found: 123
+
+responsefromzego: Local user sent request - Left Host: 456, Right Host: 123
+responsefromzego: Calling API with parameters:
+responsefromzego: - leftHostId: 456
+responsefromzego: - rightHostId: 123
+responsefromzego: - leftStreamId: 0
+responsefromzego: - rightStreamId: 0
+
+responsefromserver: Calling startPKBattle API
+responsefromserver: API URL: https://server.bharathchat.com/pk-battle/start
+responsefromserver: Request headers: {headers}
+responsefromserver: Request body: {"left_host_id":456,"right_host_id":123,"left_stream_id":0,"right_stream_id":0}
+responsefromserver: startPKBattle response status: 200
+responsefromserver: startPKBattle response body: {"pk_battle_id":789}
+responsefromserver: PK Battle ID from response: 789
+responsefromserver: PK Battle started successfully with ID: 789
+responsefromserver: PK Battle ID saved to local storage
+
+==========================================
+
+ZEGO SIGNALING PLUGIN LOGS:
+==========================================
+
+From the attached log:
+I/PLogger: {uikit-plugin-signaling} {advance invitation data} {clear advance invitation map if done, current map:{4369505639693679850: AdvanceInvitationData:{id:4369505639693679850, type:6, data:{"inviter":{"id":"aks","name":"user_aks"},"invitees":["iaks"],"live_id":"live_1753769106424_host","auto_accept":false,"custom_data":""}, resourceID:, initiator:AdvanceInvitationUser:{userid :aks, state:AdvanceInvitationState.idle, extendedData:, }, invitees:(AdvanceInvitationUser:{userid :iaks, state:AdvanceInvitationState.accepted, extendedData:{"inviter":{"id":"aks","name":"user_aks"},"custom_data":"{\"name\":\"user_iaks\",\"live_id\":\"live_1753769151148_host\"}"}, }), }}} {29/07/2025 11:36:14} {INFO}
+
+I/PLogger: {uikit-plugin-signaling} {advance invitation data} {remove not connecting's invitee:{4369505639693679850: AdvanceInvitationData:{id:4369505639693679850, type:6, data:{"inviter":{"id":"aks","name":"user_aks"},"invitees":["iaks"],"live_id":"live_1753769106424_host","auto_accept":false,"custom_d
+
+==========================================
+
+DEBUGGING NOTES:
+==========================================
+
+1. All Zego events are prefixed with "responsefromzego:"
+2. All server API calls are prefixed with "responsefromserver:"
+3. The PK battle flow involves multiple steps:
+   - Request sent
+   - Request received
+   - Request accepted
+   - PK battle starts
+   - API calls made
+   - Response received
+
+4. Key data points to monitor:
+   - Request IDs
+   - User IDs (both local and remote)
+   - API response status codes
+   - PK Battle IDs
+   - Error messages
+
+5. Common issues to check:
+   - User authentication (token in headers)
+   - Network connectivity
+   - Server response status codes
+   - User ID mapping between usernames and IDs
+
+==========================================
+END OF DEBUG LOG
+========================================== 

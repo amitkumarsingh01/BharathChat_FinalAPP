@@ -103,6 +103,24 @@ class _HomePageState extends State<HomePage> {
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
                     ..audioVideoView.showMicrophoneStateOnView = true,
+
+                    // ..events = ZegoLiveStreamingPKEvents(
+                    //   onIncomingPKRequestAccepted: (ZegoUIKitUser targetHost) async {
+                    //     print("✅ PK request accepted from: ${targetHost.userID}");
+
+                    //     /// Save PK battle to your server
+                    //     final pkId = await PKBattleService.startPKBattle(
+                    //       leftHostId: userID,
+                    //       rightHostId: targetHost.userID,
+                    //     );
+
+                    //     if (pkId != null) {
+                    //       print("✅ PK Battle ID saved: $pkId");
+                    //     } else {
+                    //       print("❌ Failed to store PK battle");
+                    //     }
+                    //   },
+                    // ),
             ),
       ),
     );

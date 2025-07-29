@@ -7,6 +7,7 @@ import 'package:finalchat/constants.dart';
 import 'package:finalchat/pk_widgets/events.dart';
 import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
 import 'package:finalchat/pk_widgets/surface.dart';
+import 'package:finalchat/pk_widgets/widgets/debug_test_button.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:finalchat/screens/main/store_screen.dart';
@@ -49,6 +50,8 @@ class _LivePageState extends State<LivePage>
       ValueNotifier<Map<String, List<String>>>({});
   final requestIDNotifier = ValueNotifier<String>('');
   PKEvents? pkEvents;
+  PKV2Surface? pkSurface;
+  String? _remoteUserName;
 
   // Like animation state
   late AnimationController _likeController;
@@ -73,10 +76,33 @@ class _LivePageState extends State<LivePage>
   void initState() {
     super.initState();
 
-    pkEvents = PKEvents(
-      requestIDNotifier: requestIDNotifier,
-      requestingHostsMapRequestIDNotifier: requestingHostsMapRequestIDNotifier,
-    );
+    print('printfromzego: ==========================================');
+    print('printfromzego: LIVE PAGE INIT STATE');
+    print('printfromzego: Context available: ${context != null}');
+    print('printfromzego: ==========================================');
+
+    // Add a small delay to ensure context is available
+    Future.delayed(const Duration(milliseconds: 100), () {
+      print('printfromzego: ==========================================');
+      print('printfromzego: CREATING PK EVENTS AFTER DELAY');
+      print('printfromzego: Context available: ${context != null}');
+      print('printfromzego: ==========================================');
+      
+      pkEvents = PKEvents(
+        requestIDNotifier: requestIDNotifier,
+        requestingHostsMapRequestIDNotifier: requestingHostsMapRequestIDNotifier,
+        onRemoteUserInfoReceived: (String remoteUserName) {
+          // Store remote user info locally
+          _remoteUserName = remoteUserName;
+          print('printfromzego: ==========================================');
+          print('printfromzego: REMOTE USER INFO RECEIVED IN LIVE PAGE');
+          print('printfromzego: Remote username: $remoteUserName');
+          print('printfromzego: Stored in _remoteUserName: $_remoteUserName');
+          print('printfromzego: ==========================================');
+        },
+        context: context,
+      );
+    });
 
     _likeController = AnimationController(
       vsync: this,
@@ -422,17 +448,28 @@ class _LivePageState extends State<LivePage>
 
   @override
   Widget build(BuildContext context) {
+    // Create the surface widget and store reference
+    if (widget.isHost && pkSurface == null) {
+      print('printfromzego: ==========================================');
+      print('printfromzego: CREATING PK SURFACE WIDGET');
+      print('printfromzego: Remote username being passed: $_remoteUserName');
+      print('printfromzego: ==========================================');
+      
+      pkSurface = PKV2Surface(
+        requestIDNotifier: requestIDNotifier,
+        liveStateNotifier: liveStateNotifier,
+        requestingHostsMapRequestIDNotifier:
+            requestingHostsMapRequestIDNotifier,
+        remoteUserName: _remoteUserName,
+      );
+    }
+
     final config =
         (widget.isHost
             ? (ZegoUIKitPrebuiltLiveStreamingConfig.host(
                 plugins: [ZegoUIKitSignalingPlugin()],
               )
-              ..foreground = PKV2Surface(
-                requestIDNotifier: requestIDNotifier,
-                liveStateNotifier: liveStateNotifier,
-                requestingHostsMapRequestIDNotifier:
-                    requestingHostsMapRequestIDNotifier,
-              ))
+              ..foreground = pkSurface!)
             : ZegoUIKitPrebuiltLiveStreamingConfig.audience(
               plugins: [ZegoUIKitSignalingPlugin()],
             ));
@@ -759,6 +796,7 @@ class _LivePageState extends State<LivePage>
 
             // Overlay active gift animations (host and audience)
             ..._activeGiftAnimations,
+            
             // Watermark logo in top left, even further below, with transparent gradient text
             Positioned(
               top: 100,
