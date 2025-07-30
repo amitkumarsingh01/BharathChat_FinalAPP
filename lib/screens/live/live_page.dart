@@ -15,6 +15,7 @@ import 'package:zego_uikit/zego_uikit.dart';
 import 'dart:convert';
 import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/live/gift_animation.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -62,14 +63,20 @@ class _LivePageState extends State<LivePage>
   bool _sendingGift = false;
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
+  
+  // PK Battle notification state
+  bool _showPKBattleNotification = false;
+  String _pkBattleMessage = '';
 
   @override
   void initState() {
     super.initState();
 
     pkEvents = PKEvents(
+      context: context,
       requestIDNotifier: requestIDNotifier,
       requestingHostsMapRequestIDNotifier: requestingHostsMapRequestIDNotifier,
+      onPKBattleNotification: _handlePKBattleNotification,
     );
 
     _likeController = AnimationController(
@@ -364,6 +371,20 @@ class _LivePageState extends State<LivePage>
     print('PK Battle: Host $hostNumber received $diamonds diamonds');
   }
 
+  void _handlePKBattleNotification(String message) {
+    setState(() {
+      _showPKBattleNotification = true;
+      _pkBattleMessage = message;
+    });
+  }
+
+  void _hidePKBattleNotification() {
+    setState(() {
+      _showPKBattleNotification = false;
+      _pkBattleMessage = '';
+    });
+  }
+
   void _triggerLike() {
     setState(() {
       _burstKey++;
@@ -595,6 +616,17 @@ class _LivePageState extends State<LivePage>
                 },
               ),
             ),
+            // PK Battle notification overlay
+            if (_showPKBattleNotification)
+              Positioned(
+                top: 50,
+                left: 0,
+                right: 0,
+                child: PKBattleNotification(
+                  message: _pkBattleMessage,
+                  onDismiss: _hidePKBattleNotification,
+                ),
+              ),
             // Burst hearts overlay (audience only)
             if (!widget.isHost)
               ..._burstHearts.map(

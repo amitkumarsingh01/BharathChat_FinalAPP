@@ -103,6 +103,7 @@ class _HomePageState extends State<HomePage> {
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
                     ..audioVideoView.showMicrophoneStateOnView = true,
+                    
             ),
       ),
     );
