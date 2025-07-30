@@ -811,4 +811,100 @@ class ApiService {
       throw Exception('Failed to start PK battle: ${response.statusCode}');
     }
   }
+
+  static Future<Map<String, dynamic>?> endPKBattle({
+    required int pkBattleId,
+    required int leftScore,
+    required int rightScore,
+    required int winnerId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/pk-battle/end'),
+      headers: _headers,
+      body: json.encode({
+        'pk_battle_id': pkBattleId,
+        'left_score': leftScore,
+        'right_score': rightScore,
+        'winner_id': winnerId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to end PK battle: \\${response.statusCode}');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getPKBattleById(int pkBattleId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pk-battle/$pkBattleId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getLatestActivePKBattleForHosts(String? leftHostId, String? rightHostId) async {
+    if (leftHostId == null || rightHostId == null) return null;
+    final response = await http.get(
+      Uri.parse('$baseUrl/pk-battle/active?left_host_id=$leftHostId&right_host_id=$rightHostId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is List && data.isNotEmpty) {
+        return data.first; // Return the latest active PK battle
+      }
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> getLatestActivePKBattleForUser(int? userId) async {
+    if (userId == null) return null;
+    final response = await http.get(
+      Uri.parse('$baseUrl/pk-battle/active?user_id=$userId'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data is List && data.isNotEmpty) {
+        return data.first;
+      }
+    }
+    return null;
+  }
+
+  static Future<bool> sendPKBattleGift({
+    required int pkBattleId,
+    required int senderId,
+    required int receiverId,
+    required int giftId,
+    required int amount,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/pk-battle/gift'),
+        headers: _headers,
+        body: json.encode({
+          'pk_battle_id': pkBattleId,
+          'sender_id': senderId,
+          'receiver_id': receiverId,
+          'gift_id': giftId,
+          'amount': amount,
+        }),
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['status'] == 'score updated';
+      }
+      return false;
+    } catch (e) {
+      print('Error sending PK battle gift: $e');
+      return false;
+    }
+  }
 }

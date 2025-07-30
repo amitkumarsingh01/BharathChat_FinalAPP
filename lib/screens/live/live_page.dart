@@ -16,6 +16,8 @@ import 'dart:convert';
 import 'package:finalchat/services/api_service.dart';
 import 'package:finalchat/screens/live/gift_animation.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_timer.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_progress_bar.dart';
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -73,6 +75,9 @@ class _LivePageState extends State<LivePage>
   String? _rightHostName;
   String? _liveId;
   String? _pkBattleId;
+  
+  // PK Battle timer state
+  bool _showPKBattleTimer = false;
 
   @override
   void initState() {
@@ -83,7 +88,14 @@ class _LivePageState extends State<LivePage>
       requestIDNotifier: requestIDNotifier,
       requestingHostsMapRequestIDNotifier: requestingHostsMapRequestIDNotifier,
       onPKBattleNotification: _handlePKBattleNotification,
+      onPKBattleAccepted: _handlePKBattleAccepted,
     );
+
+    // Check if there's an active PK battle when joining
+    _checkActivePKBattle();
+
+    // Listen to live state changes to show/hide timer
+    liveStateNotifier.addListener(_onLiveStateChanged);
 
     _likeController = AnimationController(
       vsync: this,
@@ -160,12 +172,33 @@ class _LivePageState extends State<LivePage>
       _currentUser!['diamonds'] -= gift['diamond_amount'];
     });
     try {
-      final success = await ApiService.sendGift(
-        receiverId: receiverId,
-        giftId: gift['id'],
-        liveStreamId: int.tryParse(widget.liveID) ?? 0,
-        liveStreamType: widget.isHost ? 'host' : 'audience',
-      );
+      bool success = false;
+      
+      // Check if we're in PK battle mode
+      final isPKBattle = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
+      
+      if (isPKBattle && PKEvents.currentPKBattleId != null) {
+        // Send gift for PK battle
+        final senderId = _currentUser?['id'];
+        if (senderId != null) {
+          success = await ApiService.sendPKBattleGift(
+            pkBattleId: PKEvents.currentPKBattleId!,
+            senderId: senderId,
+            receiverId: receiverId,
+            giftId: gift['id'],
+            amount: gift['diamond_amount'],
+          );
+        }
+      } else {
+        // Normal gift sending
+        success = await ApiService.sendGift(
+          receiverId: receiverId,
+          giftId: gift['id'],
+          liveStreamId: int.tryParse(widget.liveID) ?? 0,
+          liveStreamType: widget.isHost ? 'host' : 'audience',
+        );
+      }
+      
       if (success) {
         // Send ZEGOCLOUD in-room command for gift notification
         final message = jsonEncode({
@@ -366,6 +399,7 @@ class _LivePageState extends State<LivePage>
 
   @override
   void dispose() {
+    liveStateNotifier.removeListener(_onLiveStateChanged);
     _likeController.dispose();
     super.dispose();
   }
@@ -394,7 +428,57 @@ class _LivePageState extends State<LivePage>
       _rightHostName = rightHostName;
       _liveId = liveId;
       _pkBattleId = pkBattleId;
+      
+      // Show timer when PK battle starts
+      if (message.contains('Started')) {
+        _showPKBattleTimer = true;
+      } else if (message.contains('Ended')) {
+        _showPKBattleTimer = false;
+      }
     });
+  }
+
+  void _handlePKBattleAccepted(String leftHostId, String rightHostId, String leftHostName, String rightHostName, String liveId) async {
+    debugPrint('=== PK BATTLE ACCEPTED ===');
+    debugPrint('LeftHostId: $leftHostId, RightHostId: $rightHostId');
+    debugPrint('LeftHostName: $leftHostName, RightHostName: $rightHostName');
+    debugPrint('LiveId: $liveId');
+    debugPrint('Current user ID: ${ZegoUIKit().getLocalUser().id}');
+    
+    // Store the host information
+    setState(() {
+      _leftHostId = leftHostId;
+      _rightHostId = rightHostId;
+      _leftHostName = leftHostName;
+      _rightHostName = rightHostName;
+      _liveId = liveId;
+    });
+    
+    debugPrint('Stored names - Left: $_leftHostName, Right: $_rightHostName');
+    
+    // For all devices, try to fetch the PK battle ID if not already available
+    if (PKEvents.currentPKBattleId == null) {
+      debugPrint('🔍 Fetching PK battle ID for device...');
+      
+      // Try to fetch the latest active PK battle for these hosts
+      try {
+        final pkBattle = await ApiService.getLatestActivePKBattleForHosts(leftHostId, rightHostId);
+        if (pkBattle != null) {
+          PKEvents.setCurrentPKBattleId(pkBattle['id']);
+          if (PKEvents.currentPKBattleStartTime == null && pkBattle['start_time'] != null) {
+            PKEvents.setCurrentPKBattleStartTime(DateTime.parse(pkBattle['start_time']));
+          }
+          debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
+          setState(() {}); // Refresh UI to show progress bar
+        } else {
+          debugPrint('❌ Failed to fetch PK battle data');
+        }
+      } catch (e) {
+        debugPrint('❌ Error fetching PK battle ID: $e');
+      }
+    } else {
+      debugPrint('✅ Device already has PK battle ID: ${PKEvents.currentPKBattleId}');
+    }
   }
 
   void _hidePKBattleNotification() {
@@ -408,6 +492,72 @@ class _LivePageState extends State<LivePage>
       _liveId = null;
       _pkBattleId = null;
     });
+  }
+
+  void _checkActivePKBattle() {
+    // Check if there's an active PK battle when user joins
+    if (PKEvents.currentPKBattleStartTime != null) {
+      final now = DateTime.now();
+      final battleEndTime = PKEvents.currentPKBattleStartTime!.add(const Duration(minutes: 3));
+      
+      if (now.isBefore(battleEndTime)) {
+        setState(() {
+          _showPKBattleTimer = true;
+        });
+      }
+    }
+  }
+
+  void _onLiveStateChanged() async {
+    final state = liveStateNotifier.value;
+    setState(() {
+      _showPKBattleTimer = state == ZegoLiveStreamingState.inPKBattle;
+    });
+
+    if (state == ZegoLiveStreamingState.inPKBattle) {
+      debugPrint('🎮 Entering PK battle state on device: ${ZegoUIKit().getLocalUser().id}');
+      
+      // Set the start time for all devices when entering PK battle
+      if (PKEvents.currentPKBattleStartTime == null) {
+        PKEvents.setCurrentPKBattleStartTime(DateTime.now());
+        debugPrint('⏰ Set PK battle start time for device: ${PKEvents.currentPKBattleStartTime}');
+      }
+      
+      // Try to get PK battle ID for all devices
+      if (PKEvents.currentPKBattleId == null) {
+        debugPrint('🔍 Device trying to fetch PK battle ID...');
+        Map<String, dynamic>? pkBattle;
+        
+        // Try by host IDs first
+        if (_leftHostId != null && _rightHostId != null) {
+          pkBattle = await ApiService.getLatestActivePKBattleForHosts(_leftHostId, _rightHostId);
+          debugPrint('🔍 Fetched by hosts: $pkBattle');
+        }
+        
+        // Try by current user if host IDs didn't work
+        if (pkBattle == null && _currentUser != null) {
+          pkBattle = await ApiService.getLatestActivePKBattleForUser(_currentUser?['id']);
+          debugPrint('🔍 Fetched by user: $pkBattle');
+        }
+        
+        if (pkBattle != null) {
+          PKEvents.setCurrentPKBattleId(pkBattle['id']);
+          debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
+          if (PKEvents.currentPKBattleStartTime == null && pkBattle['start_time'] != null) {
+            PKEvents.setCurrentPKBattleStartTime(DateTime.parse(pkBattle['start_time']));
+          }
+          setState(() {}); // Refresh UI
+        } else {
+          debugPrint('❌ Failed to fetch PK battle data for device');
+        }
+      } else {
+        debugPrint('✅ Device already has PK battle ID: ${PKEvents.currentPKBattleId}');
+      }
+    } else {
+      debugPrint('🏁 Exiting PK battle state, clearing data');
+      PKEvents.setCurrentPKBattleId(null);
+      PKEvents.setCurrentPKBattleStartTime(null);
+    }
   }
 
   void _triggerLike() {
@@ -426,6 +576,62 @@ class _LivePageState extends State<LivePage>
     Future.delayed(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _burstHearts = []);
     });
+  }
+
+  Future<void> _onPKBattleTimerEnd() async {
+    if (PKEvents.currentPKBattleId == null) return;
+    final pkBattleId = PKEvents.currentPKBattleId!;
+    final result = await ApiService.getPKBattleById(pkBattleId);
+    if (result == null) return;
+
+    final leftScore = result['left_score'] ?? 0;
+    final rightScore = result['right_score'] ?? 0;
+    int winnerId;
+    if (leftScore > rightScore) {
+      winnerId = result['left_host_id'];
+    } else if (rightScore > leftScore) {
+      winnerId = result['right_host_id'];
+    } else {
+      winnerId = 0; // Draw
+    }
+
+    final endResult = await ApiService.endPKBattle(
+      pkBattleId: pkBattleId,
+      leftScore: leftScore,
+      rightScore: rightScore,
+      winnerId: winnerId,
+    );
+
+    // Show popup
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('PK Battle Ended'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Winner: '
+                + (winnerId == 0
+                  ? 'Draw'
+                  : (winnerId == (result['left_host_id'])
+                      ? (_leftHostName ?? 'Left')
+                      : (_rightHostName ?? 'Right')))),
+              const SizedBox(height: 12),
+              Text('Final Scores:\n'
+                '${_leftHostName ?? 'Left'}: $leftScore\n'
+                '${_rightHostName ?? 'Right'}: $rightScore'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -656,6 +862,174 @@ class _LivePageState extends State<LivePage>
                   rightHostName: _rightHostName,
                   liveId: _liveId,
                   pkBattleId: _pkBattleId,
+                ),
+              ),
+            // PK Battle timer overlay
+            if (_showPKBattleTimer)
+              Positioned(
+                bottom: 120,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: PKEvents.currentPKBattleStartTime != null
+                    ? PKBattleTimer(
+                        battleStartTime: PKEvents.currentPKBattleStartTime!,
+                        onTimerEnd: _onPKBattleTimerEnd,
+                      )
+                    : Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF4CAF50), Color(0xFFFFEB3B), Color(0xFF4CAF50)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Loading Timer...',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                ),
+              ),
+            // PK Battle progress bar overlay
+            if (_showPKBattleTimer)
+              Positioned(
+                bottom: 200,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Builder(
+                    builder: (context) {
+                      debugPrint('Progress Bar - LeftName: $_leftHostName, RightName: $_rightHostName, PKID: ${PKEvents.currentPKBattleId}');
+                      return PKEvents.currentPKBattleId != null
+                        ? PKBattleProgressBar(
+                            pkBattleId: PKEvents.currentPKBattleId!,
+                            leftHostName: _leftHostName,
+                            rightHostName: _rightHostName,
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.yellow, width: 2),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _leftHostName ?? 'Left',
+                                        textAlign: TextAlign.left,
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          'PK: ${PKEvents.currentPKBattleId ?? "..."}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Colors.yellow,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        _rightHostName ?? 'Right',
+                                        textAlign: TextAlign.right,
+                                        style: const TextStyle(
+                                          color: Colors.orange,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(9),
+                                    color: Colors.grey[800],
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            '0',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            '0',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                    },
+                  ),
+                ),
+              ),
+            // PK Battle ID display (separate, big, at 300px)
+            if (_showPKBattleTimer)
+              Positioned(
+                bottom: 300,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFFFFEB3B), Color(0xFF4CAF50)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      'PK Battle ID: ${PKEvents.currentPKBattleId ?? "Loading..."}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             // Burst hearts overlay (audience only)

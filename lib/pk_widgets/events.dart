@@ -10,6 +10,7 @@ class PKEvents {
     required this.requestingHostsMapRequestIDNotifier,
     this.onPKBattleStarted,
     this.onPKBattleNotification,
+    this.onPKBattleAccepted,
   });
 
   final BuildContext context;
@@ -19,10 +20,21 @@ class PKEvents {
       requestingHostsMapRequestIDNotifier;
   final void Function(Map<String, dynamic> pkBattleInfo)? onPKBattleStarted;
   final void Function(String message, {String? leftHostId, String? rightHostId, String? leftHostName, String? rightHostName, String? liveId, String? pkBattleId})? onPKBattleNotification;
+  final void Function(String leftHostId, String rightHostId, String leftHostName, String rightHostName, String liveId)? onPKBattleAccepted;
   
-  // Store the current PK battle ID
+  // Store the current PK battle ID and start time
   static int? _currentPKBattleId;
+  static DateTime? _currentPKBattleStartTime;
   static int? get currentPKBattleId => _currentPKBattleId;
+  static DateTime? get currentPKBattleStartTime => _currentPKBattleStartTime;
+
+  static void setCurrentPKBattleStartTime(DateTime? time) {
+    _currentPKBattleStartTime = time;
+  }
+
+  static void setCurrentPKBattleId(int? id) {
+    _currentPKBattleId = id;
+  }
 
   ZegoLiveStreamingPKEvents get event => ZegoLiveStreamingPKEvents(
         onIncomingRequestReceived: (event, defaultAction) async {
@@ -196,9 +208,20 @@ class PKEvents {
             final rightHostName = rightUserDetails?['username'] ?? rightUsername;
             final liveId = rightZegoId; // current live stream ID
             
-            // Call API to start PK battle and get pk_battle_id
+            // Call the onPKBattleAccepted callback for both hosts
+            if (onPKBattleAccepted != null) {
+              debugPrint('🎯 Calling onPKBattleAccepted for device: ${ZegoUIKit().getLocalUser().id}');
+              debugPrint('🎯 LeftHostId: $leftHostId, RightHostId: $rightHostId');
+              debugPrint('🎯 LeftHostName: $leftHostName, RightHostName: $rightHostName');
+              onPKBattleAccepted!(leftHostId, rightHostId, leftHostName, rightHostName, liveId);
+            } else {
+              debugPrint('❌ onPKBattleAccepted callback is null!');
+            }
+            
+            // Call the API to start PK battle when request is accepted
             if (leftUserDetails != null && rightUserDetails != null) {
               try {
+                debugPrint('🎯 Calling startPKBattle API for hosts: ${leftUserDetails['id']} vs ${rightUserDetails['id']}');
                 final pkBattleResponse = await ApiService.startPKBattle(
                   leftHostId: leftUserDetails['id'],
                   rightHostId: rightUserDetails['id'],
@@ -206,16 +229,23 @@ class PKEvents {
                   rightStreamId: 0,
                 );
                 
-                // Store the PK battle ID
+                // Store the PK battle ID and start time
                 _currentPKBattleId = pkBattleResponse?['pk_battle_id'];
-                debugPrint('PK Battle started with ID: $_currentPKBattleId');
+                _currentPKBattleStartTime = DateTime.now();
+                debugPrint('✅ PK Battle started with ID: $_currentPKBattleId');
                 
                 // Call the onPKBattleStarted callback if available
                 if (onPKBattleStarted != null && pkBattleResponse != null) {
                   onPKBattleStarted!(pkBattleResponse);
                 }
               } catch (e) {
-                debugPrint('Failed to start PK battle via API: $e');
+                debugPrint('❌ Failed to start PK battle via API: $e');
+              }
+            } else {
+              // Set the start time immediately if user details couldn't be fetched
+              if (_currentPKBattleStartTime == null) {
+                _currentPKBattleStartTime = DateTime.now();
+                debugPrint('⏰ Set PK battle start time: $_currentPKBattleStartTime');
               }
             }
             
@@ -331,8 +361,9 @@ class PKEvents {
 
           requestIDNotifier.value = '';
           
-          // Clear the PK battle ID when battle ends
+          // Clear the PK battle ID and start time when battle ends
           _currentPKBattleId = null;
+          _currentPKBattleStartTime = null;
 
           removeRequestingHostsMapWhenRemoteHostDone(
             event.requestID,
