@@ -3,11 +3,23 @@ import 'package:flutter/material.dart';
 class PKBattleNotification extends StatefulWidget {
   final String message;
   final VoidCallback? onDismiss;
+  final String? leftHostId;
+  final String? rightHostId;
+  final String? leftHostName;
+  final String? rightHostName;
+  final String? liveId;
+  final String? pkBattleId;
 
   const PKBattleNotification({
     Key? key,
     required this.message,
     this.onDismiss,
+    this.leftHostId,
+    this.rightHostId,
+    this.leftHostName,
+    this.rightHostName,
+    this.liveId,
+    this.pkBattleId,
   }) : super(key: key);
 
   @override
@@ -116,20 +128,122 @@ class _PKBattleNotificationState extends State<PKBattleNotification>
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: Text(
-                      widget.message,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(1, 1),
-                            blurRadius: 3,
-                            color: Colors.black54,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            shadows: [
+                              Shadow(
+                                offset: Offset(1, 1),
+                                blurRadius: 3,
+                                color: Colors.black54,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        if (widget.leftHostName != null && widget.rightHostName != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${widget.leftHostName} (ID: ${widget.leftHostId ?? 'N/A'})',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      shadows: [
+                                        Shadow(
+                                          offset: Offset(0.5, 0.5),
+                                          blurRadius: 2,
+                                          color: Colors.black54,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const Text(
+                                  ' vs ',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        offset: Offset(0.5, 0.5),
+                                        blurRadius: 2,
+                                        color: Colors.black54,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    '${widget.rightHostName} (ID: ${widget.rightHostId ?? 'N/A'})',
+                                    textAlign: TextAlign.end,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      shadows: [
+                                        Shadow(
+                                          offset: Offset(0.5, 0.5),
+                                          blurRadius: 2,
+                                          color: Colors.black54,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (widget.liveId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Live ID: ${widget.liveId}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w400,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(0.5, 0.5),
+                                    blurRadius: 2,
+                                    color: Colors.black54,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        if (widget.pkBattleId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'PK Battle ID: ${widget.pkBattleId}',
+                              style: const TextStyle(
+                                color: Colors.yellow,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                shadows: [
+                                  Shadow(
+                                    offset: Offset(0.5, 0.5),
+                                    blurRadius: 2,
+                                    color: Colors.black54,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   GestureDetector(

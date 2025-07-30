@@ -18,16 +18,69 @@ class PKEvents {
   final ValueNotifier<Map<String, List<String>>>
       requestingHostsMapRequestIDNotifier;
   final void Function(Map<String, dynamic> pkBattleInfo)? onPKBattleStarted;
-  final void Function(String message)? onPKBattleNotification;
+  final void Function(String message, {String? leftHostId, String? rightHostId, String? leftHostName, String? rightHostName, String? liveId, String? pkBattleId})? onPKBattleNotification;
+  
+  // Store the current PK battle ID
+  static int? _currentPKBattleId;
+  static int? get currentPKBattleId => _currentPKBattleId;
 
   ZegoLiveStreamingPKEvents get event => ZegoLiveStreamingPKEvents(
-        onIncomingRequestReceived: (event, defaultAction) {
+        onIncomingRequestReceived: (event, defaultAction) async {
           debugPrint(
               'custom event, onIncomingPKBattleRequestReceived, event: 24event');
           
-          // Show PK battle request received notification
-          if (onPKBattleNotification != null) {
-            onPKBattleNotification!('🎮 PK Battle Request Received! 🎮');
+          // Extract usernames from Zego user IDs (remove 'user_' prefix)
+          final leftZegoId = event.fromHost.id; // sender
+          final rightZegoId = ZegoUIKit().getLocalUser().id; // receiver
+          
+          String leftUsername = leftZegoId;
+          String rightUsername = rightZegoId;
+          
+          // Remove 'user_' prefix if present
+          if (leftZegoId.startsWith('user_')) {
+            leftUsername = leftZegoId.substring(5);
+          }
+          if (rightZegoId.startsWith('user_')) {
+            rightUsername = rightZegoId.substring(5);
+          }
+          
+          try {
+            // Fetch actual user details from API
+            final leftUserDetails = await ApiService.getUserDetailsByUsername(leftUsername);
+            final rightUserDetails = await ApiService.getUserDetailsByUsername(rightUsername);
+            
+            final leftHostId = leftUserDetails?['id']?.toString() ?? leftZegoId;
+            final rightHostId = rightUserDetails?['id']?.toString() ?? rightZegoId;
+            final leftHostName = leftUserDetails?['username'] ?? leftUsername;
+            final rightHostName = rightUserDetails?['username'] ?? rightUsername;
+            final liveId = rightZegoId; // current live stream ID
+            
+            // Show PK battle request received notification with user details
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🎮 PK Battle Request Received! 🎮',
+                leftHostId: leftHostId,
+                rightHostId: rightHostId,
+                leftHostName: leftHostName,
+                rightHostName: rightHostName,
+                liveId: liveId,
+                pkBattleId: null,
+              );
+            }
+          } catch (e) {
+            debugPrint('Failed to fetch user details: $e');
+            // Fallback to Zego IDs if API fails
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🎮 PK Battle Request Received! 🎮',
+                leftHostId: leftZegoId,
+                rightHostId: rightZegoId,
+                leftHostName: leftUsername,
+                rightHostName: rightUsername,
+                liveId: rightZegoId,
+                pkBattleId: null,
+              );
+            }
           }
           
           defaultAction.call();
@@ -113,13 +166,85 @@ class PKEvents {
         //     event.fromHost.id,
         //   );
         // },
-        onOutgoingRequestAccepted: (event, defaultAction) {
+        onOutgoingRequestAccepted: (event, defaultAction) async {
           debugPrint(
               'custom event, onOutgoingPKBattleRequestAccepted, event: 24event');
           
-          // Show PK battle started notification
-          if (onPKBattleNotification != null) {
-            onPKBattleNotification!('🎮 PK Battle Started! 🎮');
+          // Extract usernames from Zego user IDs (remove 'user_' prefix)
+          final leftZegoId = event.fromHost.id; // sender
+          final rightZegoId = ZegoUIKit().getLocalUser().id; // acceptor
+          
+          String leftUsername = leftZegoId;
+          String rightUsername = rightZegoId;
+          
+          // Remove 'user_' prefix if present
+          if (leftZegoId.startsWith('user_')) {
+            leftUsername = leftZegoId.substring(5);
+          }
+          if (rightZegoId.startsWith('user_')) {
+            rightUsername = rightZegoId.substring(5);
+          }
+          
+          try {
+            // Fetch actual user details from API
+            final leftUserDetails = await ApiService.getUserDetailsByUsername(leftUsername);
+            final rightUserDetails = await ApiService.getUserDetailsByUsername(rightUsername);
+            
+            final leftHostId = leftUserDetails?['id']?.toString() ?? leftZegoId;
+            final rightHostId = rightUserDetails?['id']?.toString() ?? rightZegoId;
+            final leftHostName = leftUserDetails?['username'] ?? leftUsername;
+            final rightHostName = rightUserDetails?['username'] ?? rightUsername;
+            final liveId = rightZegoId; // current live stream ID
+            
+            // Call API to start PK battle and get pk_battle_id
+            if (leftUserDetails != null && rightUserDetails != null) {
+              try {
+                final pkBattleResponse = await ApiService.startPKBattle(
+                  leftHostId: leftUserDetails['id'],
+                  rightHostId: rightUserDetails['id'],
+                  leftStreamId: 0,
+                  rightStreamId: 0,
+                );
+                
+                // Store the PK battle ID
+                _currentPKBattleId = pkBattleResponse?['pk_battle_id'];
+                debugPrint('PK Battle started with ID: $_currentPKBattleId');
+                
+                // Call the onPKBattleStarted callback if available
+                if (onPKBattleStarted != null && pkBattleResponse != null) {
+                  onPKBattleStarted!(pkBattleResponse);
+                }
+              } catch (e) {
+                debugPrint('Failed to start PK battle via API: $e');
+              }
+            }
+            
+            // Show PK battle started notification with user details
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🎮 PK Battle Started! 🎮',
+                leftHostId: leftHostId,
+                rightHostId: rightHostId,
+                leftHostName: leftHostName,
+                rightHostName: rightHostName,
+                liveId: liveId,
+                pkBattleId: _currentPKBattleId?.toString(),
+              );
+            }
+          } catch (e) {
+            debugPrint('Failed to fetch user details: $e');
+            // Fallback to Zego IDs if API fails
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🎮 PK Battle Started! 🎮',
+                leftHostId: leftZegoId,
+                rightHostId: rightZegoId,
+                leftHostName: leftUsername,
+                rightHostName: rightUsername,
+                liveId: rightZegoId,
+                pkBattleId: null,
+              );
+            }
           }
           
           defaultAction.call();
@@ -145,17 +270,69 @@ class PKEvents {
 
           defaultAction.call();
         },
-        onEnded: (event, defaultAction) {
+        onEnded: (event, defaultAction) async {
           debugPrint('custom event, onPKBattleEnded, event: 24event');
           
-          // Show PK battle ended notification
-          if (onPKBattleNotification != null) {
-            onPKBattleNotification!('🏁 PK Battle Ended! 🏁');
+          // Extract usernames from Zego user IDs (remove 'user_' prefix)
+          final leftZegoId = event.fromHost.id; // one of the hosts
+          final rightZegoId = ZegoUIKit().getLocalUser().id; // current user
+          
+          String leftUsername = leftZegoId;
+          String rightUsername = rightZegoId;
+          
+          // Remove 'user_' prefix if present
+          if (leftZegoId.startsWith('user_')) {
+            leftUsername = leftZegoId.substring(5);
+          }
+          if (rightZegoId.startsWith('user_')) {
+            rightUsername = rightZegoId.substring(5);
+          }
+          
+          try {
+            // Fetch actual user details from API
+            final leftUserDetails = await ApiService.getUserDetailsByUsername(leftUsername);
+            final rightUserDetails = await ApiService.getUserDetailsByUsername(rightUsername);
+            
+            final leftHostId = leftUserDetails?['id']?.toString() ?? leftZegoId;
+            final rightHostId = rightUserDetails?['id']?.toString() ?? rightZegoId;
+            final leftHostName = leftUserDetails?['username'] ?? leftUsername;
+            final rightHostName = rightUserDetails?['username'] ?? rightUsername;
+            final liveId = rightZegoId; // current live stream ID
+            
+            // Show PK battle ended notification with user details
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🏁 PK Battle Ended! 🏁',
+                leftHostId: leftHostId,
+                rightHostId: rightHostId,
+                leftHostName: leftHostName,
+                rightHostName: rightHostName,
+                liveId: liveId,
+                pkBattleId: _currentPKBattleId?.toString(),
+              );
+            }
+          } catch (e) {
+            debugPrint('Failed to fetch user details: $e');
+            // Fallback to Zego IDs if API fails
+            if (onPKBattleNotification != null) {
+              onPKBattleNotification!(
+                '🏁 PK Battle Ended! 🏁',
+                leftHostId: leftZegoId,
+                rightHostId: rightZegoId,
+                leftHostName: leftUsername,
+                rightHostName: rightUsername,
+                liveId: rightZegoId,
+                pkBattleId: _currentPKBattleId?.toString(),
+              );
+            }
           }
           
           defaultAction.call();
 
           requestIDNotifier.value = '';
+          
+          // Clear the PK battle ID when battle ends
+          _currentPKBattleId = null;
 
           removeRequestingHostsMapWhenRemoteHostDone(
             event.requestID,

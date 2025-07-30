@@ -67,6 +67,12 @@ class _LivePageState extends State<LivePage>
   // PK Battle notification state
   bool _showPKBattleNotification = false;
   String _pkBattleMessage = '';
+  String? _leftHostId;
+  String? _rightHostId;
+  String? _leftHostName;
+  String? _rightHostName;
+  String? _liveId;
+  String? _pkBattleId;
 
   @override
   void initState() {
@@ -371,10 +377,23 @@ class _LivePageState extends State<LivePage>
     print('PK Battle: Host $hostNumber received $diamonds diamonds');
   }
 
-  void _handlePKBattleNotification(String message) {
+  void _handlePKBattleNotification(String message, {
+    String? leftHostId,
+    String? rightHostId,
+    String? leftHostName,
+    String? rightHostName,
+    String? liveId,
+    String? pkBattleId,
+  }) {
     setState(() {
       _showPKBattleNotification = true;
       _pkBattleMessage = message;
+      _leftHostId = leftHostId;
+      _rightHostId = rightHostId;
+      _leftHostName = leftHostName;
+      _rightHostName = rightHostName;
+      _liveId = liveId;
+      _pkBattleId = pkBattleId;
     });
   }
 
@@ -382,6 +401,12 @@ class _LivePageState extends State<LivePage>
     setState(() {
       _showPKBattleNotification = false;
       _pkBattleMessage = '';
+      _leftHostId = null;
+      _rightHostId = null;
+      _leftHostName = null;
+      _rightHostName = null;
+      _liveId = null;
+      _pkBattleId = null;
     });
   }
 
@@ -625,6 +650,12 @@ class _LivePageState extends State<LivePage>
                 child: PKBattleNotification(
                   message: _pkBattleMessage,
                   onDismiss: _hidePKBattleNotification,
+                  leftHostId: _leftHostId,
+                  rightHostId: _rightHostId,
+                  leftHostName: _leftHostName,
+                  rightHostName: _rightHostName,
+                  liveId: _liveId,
+                  pkBattleId: _pkBattleId,
                 ),
               ),
             // Burst hearts overlay (audience only)
