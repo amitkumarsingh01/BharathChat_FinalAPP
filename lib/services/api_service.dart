@@ -862,19 +862,35 @@ class ApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> getLatestActivePKBattleForUser(int? userId) async {
-    if (userId == null) return null;
-    final response = await http.get(
-      Uri.parse('$baseUrl/pk-battle/active?user_id=$userId'),
-      headers: _headers,
-    );
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data is List && data.isNotEmpty) {
-        return data.first;
+  static Future<Map<String, dynamic>?> getLatestActivePKBattleForUser(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/pk-battle/user/$userId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> battles = json.decode(response.body);
+        if (battles.isNotEmpty) {
+          // Get the latest active battle (first one in the list)
+          final latestBattle = battles.first;
+          return {
+            'id': latestBattle['pk_battle_id'],
+            'start_time': latestBattle['start_time'],
+            'left_host_id': latestBattle['left_host_id'],
+            'right_host_id': latestBattle['right_host_id'],
+            'status': latestBattle['status'],
+          };
+        }
       }
+      return null;
+    } catch (e) {
+      print('Error fetching latest active PK battle for user $userId: $e');
+      return null;
     }
-    return null;
   }
 
   static Future<bool> sendPKBattleGift({

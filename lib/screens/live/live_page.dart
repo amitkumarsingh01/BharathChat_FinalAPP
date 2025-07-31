@@ -18,6 +18,7 @@ import 'package:finalchat/screens/live/gift_animation.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_timer.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_progress_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -460,21 +461,39 @@ class _LivePageState extends State<LivePage>
     if (PKEvents.currentPKBattleId == null) {
       debugPrint('🔍 Fetching PK battle ID for device...');
       
-      // Try to fetch the latest active PK battle for these hosts
-      try {
-        final pkBattle = await ApiService.getLatestActivePKBattleForHosts(leftHostId, rightHostId);
-        if (pkBattle != null) {
-          PKEvents.setCurrentPKBattleId(pkBattle['id']);
-          if (PKEvents.currentPKBattleStartTime == null && pkBattle['start_time'] != null) {
-            PKEvents.setCurrentPKBattleStartTime(DateTime.parse(pkBattle['start_time']));
+      // Get current user ID from shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getInt('user_id');
+      
+      if (currentUserId != null) {
+        try {
+          // Wait 2 seconds for the backend to create the PK battle
+          debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
+          await Future.delayed(Duration(seconds: 2));
+          
+          // Use the new backend API to get the latest active PK battle for this user
+          final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
+          if (pkBattle != null) {
+            PKEvents.setCurrentPKBattleId(pkBattle['id']);
+            
+            // Calculate start time from server response
+            if (pkBattle['start_time'] != null) {
+              final serverStartTime = DateTime.parse(pkBattle['start_time']);
+              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+              debugPrint('⏰ Server start time: $serverStartTime');
+              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+            }
+            
+            debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
+            setState(() {}); // Refresh UI to show progress bar
+          } else {
+            debugPrint('❌ Failed to fetch PK battle data from server');
           }
-          debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
-          setState(() {}); // Refresh UI to show progress bar
-        } else {
-          debugPrint('❌ Failed to fetch PK battle data');
+        } catch (e) {
+          debugPrint('❌ Error fetching PK battle ID: $e');
         }
-      } catch (e) {
-        debugPrint('❌ Error fetching PK battle ID: $e');
+      } else {
+        debugPrint('❌ Current user ID not found in shared preferences');
       }
     } else {
       debugPrint('✅ Device already has PK battle ID: ${PKEvents.currentPKBattleId}');
@@ -508,55 +527,71 @@ class _LivePageState extends State<LivePage>
     }
   }
 
-  void _onLiveStateChanged() async {
-    final state = liveStateNotifier.value;
-    setState(() {
-      _showPKBattleTimer = state == ZegoLiveStreamingState.inPKBattle;
-    });
-
-    if (state == ZegoLiveStreamingState.inPKBattle) {
-      debugPrint('🎮 Entering PK battle state on device: ${ZegoUIKit().getLocalUser().id}');
+  void _onLiveStateChanged() {
+    final liveState = liveStateNotifier.value;
+    debugPrint('🎬 Live state changed to: $liveState');
+    
+    if (liveState == ZegoLiveStreamingState.inPKBattle) {
+      debugPrint('🎮 Entering PK battle state...');
+      setState(() {
+        _showPKBattleTimer = true;
+      });
       
-      // Set the start time for all devices when entering PK battle
+      // Set start time if not already set
       if (PKEvents.currentPKBattleStartTime == null) {
         PKEvents.setCurrentPKBattleStartTime(DateTime.now());
-        debugPrint('⏰ Set PK battle start time for device: ${PKEvents.currentPKBattleStartTime}');
+        debugPrint('⏰ Set local start time: ${PKEvents.currentPKBattleStartTime}');
       }
       
-      // Try to get PK battle ID for all devices
+      // Fetch PK battle ID if not available
       if (PKEvents.currentPKBattleId == null) {
-        debugPrint('🔍 Device trying to fetch PK battle ID...');
-        Map<String, dynamic>? pkBattle;
-        
-        // Try by host IDs first
-        if (_leftHostId != null && _rightHostId != null) {
-          pkBattle = await ApiService.getLatestActivePKBattleForHosts(_leftHostId, _rightHostId);
-          debugPrint('🔍 Fetched by hosts: $pkBattle');
-        }
-        
-        // Try by current user if host IDs didn't work
-        if (pkBattle == null && _currentUser != null) {
-          pkBattle = await ApiService.getLatestActivePKBattleForUser(_currentUser?['id']);
-          debugPrint('🔍 Fetched by user: $pkBattle');
-        }
-        
-        if (pkBattle != null) {
-          PKEvents.setCurrentPKBattleId(pkBattle['id']);
-          debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
-          if (PKEvents.currentPKBattleStartTime == null && pkBattle['start_time'] != null) {
-            PKEvents.setCurrentPKBattleStartTime(DateTime.parse(pkBattle['start_time']));
-          }
-          setState(() {}); // Refresh UI
-        } else {
-          debugPrint('❌ Failed to fetch PK battle data for device');
-        }
-      } else {
-        debugPrint('✅ Device already has PK battle ID: ${PKEvents.currentPKBattleId}');
+        _fetchPKBattleDataFromServer();
       }
     } else {
-      debugPrint('🏁 Exiting PK battle state, clearing data');
+      debugPrint('🏁 Exiting PK battle state...');
+      setState(() {
+        _showPKBattleTimer = false;
+      });
+      
+      // Clear PK battle data when exiting
       PKEvents.setCurrentPKBattleId(null);
       PKEvents.setCurrentPKBattleStartTime(null);
+    }
+  }
+  
+  void _fetchPKBattleDataFromServer() async {
+    debugPrint('🔍 Fetching PK battle data from server...');
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentUserId = prefs.getInt('user_id');
+      
+      if (currentUserId != null) {
+        // Wait 2 seconds for the backend to create the PK battle
+        debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
+        await Future.delayed(Duration(seconds: 2));
+        final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
+        if (pkBattle != null) {
+          PKEvents.setCurrentPKBattleId(pkBattle['id']);
+          
+          // Use server start time for accurate timer
+          if (pkBattle['start_time'] != null) {
+            final serverStartTime = DateTime.parse(pkBattle['start_time']);
+            PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+            debugPrint('⏰ Server start time: $serverStartTime');
+            debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+          }
+          
+          debugPrint('✅ Got PK battle data from server: ${pkBattle['id']}');
+          setState(() {}); // Refresh UI
+        } else {
+          debugPrint('❌ No active PK battle found for user $currentUserId');
+        }
+      } else {
+        debugPrint('❌ User ID not found in shared preferences');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching PK battle data: $e');
     }
   }
 
