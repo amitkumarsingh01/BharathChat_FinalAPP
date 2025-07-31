@@ -18,6 +18,7 @@ class LiveVideoScreen extends StatefulWidget {
   final String localUserID;
   final bool isHost;
   final int hostId;
+  final Map<String, dynamic>? activePKBattle; // Add this parameter
 
   const LiveVideoScreen({
     Key? key,
@@ -25,6 +26,7 @@ class LiveVideoScreen extends StatefulWidget {
     required this.localUserID,
     required this.hostId,
     this.isHost = false,
+    this.activePKBattle, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -97,6 +99,7 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
               profilePic: user['profile_pic'],
               onGiftButtonPressed: _showGiftPanel, // NEW
               receiverId: widget.hostId, // <-- pass hostId
+              activePKBattle: widget.activePKBattle, // Pass the new parameter
             );
           },
         ),

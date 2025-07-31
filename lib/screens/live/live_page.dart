@@ -27,6 +27,7 @@ class LivePage extends StatefulWidget {
   final String? profilePic;
   final int receiverId; // <-- add this
   final VoidCallback? onGiftButtonPressed;
+  final Map<String, dynamic>? activePKBattle; // Add this parameter
 
   const LivePage({
     Key? key,
@@ -36,6 +37,7 @@ class LivePage extends StatefulWidget {
     this.isHost = false,
     this.profilePic,
     this.onGiftButtonPressed,
+    this.activePKBattle, // Add this parameter
   }) : super(key: key);
 
   @override
@@ -79,10 +81,45 @@ class _LivePageState extends State<LivePage>
   
   // PK Battle timer state
   bool _showPKBattleTimer = false;
+  
+  // Debug/Info display state
+  bool _showDebugInfo = false;
+  Map<String, dynamic> _debugInfo = {};
+  List<String> _apiLogs = [];
+  
+  // Custom logger for capturing API logs
+  static List<String> _globalApiLogs = [];
+  static Function(String)? _onLogAdded;
 
   @override
   void initState() {
     super.initState();
+
+    // Set up log callback to capture API logs
+    _setLogCallback();
+
+    // Initialize debug info
+    _updateDebugInfo('is_host', widget.isHost);
+    _updateDebugInfo('live_id', widget.liveID);
+    _updateDebugInfo('local_user_id', widget.localUserID);
+    _updateDebugInfo('receiver_id', widget.receiverId);
+    _updateDebugInfo('has_active_pk_battle', widget.activePKBattle != null);
+
+    // Extract stream ID from liveID for audience
+    if (!widget.isHost && widget.liveID.startsWith('live_')) {
+      final parts = widget.liveID.split('_');
+      if (parts.length >= 2) {
+        final streamId = int.tryParse(parts[1]);
+        if (streamId != null) {
+          _updateDebugInfo('stream_id', streamId);
+          _logApiCall('Stream ID Extraction', 'Extracted stream ID: $streamId from liveID: ${widget.liveID}');
+        } else {
+          _logApiCall('Stream ID Extraction', 'Failed to parse stream ID from: ${parts[1]}');
+        }
+      } else {
+        _logApiCall('Stream ID Extraction', 'Invalid liveID format: ${widget.liveID}');
+      }
+    }
 
     pkEvents = PKEvents(
       context: context,
@@ -91,6 +128,40 @@ class _LivePageState extends State<LivePage>
       onPKBattleNotification: _handlePKBattleNotification,
       onPKBattleAccepted: _handlePKBattleAccepted,
     );
+
+    // Initialize PK battle state if audience joins with active PK battle
+    if (widget.activePKBattle != null && !widget.isHost) {
+      debugPrint('🎮 Audience joining with active PK battle: ${widget.activePKBattle!['id']}');
+      _logApiCall('Active PK Battle', 'Found active PK battle: ${widget.activePKBattle!['id']}');
+      _updateDebugInfo('active_pk_battle_data', widget.activePKBattle);
+      
+      PKEvents.setCurrentPKBattleId(widget.activePKBattle!['id']);
+      if (widget.activePKBattle!['start_time'] != null) {
+        final serverStartTime = DateTime.parse(widget.activePKBattle!['start_time']);
+        PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+        debugPrint('⏰ PK battle start time: $serverStartTime');
+        _updateDebugInfo('pk_battle_start_time', serverStartTime.toString());
+      }
+      
+      // Set host information for audience
+      setState(() {
+        _leftHostId = widget.activePKBattle!['left_host_id']?.toString();
+        _rightHostId = widget.activePKBattle!['right_host_id']?.toString();
+        _showPKBattleTimer = true;
+      });
+      
+      _updateDebugInfo('left_host_id', widget.activePKBattle!['left_host_id']);
+      _updateDebugInfo('right_host_id', widget.activePKBattle!['right_host_id']);
+    } else if (!widget.isHost) {
+      // For audience without pre-loaded PK battle, fetch it immediately
+      debugPrint('🎮 Audience joining - fetching PK battle data...');
+      _logApiCall('Audience Join', 'Fetching PK battle data for audience');
+      
+      // Fetch PK battle data with delay to allow backend to create PK battle
+      Future.delayed(Duration(seconds: 2), () {
+        _fetchPKBattleDataFromServer();
+      });
+    }
 
     // Check if there's an active PK battle when joining
     _checkActivePKBattle();
@@ -121,14 +192,29 @@ class _LivePageState extends State<LivePage>
       _giftsLoading = true;
     });
     try {
+      _logApiCall('getGifts', 'Fetching gifts...');
       final gifts = await ApiService.getGifts();
+      _logApiCall('getGifts', 'Success: ${gifts.length} gifts fetched');
+      _updateDebugInfo('gifts_count', gifts.length);
+      
+      _logApiCall('getCurrentUser', 'Fetching current user...');
       final user = await ApiService.getCurrentUser();
+      _logApiCall('getCurrentUser', 'Success: User ${user['username']} fetched');
+      _updateDebugInfo('current_user', {
+        'id': user['id'],
+        'username': user['username'],
+        'diamonds': user['diamonds'],
+        'first_name': user['first_name'],
+        'last_name': user['last_name'],
+      });
+      
       setState(() {
         _gifts = gifts;
         _currentUser = user;
         _giftsLoading = false;
       });
     } catch (e) {
+      _logApiCall('Error', 'Failed to fetch data: $e');
       setState(() {
         _giftsLoading = false;
       });
@@ -412,6 +498,138 @@ class _LivePageState extends State<LivePage>
     print('PK Battle: Host $hostNumber received $diamonds diamonds');
   }
 
+  void _logApiCall(String apiName, String details) {
+    final timestamp = DateTime.now().toString().substring(11, 19);
+    final logEntry = '[$timestamp] $apiName: $details';
+    setState(() {
+      _apiLogs.add(logEntry);
+      if (_apiLogs.length > 50) {
+        _apiLogs.removeAt(0); // Keep only last 50 logs
+      }
+    });
+    debugPrint(logEntry);
+  }
+  
+  // Static method to capture API logs from anywhere
+  static void captureApiLog(String logMessage) {
+    final timestamp = DateTime.now().toString().substring(11, 19);
+    final logEntry = '[$timestamp] $logMessage';
+    _globalApiLogs.add(logEntry);
+    
+    // Keep only last 100 logs to prevent memory issues
+    if (_globalApiLogs.length > 100) {
+      _globalApiLogs.removeAt(0);
+    }
+    
+    // Notify listeners if callback is set
+    if (_onLogAdded != null) {
+      _onLogAdded!(logEntry);
+    }
+    
+    // Also print to console
+    debugPrint(logEntry);
+  }
+  
+  // Set callback for when new logs are added
+  void _setLogCallback() {
+    _LivePageState._onLogAdded = (String logEntry) {
+      if (mounted) {
+        setState(() {
+          _apiLogs.add(logEntry);
+          if (_apiLogs.length > 100) {
+            _apiLogs.removeAt(0);
+          }
+        });
+      }
+    };
+    
+    // Set up the API logger callback
+    try {
+      LivePageLogger.captureLog = (String message) {
+        if (mounted) {
+          setState(() {
+            _apiLogs.add(message);
+            if (_apiLogs.length > 100) {
+              _apiLogs.removeAt(0);
+            }
+          });
+        }
+      };
+    } catch (e) {
+      debugPrint('Failed to set up API logger: $e');
+    }
+  }
+  
+  // Get all captured logs
+  List<String> get _allApiLogs {
+    final allLogs = <String>[];
+    allLogs.addAll(_apiLogs);
+    allLogs.addAll(_LivePageState._globalApiLogs);
+    return allLogs;
+  }
+
+  void _updateDebugInfo(String key, dynamic value) {
+    setState(() {
+      _debugInfo[key] = value;
+    });
+  }
+
+  Widget _buildInfoSection(String title, Map<String, String> data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: data.entries.map((entry) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        '${entry.key}:',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        entry.value,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _handlePKBattleNotification(String message, {
     String? leftHostId,
     String? rightHostId,
@@ -460,34 +678,33 @@ class _LivePageState extends State<LivePage>
     // For all devices, try to fetch the PK battle ID if not already available
     if (PKEvents.currentPKBattleId == null) {
       debugPrint('🔍 Fetching PK battle ID for device...');
-      
       // Get current user ID from shared preferences
       final prefs = await SharedPreferences.getInstance();
       final currentUserId = prefs.getInt('user_id');
-      
       if (currentUserId != null) {
         try {
-          // Wait 2 seconds for the backend to create the PK battle
-          debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
-          await Future.delayed(Duration(seconds: 2));
-          
-          // Use the new backend API to get the latest active PK battle for this user
-          final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
-          if (pkBattle != null) {
-            PKEvents.setCurrentPKBattleId(pkBattle['id']);
-            
-            // Calculate start time from server response
-            if (pkBattle['start_time'] != null) {
-              final serverStartTime = DateTime.parse(pkBattle['start_time']);
-              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
-              debugPrint('⏰ Server start time: $serverStartTime');
-              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+          for (int attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) {
+              debugPrint('⏳ Waiting 3 seconds before next PK battle fetch attempt...');
+              await Future.delayed(Duration(seconds: 3));
             }
-            
-            debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
-            setState(() {}); // Refresh UI to show progress bar
-          } else {
-            debugPrint('❌ Failed to fetch PK battle data from server');
+            debugPrint('🔍 Attempt ${attempt + 1} to fetch PK battle for user $currentUserId');
+            final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
+            if (pkBattle != null) {
+              PKEvents.setCurrentPKBattleId(pkBattle['id']);
+              // Calculate start time from server response
+              if (pkBattle['start_time'] != null) {
+                final serverStartTime = DateTime.parse(pkBattle['start_time']);
+                PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+                debugPrint('⏰ Server start time: $serverStartTime');
+                debugPrint('⏰ End time will be:  ${serverStartTime.add(Duration(minutes: 3))}');
+              }
+              debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
+              setState(() {}); // Refresh UI to show progress bar
+              break;
+            } else {
+              debugPrint('❌ Failed to fetch PK battle data from server (attempt ${attempt + 1})');
+            }
           }
         } catch (e) {
           debugPrint('❌ Error fetching PK battle ID: $e');
@@ -543,9 +760,11 @@ class _LivePageState extends State<LivePage>
         debugPrint('⏰ Set local start time: ${PKEvents.currentPKBattleStartTime}');
       }
       
-      // Fetch PK battle ID if not available
+      // Fetch PK battle ID if not available (with small delay for backend timing)
       if (PKEvents.currentPKBattleId == null) {
-        _fetchPKBattleDataFromServer();
+        Future.delayed(Duration(seconds: 1), () {
+          _fetchPKBattleDataFromServer();
+        });
       }
     } else {
       debugPrint('🏁 Exiting PK battle state...');
@@ -561,36 +780,102 @@ class _LivePageState extends State<LivePage>
   
   void _fetchPKBattleDataFromServer() async {
     debugPrint('🔍 Fetching PK battle data from server...');
+    _logApiCall('PK Battle', 'Fetching PK battle data...');
     
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final currentUserId = prefs.getInt('user_id');
-      
-      if (currentUserId != null) {
-        // Wait 2 seconds for the backend to create the PK battle
-        debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
-        await Future.delayed(Duration(seconds: 2));
-        final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
-        if (pkBattle != null) {
-          PKEvents.setCurrentPKBattleId(pkBattle['id']);
+      // For audience, use stream ID instead of user ID
+      if (!widget.isHost) {
+        // Get stream ID from debug info (already extracted in initState)
+        final streamId = _debugInfo['stream_id'];
+        
+        if (streamId != null) {
+          _logApiCall('getActivePKBattleByStreamId', 'Calling API with stream ID: $streamId');
           
-          // Use server start time for accurate timer
-          if (pkBattle['start_time'] != null) {
-            final serverStartTime = DateTime.parse(pkBattle['start_time']);
-            PKEvents.setCurrentPKBattleStartTime(serverStartTime);
-            debugPrint('⏰ Server start time: $serverStartTime');
-            debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+          debugPrint('🔍 Fetching PK battle for stream: $streamId');
+          final pkBattle = await ApiService.getActivePKBattleByStreamId(streamId);
+          
+          if (pkBattle != null) {
+            _logApiCall('getActivePKBattleByStreamId', 'Success: PK Battle ${pkBattle['pk_battle_id']} found');
+            _updateDebugInfo('pk_battle', pkBattle);
+            
+            // Set PK battle ID and start time
+            PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
+            
+            if (pkBattle['start_time'] != null) {
+              final serverStartTime = DateTime.parse(pkBattle['start_time']);
+              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+              debugPrint('⏰ Server start time: $serverStartTime');
+              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+              _updateDebugInfo('pk_battle_start_time', serverStartTime.toString());
+            }
+            
+            // Set host information for audience - BOTH hosts
+            setState(() {
+              _leftHostId = pkBattle['left_host_id']?.toString();
+              _rightHostId = pkBattle['right_host_id']?.toString();
+              _showPKBattleTimer = true; // Show timer for audience
+            });
+            
+            // Update debug info with both hosts
+            _updateDebugInfo('left_host_id', pkBattle['left_host_id']);
+            _updateDebugInfo('right_host_id', pkBattle['right_host_id']);
+            _updateDebugInfo('left_score', pkBattle['left_score']);
+            _updateDebugInfo('right_score', pkBattle['right_score']);
+            _updateDebugInfo('left_stream_id', pkBattle['left_stream_id']);
+            _updateDebugInfo('right_stream_id', pkBattle['right_stream_id']);
+            _updateDebugInfo('pk_battle_status', pkBattle['status']);
+            
+            debugPrint('✅ Got PK battle data from server: ${pkBattle['pk_battle_id']}');
+            debugPrint('✅ Left Host ID: ${pkBattle['left_host_id']}, Right Host ID: ${pkBattle['right_host_id']}');
+            debugPrint('✅ Left Score: ${pkBattle['left_score']}, Right Score: ${pkBattle['right_score']}');
+            
+            setState(() {}); // Refresh UI to show progress bar and timer
+          } else {
+            _logApiCall('getActivePKBattleByStreamId', 'No active PK battle found for stream: $streamId');
+            debugPrint('❌ No active PK battle found for stream: $streamId');
           }
-          
-          debugPrint('✅ Got PK battle data from server: ${pkBattle['id']}');
-          setState(() {}); // Refresh UI
         } else {
-          debugPrint('❌ No active PK battle found for user $currentUserId');
+          _logApiCall('Error', 'Stream ID not available for audience');
+          debugPrint('❌ Stream ID not available for audience');
         }
       } else {
-        debugPrint('❌ User ID not found in shared preferences');
+        // For hosts, use user ID (existing logic)
+        final prefs = await SharedPreferences.getInstance();
+        final currentUserId = prefs.getInt('user_id');
+        
+        if (currentUserId != null) {
+          _logApiCall('getLatestActivePKBattleForUser', 'User ID: $currentUserId');
+          // Wait 2 seconds for the backend to create the PK battle
+          debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
+          await Future.delayed(Duration(seconds: 2));
+          final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
+          if (pkBattle != null) {
+            _logApiCall('getLatestActivePKBattleForUser', 'Success: PK Battle ${pkBattle['id']} found');
+            _updateDebugInfo('pk_battle', pkBattle);
+            
+            PKEvents.setCurrentPKBattleId(pkBattle['id']);
+            
+            // Use server start time for accurate timer
+            if (pkBattle['start_time'] != null) {
+              final serverStartTime = DateTime.parse(pkBattle['start_time']);
+              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+              debugPrint('⏰ Server start time: $serverStartTime');
+              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+            }
+            
+            debugPrint('✅ Got PK battle data from server: ${pkBattle['id']}');
+            setState(() {}); // Refresh UI
+          } else {
+            _logApiCall('getLatestActivePKBattleForUser', 'No active PK battle found');
+            debugPrint('❌ No active PK battle found for user $currentUserId');
+          }
+        } else {
+          _logApiCall('Error', 'User ID not found in shared preferences');
+          debugPrint('❌ User ID not found in shared preferences');
+        }
       }
     } catch (e) {
+      _logApiCall('Error', 'Failed to fetch PK battle data: $e');
       debugPrint('❌ Error fetching PK battle data: $e');
     }
   }
@@ -650,12 +935,12 @@ class _LivePageState extends State<LivePage>
                 + (winnerId == 0
                   ? 'Draw'
                   : (winnerId == (result['left_host_id'])
-                      ? (_leftHostName ?? 'Left')
-                      : (_rightHostName ?? 'Right')))),
+                      ? (_leftHostName ?? _leftHostId ?? 'Left')
+                      : (_rightHostName ?? _rightHostId ?? 'Right')))),
               const SizedBox(height: 12),
               Text('Final Scores:\n'
-                '${_leftHostName ?? 'Left'}: $leftScore\n'
-                '${_rightHostName ?? 'Right'}: $rightScore'),
+                '${_leftHostName ?? _leftHostId ?? 'Left'}: $leftScore\n'
+                '${_rightHostName ?? _rightHostId ?? 'Right'}: $rightScore'),
             ],
           ),
           actions: [
@@ -1234,6 +1519,212 @@ class _LivePageState extends State<LivePage>
                 ],
               ),
             ),
+            // Audience Debug Info Panel (audience only)
+            if (!widget.isHost)
+              Positioned(
+                top: 50,
+                right: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Toggle button
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _showDebugInfo = !_showDebugInfo;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.orange, width: 1),
+                        ),
+                        child: Text(
+                          _showDebugInfo ? 'Hide Info' : 'Show Info',
+                          style: TextStyle(
+                            color: _showDebugInfo ? Colors.black : Colors.orange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Debug Info Panel
+                    if (_showDebugInfo)
+                      Container(
+                        width: 300,
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.orange, width: 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Header
+                            Row(
+                              children: [
+                                const Icon(Icons.info_outline, color: Colors.orange, size: 16),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Audience Info Panel',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _apiLogs.clear();
+                                      _debugInfo.clear();
+                                      _LivePageState._globalApiLogs.clear();
+                                    });
+                                  },
+                                  child: const Icon(Icons.clear, color: Colors.grey, size: 16),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            
+                            // Basic Info
+                            _buildInfoSection('Basic Info', {
+                              'Is Host': widget.isHost.toString(),
+                              'Live ID': widget.liveID,
+                              'Local User ID': widget.localUserID,
+                              'Receiver ID': widget.receiverId.toString(),
+                              'Has Active PK Battle': (widget.activePKBattle != null).toString(),
+                            }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // PK Battle Info
+                            if (PKEvents.currentPKBattleId != null)
+                              _buildInfoSection('PK Battle Info', {
+                                'PK Battle ID': PKEvents.currentPKBattleId.toString(),
+                                'Left Host ID': _debugInfo['left_host_id']?.toString() ?? 'N/A',
+                                'Right Host ID': _debugInfo['right_host_id']?.toString() ?? 'N/A',
+                                'Left Score': _debugInfo['left_score']?.toString() ?? '0',
+                                'Right Score': _debugInfo['right_score']?.toString() ?? '0',
+                                'Left Stream ID': _debugInfo['left_stream_id']?.toString() ?? 'N/A',
+                                'Right Stream ID': _debugInfo['right_stream_id']?.toString() ?? 'N/A',
+                                'Status': _debugInfo['pk_battle_status']?.toString() ?? 'N/A',
+                                'Start Time': _debugInfo['pk_battle_start_time']?.toString() ?? 'N/A',
+                              }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // User Info
+                            if (_debugInfo['current_user'] != null)
+                              _buildInfoSection('User Info', {
+                                'User ID': _debugInfo['current_user']['id']?.toString() ?? 'N/A',
+                                'Username': _debugInfo['current_user']['username']?.toString() ?? 'N/A',
+                                'Diamonds': _debugInfo['current_user']['diamonds']?.toString() ?? '0',
+                                'Name': '${_debugInfo['current_user']['first_name'] ?? ''} ${_debugInfo['current_user']['last_name'] ?? ''}'.trim(),
+                              }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Stream Info
+                            _buildInfoSection('Stream Info', {
+                              'Stream ID': _debugInfo['stream_id']?.toString() ?? 'N/A',
+                              'Gifts Count': _debugInfo['gifts_count']?.toString() ?? '0',
+                              'Show PK Timer': _showPKBattleTimer.toString(),
+                              'Show PK Notification': _showPKBattleNotification.toString(),
+                            }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // API Logs
+                            Row(
+                              children: [
+                                const Text(
+                                  'API Logs (All Captured):',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${_allApiLogs.length}',
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              height: 200,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[900],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ListView.builder(
+                                itemCount: _allApiLogs.length,
+                                itemBuilder: (context, index) {
+                                  final log = _allApiLogs[index];
+                                  Color logColor = Colors.white;
+                                  
+                                  // Color code different types of logs
+                                  if (log.contains('🚀')) {
+                                    logColor = Colors.blue;
+                                  } else if (log.contains('🔍')) {
+                                    logColor = Colors.cyan;
+                                  } else if (log.contains('📡')) {
+                                    logColor = Colors.yellow;
+                                  } else if (log.contains('✅')) {
+                                    logColor = Colors.green;
+                                  } else if (log.contains('❌')) {
+                                    logColor = Colors.red;
+                                  } else if (log.contains('⚠️')) {
+                                    logColor = Colors.orange;
+                                  } else if (log.contains('💥')) {
+                                    logColor = Colors.purple;
+                                  } else if (log.contains('⏳')) {
+                                    logColor = Colors.grey;
+                                  }
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 2),
+                                    child: Text(
+                                      log,
+                                      style: TextStyle(
+                                        color: logColor,
+                                        fontSize: 9,
+                                        fontFamily: 'monospace',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

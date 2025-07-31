@@ -3,6 +3,27 @@ import 'package:finalchat/models/diamond_history_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+
+// Custom logger function that can be called from anywhere
+void apiLog(String message) {
+  // Print to console
+  apiLog(message);
+  
+  // Try to capture in LivePage if available
+  try {
+    // This will be set by LivePage when it initializes
+    if (LivePageLogger.captureLog != null) {
+      LivePageLogger.captureLog!(message);
+    }
+  } catch (e) {
+    // Ignore if LivePage is not available
+  }
+}
+
+// Static class to hold the log capture function
+class LivePageLogger {
+  static Function(String)? captureLog;
+}
 // import 'package:video_live/models/diamond_history_model.dart';
 
 class StarHistoryEntry {
@@ -220,7 +241,7 @@ class ApiService {
       final userData = await getCurrentUser();
       return userData['diamonds'] ?? 0;
     } catch (e) {
-      print('Error getting user diamonds: $e');
+      apiLog('Error getting user diamonds: $e');
       return 0;
     }
   }
@@ -341,7 +362,7 @@ class ApiService {
         throw Exception('Failed to create audio live: ${response.body}');
       }
     } catch (e) {
-      print('Error creating audio live: $e');
+      apiLog('Error creating audio live: $e');
       rethrow;
     }
   }
@@ -374,7 +395,7 @@ class ApiService {
         throw Exception('Failed to create video live: ${response.body}');
       }
     } catch (e) {
-      print('Error creating video live: $e');
+      apiLog('Error creating video live: $e');
       rethrow;
     }
   }
@@ -391,7 +412,7 @@ class ApiService {
       );
       return matchingMusic?['id'];
     } catch (e) {
-      print('Error getting music ID: $e');
+      apiLog('Error getting music ID: $e');
       return null;
     }
   }
@@ -499,7 +520,7 @@ class ApiService {
       }
       throw Exception('Failed to load user profile');
     } catch (e) {
-      print('Error fetching user profile: $e');
+      apiLog('Error fetching user profile: $e');
       return {};
     }
   }
@@ -515,7 +536,7 @@ class ApiService {
       }
       throw Exception('Failed to load background images');
     } catch (e) {
-      print('Error fetching background images: $e');
+      apiLog('Error fetching background images: $e');
       return [];
     }
   }
@@ -531,7 +552,7 @@ class ApiService {
       }
       throw Exception('Failed to load music');
     } catch (e) {
-      print('Error fetching music: $e');
+      apiLog('Error fetching music: $e');
       return [];
     }
   }
@@ -863,32 +884,208 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>?> getLatestActivePKBattleForUser(int userId) async {
+    final startTime = DateTime.now();
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    
     try {
+      apiLog('🚀 [API-$requestId] Starting PK battle fetch for user $userId at ${startTime.toString()}');
+      apiLog('🚀 [API-$requestId] Request URL: $baseUrl/pk-battle/user/$userId');
+      apiLog('🚀 [API-$requestId] Headers: $_headers');
+      
+      // Add 10 second delay before calling the API
+      apiLog('⏳ [API-$requestId] Waiting 10 seconds before API call...');
+      await Future.delayed(Duration(seconds: 10));
+      
+      final apiCallStartTime = DateTime.now();
+      apiLog('🔍 [API-$requestId] Making HTTP GET request at ${apiCallStartTime.toString()}');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/pk-battle/user/$userId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token',
-        },
+        headers: _headers,
       );
 
+      final apiCallEndTime = DateTime.now();
+      final apiCallDuration = apiCallEndTime.difference(apiCallStartTime);
+      final totalDuration = apiCallEndTime.difference(startTime);
+      
+      apiLog('📡 [API-$requestId] API call completed at ${apiCallEndTime.toString()}');
+      apiLog('📡 [API-$requestId] API call duration: ${apiCallDuration.inMilliseconds}ms');
+      apiLog('📡 [API-$requestId] Total time including delay: ${totalDuration.inMilliseconds}ms');
+      apiLog('📡 [API-$requestId] HTTP Status: ${response.statusCode}');
+      apiLog('📡 [API-$requestId] Response Headers: ${response.headers}');
+      apiLog('📡 [API-$requestId] Response Body Length: ${response.body.length} characters');
+      apiLog('📡 [API-$requestId] Full Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> battles = json.decode(response.body);
-        if (battles.isNotEmpty) {
-          // Get the latest active battle (first one in the list)
-          final latestBattle = battles.first;
-          return {
-            'id': latestBattle['pk_battle_id'],
-            'start_time': latestBattle['start_time'],
-            'left_host_id': latestBattle['left_host_id'],
-            'right_host_id': latestBattle['right_host_id'],
-            'status': latestBattle['status'],
-          };
+        try {
+          final decoded = json.decode(response.body);
+          if (decoded is List) {
+            apiLog('📡 [API-$requestId] JSON parsed as List with ${decoded.length} items');
+            if (decoded.isNotEmpty) {
+              final latestBattle = decoded.first;
+              apiLog('📡 [API-$requestId] Latest battle data: $latestBattle');
+              apiLog('📡 [API-$requestId] Latest battle keys: ${latestBattle.keys.toList()}');
+              final result = {
+                'id': latestBattle['pk_battle_id'],
+                'start_time': latestBattle['start_time'],
+                'left_host_id': latestBattle['left_host_id'],
+                'right_host_id': latestBattle['right_host_id'],
+                'status': latestBattle['status'],
+              };
+              apiLog('✅ [API-$requestId] SUCCESS! Found PK battle for user $userId');
+              apiLog('✅ [API-$requestId] PK Battle ID: ${result['id']}');
+              apiLog('✅ [API-$requestId] Final result object: $result');
+              return result;
+            } else {
+              apiLog('⚠️ [API-$requestId] No battles found in response (empty list)');
+              return null;
+            }
+          } else if (decoded is Map) {
+            apiLog('📡 [API-$requestId] JSON parsed as Map');
+            apiLog('📡 [API-$requestId] Map keys: ${decoded.keys.toList()}');
+            if (decoded['pk_battle_id'] != null) {
+              final result = {
+                'id': decoded['pk_battle_id'],
+                'start_time': decoded['start_time'],
+                'left_host_id': decoded['left_host_id'],
+                'right_host_id': decoded['right_host_id'],
+                'status': decoded['status'],
+              };
+              apiLog('✅ [API-$requestId] SUCCESS! Found PK battle for user $userId (Map response)');
+              apiLog('✅ [API-$requestId] PK Battle ID: ${result['id']}');
+              apiLog('✅ [API-$requestId] Final result object: $result');
+              return result;
+            } else {
+              apiLog('⚠️ [API-$requestId] Map response but no pk_battle_id field');
+              return null;
+            }
+          } else {
+            apiLog('❌ [API-$requestId] Unexpected response type: ${decoded.runtimeType}');
+            return null;
+          }
+        } catch (jsonError) {
+          apiLog('❌ [API-$requestId] JSON parsing failed: $jsonError');
+          apiLog('❌ [API-$requestId] Raw response body that failed to parse: ${response.body}');
+          return null;
+        }
+      } else {
+        apiLog('❌ [API-$requestId] HTTP request failed');
+        apiLog('❌ [API-$requestId] Status code: ${response.statusCode}');
+        apiLog('❌ [API-$requestId] Error response body: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      final totalDuration = DateTime.now().difference(startTime);
+      apiLog('💥 [API-$requestId] EXCEPTION occurred after ${totalDuration.inMilliseconds}ms');
+      apiLog('💥 [API-$requestId] Exception type: ${e.runtimeType}');
+      apiLog('💥 [API-$requestId] Exception message: $e');
+      apiLog('💥 [API-$requestId] Stack trace: ${StackTrace.current}');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getActivePKBattleByStreamId(int streamId) async {
+    final startTime = DateTime.now();
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    try {
+      apiLog('🚀 [API-$requestId] Starting PK battle fetch for stream $streamId at ${startTime.toString()}');
+      apiLog('🚀 [API-$requestId] Request URL: $baseUrl/pk-battle/stream/$streamId');
+      apiLog('🚀 [API-$requestId] Headers: $_headers');
+      
+      // Try up to 3 times with 1-second intervals to handle backend timing
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        final attemptStartTime = DateTime.now();
+        apiLog('🔍 [API-$requestId] Attempt $attempt started at ${attemptStartTime.toString()}');
+        apiLog('🔍 [API-$requestId] Making HTTP GET request to: $baseUrl/pk-battle/stream/$streamId');
+        
+        final response = await http.get(
+          Uri.parse('$baseUrl/pk-battle/stream/$streamId'),
+          headers: _headers,
+        );
+
+        final attemptEndTime = DateTime.now();
+        final attemptDuration = attemptEndTime.difference(attemptStartTime);
+        
+        apiLog('📡 [API-$requestId] Attempt $attempt completed at ${attemptEndTime.toString()}');
+        apiLog('📡 [API-$requestId] Attempt $attempt duration: ${attemptDuration.inMilliseconds}ms');
+        apiLog('📡 [API-$requestId] Attempt $attempt - HTTP Status: ${response.statusCode}');
+        apiLog('📡 [API-$requestId] Attempt $attempt - Response Headers: ${response.headers}');
+        apiLog('📡 [API-$requestId] Attempt $attempt - Response Body Length: ${response.body.length} characters');
+        apiLog('📡 [API-$requestId] Attempt $attempt - Full Response Body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          try {
+            final Map<String, dynamic> battle = json.decode(response.body);
+            apiLog('📡 [API-$requestId] Attempt $attempt - JSON parsed successfully');
+            apiLog('📡 [API-$requestId] Attempt $attempt - Parsed Response Keys: ${battle.keys.toList()}');
+            apiLog('📡 [API-$requestId] Attempt $attempt - Full Parsed Response: $battle');
+            
+            // Return the battle data if pk_battle_id exists
+            if (battle['pk_battle_id'] != null) {
+              final totalDuration = DateTime.now().difference(startTime);
+              apiLog('✅ [API-$requestId] SUCCESS on attempt $attempt!');
+              apiLog('✅ [API-$requestId] PK Battle ID found: ${battle['pk_battle_id']}');
+              apiLog('✅ [API-$requestId] Total request duration: ${totalDuration.inMilliseconds}ms');
+              apiLog('✅ [API-$requestId] Returning PK battle data...');
+              
+              final result = {
+                'pk_battle_id': battle['pk_battle_id'],
+                'start_time': battle['start_time'],
+                'left_host_id': battle['left_host_id'],
+                'right_host_id': battle['right_host_id'],
+                'left_stream_id': battle['left_stream_id'],
+                'right_stream_id': battle['right_stream_id'],
+                'left_score': battle['left_score'],
+                'right_score': battle['right_score'],
+                'status': battle['status'],
+              };
+              
+              apiLog('✅ [API-$requestId] Final result object: $result');
+              return result;
+            } else {
+              apiLog('⚠️ [API-$requestId] PK battle ID is null on attempt $attempt');
+              apiLog('⚠️ [API-$requestId] Available fields: ${battle.keys.toList()}');
+              apiLog('⚠️ [API-$requestId] Battle object: $battle');
+              
+              if (attempt < 3) {
+                apiLog('⏳ [API-$requestId] Waiting 1 second before attempt ${attempt + 1}...');
+                await Future.delayed(Duration(seconds: 1));
+              }
+            }
+          } catch (jsonError) {
+            apiLog('❌ [API-$requestId] JSON parsing failed on attempt $attempt: $jsonError');
+            apiLog('❌ [API-$requestId] Raw response body that failed to parse: ${response.body}');
+            
+            if (attempt < 3) {
+              apiLog('⏳ [API-$requestId] Waiting 1 second before attempt ${attempt + 1}...');
+              await Future.delayed(Duration(seconds: 1));
+            }
+          }
+        } else {
+          apiLog('❌ [API-$requestId] HTTP request failed on attempt $attempt');
+          apiLog('❌ [API-$requestId] Status code: ${response.statusCode}');
+          apiLog('❌ [API-$requestId] Error response body: ${response.body}');
+          apiLog('❌ [API-$requestId] Response headers: ${response.headers}');
+          
+          if (attempt < 3) {
+            apiLog('⏳ [API-$requestId] Waiting 1 second before attempt ${attempt + 1}...');
+            await Future.delayed(Duration(seconds: 1));
+          }
         }
       }
+      
+      final totalDuration = DateTime.now().difference(startTime);
+      apiLog('❌ [API-$requestId] FAILED after 3 attempts');
+      apiLog('❌ [API-$requestId] Total time spent: ${totalDuration.inMilliseconds}ms');
+      apiLog('❌ [API-$requestId] No PK battle found for stream $streamId');
       return null;
     } catch (e) {
-      print('Error fetching latest active PK battle for user $userId: $e');
+      final totalDuration = DateTime.now().difference(startTime);
+      apiLog('💥 [API-$requestId] EXCEPTION occurred after ${totalDuration.inMilliseconds}ms');
+      apiLog('💥 [API-$requestId] Exception type: ${e.runtimeType}');
+      apiLog('💥 [API-$requestId] Exception message: $e');
+      apiLog('💥 [API-$requestId] Stack trace: ${StackTrace.current}');
       return null;
     }
   }
@@ -900,26 +1097,86 @@ class ApiService {
     required int giftId,
     required int amount,
   }) async {
+    final startTime = DateTime.now();
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    
     try {
+      apiLog('🚀 [GIFT-$requestId] Starting PK battle gift send at ${startTime.toString()}');
+      apiLog('🚀 [GIFT-$requestId] Request URL: $baseUrl/pk-battle/gift');
+      apiLog('🚀 [GIFT-$requestId] Headers: $_headers');
+      
+      final requestBody = {
+        'pk_battle_id': pkBattleId,
+        'sender_id': senderId,
+        'receiver_id': receiverId,
+        'gift_id': giftId,
+        'amount': amount,
+      };
+      
+      apiLog('🚀 [GIFT-$requestId] Request Body: $requestBody');
+      apiLog('🚀 [GIFT-$requestId] JSON encoded body: ${json.encode(requestBody)}');
+      
+      final apiCallStartTime = DateTime.now();
+      apiLog('🔍 [GIFT-$requestId] Making HTTP POST request at ${apiCallStartTime.toString()}');
+      
       final response = await http.post(
         Uri.parse('$baseUrl/pk-battle/gift'),
         headers: _headers,
-        body: json.encode({
-          'pk_battle_id': pkBattleId,
-          'sender_id': senderId,
-          'receiver_id': receiverId,
-          'gift_id': giftId,
-          'amount': amount,
-        }),
+        body: json.encode(requestBody),
       );
       
+      final apiCallEndTime = DateTime.now();
+      final apiCallDuration = apiCallEndTime.difference(apiCallStartTime);
+      final totalDuration = apiCallEndTime.difference(startTime);
+      
+      apiLog('📡 [GIFT-$requestId] API call completed at ${apiCallEndTime.toString()}');
+      apiLog('📡 [GIFT-$requestId] API call duration: ${apiCallDuration.inMilliseconds}ms');
+      apiLog('📡 [GIFT-$requestId] Total request duration: ${totalDuration.inMilliseconds}ms');
+      apiLog('📡 [GIFT-$requestId] HTTP Status: ${response.statusCode}');
+      apiLog('📡 [GIFT-$requestId] Response Headers: ${response.headers}');
+      apiLog('📡 [GIFT-$requestId] Response Body Length: ${response.body.length} characters');
+      apiLog('📡 [GIFT-$requestId] Full Response Body: ${response.body}');
+      
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['status'] == 'score updated';
+        try {
+          final data = json.decode(response.body);
+          apiLog('📡 [GIFT-$requestId] JSON parsed successfully');
+          apiLog('📡 [GIFT-$requestId] Response data: $data');
+          apiLog('📡 [GIFT-$requestId] Response data keys: ${data.keys.toList()}');
+          
+          final isSuccess = data['status'] == 'score updated';
+          apiLog('📡 [GIFT-$requestId] Status check: ${data['status']} == "score updated" = $isSuccess');
+          
+          if (isSuccess) {
+            apiLog('✅ [GIFT-$requestId] SUCCESS! Gift sent successfully');
+            apiLog('✅ [GIFT-$requestId] PK Battle ID: $pkBattleId');
+            apiLog('✅ [GIFT-$requestId] Sender ID: $senderId');
+            apiLog('✅ [GIFT-$requestId] Receiver ID: $receiverId');
+            apiLog('✅ [GIFT-$requestId] Gift ID: $giftId');
+            apiLog('✅ [GIFT-$requestId] Amount: $amount');
+          } else {
+            apiLog('⚠️ [GIFT-$requestId] Gift send failed - status not "score updated"');
+            apiLog('⚠️ [GIFT-$requestId] Actual status: ${data['status']}');
+          }
+          
+          return isSuccess;
+        } catch (jsonError) {
+          apiLog('❌ [GIFT-$requestId] JSON parsing failed: $jsonError');
+          apiLog('❌ [GIFT-$requestId] Raw response body that failed to parse: ${response.body}');
+          return false;
+        }
+      } else {
+        apiLog('❌ [GIFT-$requestId] HTTP request failed');
+        apiLog('❌ [GIFT-$requestId] Status code: ${response.statusCode}');
+        apiLog('❌ [GIFT-$requestId] Error response body: ${response.body}');
+        return false;
       }
-      return false;
     } catch (e) {
-      print('Error sending PK battle gift: $e');
+      final totalDuration = DateTime.now().difference(startTime);
+      apiLog('💥 [GIFT-$requestId] EXCEPTION occurred after ${totalDuration.inMilliseconds}ms');
+      apiLog('💥 [GIFT-$requestId] Exception type: ${e.runtimeType}');
+      apiLog('💥 [GIFT-$requestId] Exception message: $e');
+      apiLog('💥 [GIFT-$requestId] Stack trace: ${StackTrace.current}');
       return false;
     }
   }

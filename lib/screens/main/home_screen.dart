@@ -97,6 +97,31 @@ class _HomeScreenState extends State<HomeScreen> {
             ? (userData['username'] ?? userData['id'].toString())
             : DateTime.now().millisecondsSinceEpoch.toString();
 
+    // Check for active PK battle if audience is joining
+    Map<String, dynamic>? activePKBattle;
+    if (!isHost) {
+      try {
+        // Extract stream ID from live_url (e.g., "live_1753954952241_host" -> 1753954952241)
+        if (liveID.startsWith('live_')) {
+          final parts = liveID.split('_');
+          if (parts.length >= 2) {
+            final streamId = int.tryParse(parts[1]);
+            if (streamId != null) {
+              debugPrint('🔍 Checking for active PK battle for stream: $streamId');
+              activePKBattle = await ApiService.getActivePKBattleByStreamId(streamId);
+              if (activePKBattle != null) {
+                debugPrint('🎮 Found active PK battle: ${activePKBattle['id']}');
+              } else {
+                debugPrint('❌ No active PK battle found for stream: $streamId');
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('❌ Error checking for PK battle: $e');
+      }
+    }
+
     if (mounted) {
       Navigator.push(
         context,
@@ -107,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 localUserID: userID,
                 isHost: isHost,
                 hostId: hostId,
+                activePKBattle: activePKBattle, // Pass PK battle info to live screen
               ),
         ),
       );

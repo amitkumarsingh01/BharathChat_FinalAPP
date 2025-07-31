@@ -222,11 +222,41 @@ class PKEvents {
             if (leftUserDetails != null && rightUserDetails != null) {
               try {
                 debugPrint('🎯 Calling startPKBattle API for hosts: ${leftUserDetails['id']} vs ${rightUserDetails['id']}');
+                
+                // Get all video lives to find the stream IDs for both hosts
+                final videoLives = await ApiService.getVideoLives();
+                int leftStreamId = 0;
+                int rightStreamId = 0;
+                
+                // Find stream IDs for both hosts
+                for (final live in videoLives) {
+                  if (live['user_id'] == leftUserDetails['id']) {
+                    final liveUrl = live['live_url'] ?? '';
+                    if (liveUrl.startsWith('live_')) {
+                      final parts = liveUrl.split('_');
+                      if (parts.length >= 2) {
+                        leftStreamId = int.tryParse(parts[1]) ?? 0;
+                        debugPrint('🎯 Found left stream ID: $leftStreamId from live_url: $liveUrl for host: ${leftUserDetails['id']}');
+                      }
+                    }
+                  }
+                  if (live['user_id'] == rightUserDetails['id']) {
+                    final liveUrl = live['live_url'] ?? '';
+                    if (liveUrl.startsWith('live_')) {
+                      final parts = liveUrl.split('_');
+                      if (parts.length >= 2) {
+                        rightStreamId = int.tryParse(parts[1]) ?? 0;
+                        debugPrint('🎯 Found right stream ID: $rightStreamId from live_url: $liveUrl for host: ${rightUserDetails['id']}');
+                      }
+                    }
+                  }
+                }
+                
                 final pkBattleResponse = await ApiService.startPKBattle(
                   leftHostId: leftUserDetails['id'],
                   rightHostId: rightUserDetails['id'],
-                  leftStreamId: 0,
-                  rightStreamId: 0,
+                  leftStreamId: leftStreamId,
+                  rightStreamId: rightStreamId,
                 );
                 
                 // Store the PK battle ID and start time
