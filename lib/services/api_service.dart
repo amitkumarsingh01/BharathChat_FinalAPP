@@ -7,7 +7,7 @@ import 'dart:io';
 // Custom logger function that can be called from anywhere
 void apiLog(String message) {
   // Print to console
-  apiLog(message);
+  print(message);
   
   // Try to capture in LivePage if available
   try {
@@ -892,9 +892,9 @@ class ApiService {
       apiLog('🚀 [API-$requestId] Request URL: $baseUrl/pk-battle/user/$userId');
       apiLog('🚀 [API-$requestId] Headers: $_headers');
       
-      // Add 10 second delay before calling the API
-      apiLog('⏳ [API-$requestId] Waiting 10 seconds before API call...');
-      await Future.delayed(Duration(seconds: 10));
+      // Add 2 second delay before calling the API (reduced from 10 seconds)
+      apiLog('⏳ [API-$requestId] Waiting 2 seconds before API call...');
+      await Future.delayed(Duration(seconds: 2));
       
       final apiCallStartTime = DateTime.now();
       apiLog('🔍 [API-$requestId] Making HTTP GET request at ${apiCallStartTime.toString()}');
@@ -990,17 +990,17 @@ class ApiService {
     
     try {
       apiLog('🚀 [API-$requestId] Starting PK battle fetch for stream $streamId at ${startTime.toString()}');
-      apiLog('🚀 [API-$requestId] Request URL: $baseUrl/pk-battle/stream/$streamId');
+      apiLog('🚀 [API-$requestId] Request URL: $baseUrl/api/pk-battle/stream/$streamId');
       apiLog('🚀 [API-$requestId] Headers: $_headers');
       
       // Try up to 3 times with 1-second intervals to handle backend timing
       for (int attempt = 1; attempt <= 3; attempt++) {
         final attemptStartTime = DateTime.now();
         apiLog('🔍 [API-$requestId] Attempt $attempt started at ${attemptStartTime.toString()}');
-        apiLog('🔍 [API-$requestId] Making HTTP GET request to: $baseUrl/pk-battle/stream/$streamId');
+        apiLog('🔍 [API-$requestId] Making HTTP GET request to: $baseUrl/api/pk-battle/stream/$streamId');
         
         final response = await http.get(
-          Uri.parse('$baseUrl/pk-battle/stream/$streamId'),
+          Uri.parse('$baseUrl/api/pk-battle/stream/$streamId'),
           headers: _headers,
         );
 

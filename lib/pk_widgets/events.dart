@@ -11,6 +11,7 @@ class PKEvents {
     this.onPKBattleStarted,
     this.onPKBattleNotification,
     this.onPKBattleAccepted,
+    this.onPKBattleAutoEnded,
   });
 
   final BuildContext context;
@@ -21,6 +22,7 @@ class PKEvents {
   final void Function(Map<String, dynamic> pkBattleInfo)? onPKBattleStarted;
   final void Function(String message, {String? leftHostId, String? rightHostId, String? leftHostName, String? rightHostName, String? liveId, String? pkBattleId})? onPKBattleNotification;
   final void Function(String leftHostId, String rightHostId, String leftHostName, String rightHostName, String liveId)? onPKBattleAccepted;
+  final void Function(int winnerId, String reason)? onPKBattleAutoEnded;
   
   // Store the current PK battle ID and start time
   static int? _currentPKBattleId;
@@ -259,15 +261,25 @@ class PKEvents {
                   rightStreamId: rightStreamId,
                 );
                 
+                debugPrint('🎯 Full PK battle response: $pkBattleResponse');
+                debugPrint('🎯 PK battle response keys: ${pkBattleResponse?.keys.toList()}');
+                debugPrint('🎯 PK battle ID from response: ${pkBattleResponse?['pk_battle_id']}');
+                debugPrint('🎯 PK battle ID type: ${pkBattleResponse?['pk_battle_id']?.runtimeType}');
+                
                 // Store the PK battle ID and start time
                 _currentPKBattleId = pkBattleResponse?['pk_battle_id'];
                 _currentPKBattleStartTime = DateTime.now();
                 debugPrint('✅ PK Battle started with ID: $_currentPKBattleId');
+                debugPrint('✅ PK Battle ID type: ${_currentPKBattleId?.runtimeType}');
                 
                 // Call the onPKBattleStarted callback if available
                 if (onPKBattleStarted != null && pkBattleResponse != null) {
                   onPKBattleStarted!(pkBattleResponse);
                 }
+                
+                // Update the local pkBattleId variable for immediate UI update
+                final pkBattleIdString = _currentPKBattleId?.toString();
+                debugPrint('🎯 PK Battle ID for notification: $pkBattleIdString');
               } catch (e) {
                 debugPrint('❌ Failed to start PK battle via API: $e');
               }
@@ -281,6 +293,8 @@ class PKEvents {
             
             // Show PK battle started notification with user details
             if (onPKBattleNotification != null) {
+              final pkBattleIdString = _currentPKBattleId?.toString();
+              debugPrint('🎯 Sending PK battle notification with ID: $pkBattleIdString');
               onPKBattleNotification!(
                 '🎮 PK Battle Started! 🎮',
                 leftHostId: leftHostId,
@@ -288,7 +302,7 @@ class PKEvents {
                 leftHostName: leftHostName,
                 rightHostName: rightHostName,
                 liveId: liveId,
-                pkBattleId: _currentPKBattleId?.toString(),
+                pkBattleId: pkBattleIdString,
               );
             }
           } catch (e) {
@@ -400,8 +414,13 @@ class PKEvents {
             event.fromHost.id,
           );
         },
-        onUserOffline: (event, defaultAction) {
+        onUserOffline: (event, defaultAction) async {
           debugPrint('custom event, onUserOffline, event: 24event');
+          debugPrint('🚨 User went offline: ${event.fromHost.id}');
+          
+          // Auto-end PK battle if user goes offline
+          await _autoEndPKBattleOnUserLeave(event.fromHost.id, 'offline');
+          
           defaultAction.call();
 
           removeRequestingHostsMapWhenRemoteHostDone(
@@ -409,8 +428,13 @@ class PKEvents {
             event.fromHost.id,
           );
         },
-        onUserQuited: (event, defaultAction) {
+        onUserQuited: (event, defaultAction) async {
           debugPrint('custom event, onUserQuited, event: 24event');
+          debugPrint('🚨 User quit: ${event.fromHost.id}');
+          
+          // Auto-end PK battle if user quits
+          await _autoEndPKBattleOnUserLeave(event.fromHost.id, 'quit');
+          
           defaultAction.call();
 
           if (event.fromHost.id == ZegoUIKit().getLocalUser().id) {
@@ -425,8 +449,12 @@ class PKEvents {
         onUserJoined: (ZegoUIKitUser user) {
           debugPrint('custom event, onUserJoined: 24user');
         },
-        onUserDisconnected: (ZegoUIKitUser user) {
+        onUserDisconnected: (ZegoUIKitUser user) async {
           debugPrint('custom event, onUserDisconnected: 24user');
+          debugPrint('🚨 User disconnected: ${user.id}');
+          
+          // Auto-end PK battle if user disconnects
+          await _autoEndPKBattleOnUserLeave(user.id, 'disconnected');
         },
         onUserReconnecting: (ZegoUIKitUser user) {
           debugPrint('custom event, onUserReconnecting: 24user');
@@ -454,5 +482,103 @@ class PKEvents {
     }
 
     requestingHostsMapRequestIDNotifier.notifyListeners();
+  }
+
+  Future<void> _autoEndPKBattleOnUserLeave(String userId, String reason) async {
+    try {
+      debugPrint('🚨 Auto-ending PK battle due to user leave: $userId ($reason)');
+      
+      // Check if there's an active PK battle
+      if (_currentPKBattleId != null) {
+        debugPrint('🎮 Found active PK battle: $_currentPKBattleId');
+        
+        // Extract usernames from Zego user IDs (remove 'user_' prefix)
+        String username = userId;
+        if (userId.startsWith('user_')) {
+          username = userId.substring(5);
+        }
+        
+        try {
+          // Get user details to determine if this user is one of the PK battle hosts
+          final userDetails = await ApiService.getUserDetailsByUsername(username);
+          if (userDetails != null) {
+            final userHostId = userDetails['id']?.toString();
+            debugPrint('🎯 User host ID: $userHostId');
+            
+            // Get current PK battle details to check if this user is a participant
+            final pkBattleDetails = await ApiService.getPKBattleById(_currentPKBattleId!);
+            if (pkBattleDetails != null) {
+              final leftHostId = pkBattleDetails['left_host_id']?.toString();
+              final rightHostId = pkBattleDetails['right_host_id']?.toString();
+              
+              debugPrint('🎯 PK Battle hosts - Left: $leftHostId, Right: $rightHostId');
+              
+              // Check if the leaving user is one of the PK battle hosts
+              if (userHostId == leftHostId || userHostId == rightHostId) {
+                debugPrint('🚨 PK Battle host left! Auto-ending PK battle...');
+                
+                // Determine winner (the other host)
+                int winnerId = 0;
+                if (userHostId == leftHostId) {
+                  winnerId = int.tryParse(rightHostId ?? '0') ?? 0;
+                  debugPrint('🏆 Right host wins (left host left)');
+                } else {
+                  winnerId = int.tryParse(leftHostId ?? '0') ?? 0;
+                  debugPrint('🏆 Left host wins (right host left)');
+                }
+                
+                // End the PK battle via API
+                final endResult = await ApiService.endPKBattle(
+                  pkBattleId: _currentPKBattleId!,
+                  leftScore: pkBattleDetails['left_score'] ?? 0,
+                  rightScore: pkBattleDetails['right_score'] ?? 0,
+                  winnerId: winnerId,
+                );
+                
+                                 if (endResult != null) {
+                   debugPrint('✅ PK battle auto-ended successfully');
+                   debugPrint('🏆 Winner ID: $winnerId');
+                   
+                   // Show notification about auto-end
+                   if (onPKBattleNotification != null) {
+                     onPKBattleNotification!(
+                       '🚨 PK Battle Auto-Ended! 🚨\nUser left the stream',
+                       leftHostId: leftHostId,
+                       rightHostId: rightHostId,
+                       liveId: ZegoUIKit().getLocalUser().id,
+                       pkBattleId: _currentPKBattleId?.toString(),
+                     );
+                   }
+                   
+                   // Call auto-ended callback
+                   if (onPKBattleAutoEnded != null) {
+                     onPKBattleAutoEnded!(winnerId, reason);
+                   }
+                } else {
+                  debugPrint('❌ Failed to auto-end PK battle via API');
+                }
+                
+                // Clear the PK battle data
+                _currentPKBattleId = null;
+                _currentPKBattleStartTime = null;
+                
+              } else {
+                debugPrint('ℹ️ Leaving user is not a PK battle host, no action needed');
+              }
+            } else {
+              debugPrint('❌ Could not fetch PK battle details');
+            }
+          } else {
+            debugPrint('❌ Could not fetch user details for: $username');
+          }
+        } catch (e) {
+          debugPrint('❌ Error in auto-end PK battle: $e');
+        }
+      } else {
+        debugPrint('ℹ️ No active PK battle to end');
+      }
+    } catch (e) {
+      debugPrint('❌ Error in _autoEndPKBattleOnUserLeave: $e');
+    }
   }
 } 

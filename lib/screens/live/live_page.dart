@@ -19,6 +19,7 @@ import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_timer.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_progress_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'pk_battle_debug_screen.dart';
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -106,19 +107,25 @@ class _LivePageState extends State<LivePage>
     _updateDebugInfo('has_active_pk_battle', widget.activePKBattle != null);
 
     // Extract stream ID from liveID for audience
-    if (!widget.isHost && widget.liveID.startsWith('live_')) {
+    // Extract stream ID for both hosts and audience
+    if (widget.liveID.startsWith('live_')) {
       final parts = widget.liveID.split('_');
       if (parts.length >= 2) {
         final streamId = int.tryParse(parts[1]);
         if (streamId != null) {
           _updateDebugInfo('stream_id', streamId);
           _logApiCall('Stream ID Extraction', 'Extracted stream ID: $streamId from liveID: ${widget.liveID}');
+          debugPrint('🎯 STREAM ID EXTRACTED: $streamId for ${widget.isHost ? "HOST" : "AUDIENCE"}');
         } else {
           _logApiCall('Stream ID Extraction', 'Failed to parse stream ID from: ${parts[1]}');
+          debugPrint('❌ Failed to parse stream ID from: ${parts[1]}');
         }
       } else {
         _logApiCall('Stream ID Extraction', 'Invalid liveID format: ${widget.liveID}');
+        debugPrint('❌ Invalid liveID format: ${widget.liveID}');
       }
+    } else {
+      debugPrint('❌ LiveID does not start with "live_": ${widget.liveID}');
     }
 
     pkEvents = PKEvents(
@@ -127,6 +134,7 @@ class _LivePageState extends State<LivePage>
       requestingHostsMapRequestIDNotifier: requestingHostsMapRequestIDNotifier,
       onPKBattleNotification: _handlePKBattleNotification,
       onPKBattleAccepted: _handlePKBattleAccepted,
+      onPKBattleAutoEnded: _handlePKBattleAutoEnded,
     );
 
     // Initialize PK battle state if audience joins with active PK battle
@@ -136,6 +144,7 @@ class _LivePageState extends State<LivePage>
       _updateDebugInfo('active_pk_battle_data', widget.activePKBattle);
       
       PKEvents.setCurrentPKBattleId(widget.activePKBattle!['id']);
+      _pkBattleId = widget.activePKBattle!['id']?.toString();
       if (widget.activePKBattle!['start_time'] != null) {
         final serverStartTime = DateTime.parse(widget.activePKBattle!['start_time']);
         PKEvents.setCurrentPKBattleStartTime(serverStartTime);
@@ -152,10 +161,10 @@ class _LivePageState extends State<LivePage>
       
       _updateDebugInfo('left_host_id', widget.activePKBattle!['left_host_id']);
       _updateDebugInfo('right_host_id', widget.activePKBattle!['right_host_id']);
-    } else if (!widget.isHost) {
-      // For audience without pre-loaded PK battle, fetch it immediately
-      debugPrint('🎮 Audience joining - fetching PK battle data...');
-      _logApiCall('Audience Join', 'Fetching PK battle data for audience');
+    } else {
+      // For both hosts and audience without pre-loaded PK battle, fetch it immediately
+      debugPrint('🎮 ${widget.isHost ? "Host" : "Audience"} joining - fetching PK battle data...');
+      _logApiCall('${widget.isHost ? "Host" : "Audience"} Join', 'Fetching PK battle data');
       
       // Fetch PK battle data with delay to allow backend to create PK battle
       Future.delayed(Duration(seconds: 2), () {
@@ -165,6 +174,23 @@ class _LivePageState extends State<LivePage>
 
     // Check if there's an active PK battle when joining
     _checkActivePKBattle();
+    
+    // Start a timer to periodically check for PK battle ID if not available (using stream ID only)
+    Timer.periodic(Duration(seconds: 2), (timer) {
+      if (_pkBattleId == null && PKEvents.currentPKBattleId == null && _showPKBattleTimer) {
+        debugPrint('🔄 Periodic check: PK battle ID still not available, fetching by stream ID...');
+        _fetchPKBattleIdByStreamId();
+      } else if (_pkBattleId != null || PKEvents.currentPKBattleId != null) {
+        if (widget.isHost) {
+          // For hosts, stop timer once PK battle ID is found
+          debugPrint('✅ Periodic check: PK battle ID found, stopping timer for host');
+          timer.cancel();
+        } else {
+          // For audience, keep timer running to maintain PK battle data
+          debugPrint('🔄 Periodic check: PK battle ID found, keeping timer running for audience');
+        }
+      }
+    });
 
     // Listen to live state changes to show/hide timer
     liveStateNotifier.addListener(_onLiveStateChanged);
@@ -638,6 +664,10 @@ class _LivePageState extends State<LivePage>
     String? liveId,
     String? pkBattleId,
   }) {
+    debugPrint('🎯 Received PK battle notification: $message');
+    debugPrint('🎯 PK Battle ID from notification: $pkBattleId');
+    debugPrint('🎯 Current PKEvents PK Battle ID: ${PKEvents.currentPKBattleId}');
+    
     setState(() {
       _showPKBattleNotification = true;
       _pkBattleMessage = message;
@@ -646,7 +676,10 @@ class _LivePageState extends State<LivePage>
       _leftHostName = leftHostName;
       _rightHostName = rightHostName;
       _liveId = liveId;
-      _pkBattleId = pkBattleId;
+      
+      // Update PK battle ID - prioritize the one from notification, then from PKEvents
+      _pkBattleId = pkBattleId ?? PKEvents.currentPKBattleId?.toString();
+      debugPrint('🎯 Final PK Battle ID set to: $_pkBattleId');
       
       // Show timer when PK battle starts
       if (message.contains('Started')) {
@@ -675,46 +708,26 @@ class _LivePageState extends State<LivePage>
     
     debugPrint('Stored names - Left: $_leftHostName, Right: $_rightHostName');
     
-    // For all devices, try to fetch the PK battle ID if not already available
-    if (PKEvents.currentPKBattleId == null) {
-      debugPrint('🔍 Fetching PK battle ID for device...');
-      // Get current user ID from shared preferences
-      final prefs = await SharedPreferences.getInstance();
-      final currentUserId = prefs.getInt('user_id');
-      if (currentUserId != null) {
-        try {
-          for (int attempt = 0; attempt < 3; attempt++) {
-            if (attempt > 0) {
-              debugPrint('⏳ Waiting 3 seconds before next PK battle fetch attempt...');
-              await Future.delayed(Duration(seconds: 3));
-            }
-            debugPrint('🔍 Attempt ${attempt + 1} to fetch PK battle for user $currentUserId');
-            final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
-            if (pkBattle != null) {
-              PKEvents.setCurrentPKBattleId(pkBattle['id']);
-              // Calculate start time from server response
-              if (pkBattle['start_time'] != null) {
-                final serverStartTime = DateTime.parse(pkBattle['start_time']);
-                PKEvents.setCurrentPKBattleStartTime(serverStartTime);
-                debugPrint('⏰ Server start time: $serverStartTime');
-                debugPrint('⏰ End time will be:  ${serverStartTime.add(Duration(minutes: 3))}');
-              }
-              debugPrint('✅ Device got PK battle ID: ${pkBattle['id']}');
-              setState(() {}); // Refresh UI to show progress bar
-              break;
-            } else {
-              debugPrint('❌ Failed to fetch PK battle data from server (attempt ${attempt + 1})');
-            }
-          }
-        } catch (e) {
-          debugPrint('❌ Error fetching PK battle ID: $e');
-        }
-      } else {
-        debugPrint('❌ Current user ID not found in shared preferences');
-      }
-    } else {
-      debugPrint('✅ Device already has PK battle ID: ${PKEvents.currentPKBattleId}');
-    }
+    // PK battle ID will be fetched by stream ID in the periodic timer
+    debugPrint('🎯 PK battle ID will be fetched by stream ID in periodic timer');
+  }
+
+  void _handlePKBattleAutoEnded(int winnerId, String reason) {
+    debugPrint('🚨 PK BATTLE AUTO-ENDED ===');
+    debugPrint('Winner ID: $winnerId');
+    debugPrint('Reason: $reason');
+    
+    // Clear PK battle data and hide timer
+    setState(() {
+      _showPKBattleTimer = false;
+      _pkBattleId = null;
+    });
+    
+    // Clear PKEvents data
+    PKEvents.setCurrentPKBattleId(null);
+    PKEvents.setCurrentPKBattleStartTime(null);
+    
+    debugPrint('🎯 PK battle data cleared due to auto-end');
   }
 
   void _hidePKBattleNotification() {
@@ -728,6 +741,49 @@ class _LivePageState extends State<LivePage>
       _liveId = null;
       _pkBattleId = null;
     });
+  }
+
+  void _fetchPKBattleIdByStreamId() async {
+    debugPrint('🔄 Fetching PK battle ID by stream ID...');
+    try {
+      // Get stream ID from debug info
+      final streamId = _debugInfo['stream_id'];
+      if (streamId != null) {
+        debugPrint('🎯 Using stream ID: $streamId');
+        
+        // Add 2-second delay as requested
+        await Future.delayed(Duration(seconds: 2));
+        
+        final pkBattle = await ApiService.getActivePKBattleByStreamId(streamId);
+        if (pkBattle != null) {
+          debugPrint('✅ Stream ID fetch found PK battle: ${pkBattle['pk_battle_id']}');
+          PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
+          setState(() {
+            _pkBattleId = pkBattle['pk_battle_id']?.toString();
+            // For audience, also update host information and show timer
+            if (!widget.isHost) {
+              _leftHostId = pkBattle['left_host_id']?.toString();
+              _rightHostId = pkBattle['right_host_id']?.toString();
+              _showPKBattleTimer = true;
+            }
+          });
+          debugPrint('🎯 Updated PK battle ID to: $_pkBattleId');
+          
+          // Update start time if available
+          if (pkBattle['start_time'] != null) {
+            final serverStartTime = DateTime.parse(pkBattle['start_time']);
+            PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+            debugPrint('⏰ Updated PK battle start time: $serverStartTime');
+          }
+        } else {
+          debugPrint('❌ No PK battle found for stream ID: $streamId');
+        }
+      } else {
+        debugPrint('❌ Stream ID not available in debug info');
+      }
+    } catch (e) {
+      debugPrint('❌ Error in stream ID PK battle fetch: $e');
+    }
   }
 
   void _checkActivePKBattle() {
@@ -760,21 +816,31 @@ class _LivePageState extends State<LivePage>
         debugPrint('⏰ Set local start time: ${PKEvents.currentPKBattleStartTime}');
       }
       
-      // Fetch PK battle ID if not available (with small delay for backend timing)
+      // Fetch PK battle ID if not available (with 2-second delay for backend timing)
       if (PKEvents.currentPKBattleId == null) {
-        Future.delayed(Duration(seconds: 1), () {
+        Future.delayed(Duration(seconds: 2), () {
           _fetchPKBattleDataFromServer();
         });
       }
     } else {
       debugPrint('🏁 Exiting PK battle state...');
-      setState(() {
-        _showPKBattleTimer = false;
-      });
-      
-      // Clear PK battle data when exiting
-      PKEvents.setCurrentPKBattleId(null);
-      PKEvents.setCurrentPKBattleStartTime(null);
+      // Don't hide timer or clear PK battle data - keep them persistent for audience
+      if (widget.isHost) {
+        // Only clear for hosts, not for audience
+        setState(() {
+          _showPKBattleTimer = false;
+        });
+        
+        // Clear PK battle data when exiting (only for hosts)
+        PKEvents.setCurrentPKBattleId(null);
+        setState(() {
+          _pkBattleId = null;
+        });
+        PKEvents.setCurrentPKBattleStartTime(null);
+      } else {
+        // For audience, keep the timer and PK battle data persistent
+        debugPrint('🎯 Keeping PK battle timer and data persistent for audience');
+      }
     }
   }
   
@@ -783,96 +849,65 @@ class _LivePageState extends State<LivePage>
     _logApiCall('PK Battle', 'Fetching PK battle data...');
     
     try {
-      // For audience, use stream ID instead of user ID
-      if (!widget.isHost) {
-        // Get stream ID from debug info (already extracted in initState)
-        final streamId = _debugInfo['stream_id'];
+      // Use stream ID for both hosts and audience
+      final streamId = _debugInfo['stream_id'];
+      
+      if (streamId != null) {
+        _logApiCall('getActivePKBattleByStreamId', 'Calling API with stream ID: $streamId');
         
-        if (streamId != null) {
-          _logApiCall('getActivePKBattleByStreamId', 'Calling API with stream ID: $streamId');
+        debugPrint('🔍 Fetching PK battle for stream: $streamId');
+        final pkBattle = await ApiService.getActivePKBattleByStreamId(streamId);
           
-          debugPrint('🔍 Fetching PK battle for stream: $streamId');
-          final pkBattle = await ApiService.getActivePKBattleByStreamId(streamId);
+        if (pkBattle != null) {
+          _logApiCall('getActivePKBattleByStreamId', 'Success: PK Battle ${pkBattle['pk_battle_id']} found');
+          _updateDebugInfo('pk_battle', pkBattle);
           
-          if (pkBattle != null) {
-            _logApiCall('getActivePKBattleByStreamId', 'Success: PK Battle ${pkBattle['pk_battle_id']} found');
-            _updateDebugInfo('pk_battle', pkBattle);
-            
-            // Set PK battle ID and start time
-            PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
-            
-            if (pkBattle['start_time'] != null) {
-              final serverStartTime = DateTime.parse(pkBattle['start_time']);
-              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
-              debugPrint('⏰ Server start time: $serverStartTime');
-              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
-              _updateDebugInfo('pk_battle_start_time', serverStartTime.toString());
-            }
-            
-            // Set host information for audience - BOTH hosts
-            setState(() {
-              _leftHostId = pkBattle['left_host_id']?.toString();
-              _rightHostId = pkBattle['right_host_id']?.toString();
-              _showPKBattleTimer = true; // Show timer for audience
-            });
-            
-            // Update debug info with both hosts
-            _updateDebugInfo('left_host_id', pkBattle['left_host_id']);
-            _updateDebugInfo('right_host_id', pkBattle['right_host_id']);
-            _updateDebugInfo('left_score', pkBattle['left_score']);
-            _updateDebugInfo('right_score', pkBattle['right_score']);
-            _updateDebugInfo('left_stream_id', pkBattle['left_stream_id']);
-            _updateDebugInfo('right_stream_id', pkBattle['right_stream_id']);
-            _updateDebugInfo('pk_battle_status', pkBattle['status']);
-            
-            debugPrint('✅ Got PK battle data from server: ${pkBattle['pk_battle_id']}');
-            debugPrint('✅ Left Host ID: ${pkBattle['left_host_id']}, Right Host ID: ${pkBattle['right_host_id']}');
-            debugPrint('✅ Left Score: ${pkBattle['left_score']}, Right Score: ${pkBattle['right_score']}');
-            
-            setState(() {}); // Refresh UI to show progress bar and timer
-          } else {
-            _logApiCall('getActivePKBattleByStreamId', 'No active PK battle found for stream: $streamId');
-            debugPrint('❌ No active PK battle found for stream: $streamId');
+          // Set PK battle ID and start time
+          debugPrint('🔧 Setting PK Battle ID: ${pkBattle['pk_battle_id']}');
+          PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
+          debugPrint('🔧 PK Battle ID set to: ${PKEvents.currentPKBattleId}');
+          
+          // Update local state for UI reactivity
+          setState(() {
+            _pkBattleId = pkBattle['pk_battle_id']?.toString();
+          });
+          
+          if (pkBattle['start_time'] != null) {
+            final serverStartTime = DateTime.parse(pkBattle['start_time']);
+            PKEvents.setCurrentPKBattleStartTime(serverStartTime);
+            debugPrint('⏰ Server start time: $serverStartTime');
+            debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
+            _updateDebugInfo('pk_battle_start_time', serverStartTime.toString());
           }
+          
+          // Set host information for both hosts and audience
+          setState(() {
+            _leftHostId = pkBattle['left_host_id']?.toString();
+            _rightHostId = pkBattle['right_host_id']?.toString();
+            _showPKBattleTimer = true;
+          });
+          
+          // Update debug info with both hosts
+          _updateDebugInfo('left_host_id', pkBattle['left_host_id']);
+          _updateDebugInfo('right_host_id', pkBattle['right_host_id']);
+          _updateDebugInfo('left_score', pkBattle['left_score']);
+          _updateDebugInfo('right_score', pkBattle['right_score']);
+          _updateDebugInfo('left_stream_id', pkBattle['left_stream_id']);
+          _updateDebugInfo('right_stream_id', pkBattle['right_stream_id']);
+          _updateDebugInfo('pk_battle_status', pkBattle['status']);
+          
+          debugPrint('✅ Got PK battle data from server: ${pkBattle['pk_battle_id']}');
+          debugPrint('✅ Left Host ID: ${pkBattle['left_host_id']}, Right Host ID: ${pkBattle['right_host_id']}');
+          debugPrint('✅ Left Score: ${pkBattle['left_score']}, Right Score: ${pkBattle['right_score']}');
+          
+          setState(() {}); // Refresh UI to show progress bar and timer
         } else {
-          _logApiCall('Error', 'Stream ID not available for audience');
-          debugPrint('❌ Stream ID not available for audience');
+          _logApiCall('getActivePKBattleByStreamId', 'No active PK battle found for stream: $streamId');
+          debugPrint('❌ No active PK battle found for stream: $streamId');
         }
       } else {
-        // For hosts, use user ID (existing logic)
-        final prefs = await SharedPreferences.getInstance();
-        final currentUserId = prefs.getInt('user_id');
-        
-        if (currentUserId != null) {
-          _logApiCall('getLatestActivePKBattleForUser', 'User ID: $currentUserId');
-          // Wait 2 seconds for the backend to create the PK battle
-          debugPrint('⏳ Waiting 2 seconds for backend to create PK battle...');
-          await Future.delayed(Duration(seconds: 2));
-          final pkBattle = await ApiService.getLatestActivePKBattleForUser(currentUserId);
-          if (pkBattle != null) {
-            _logApiCall('getLatestActivePKBattleForUser', 'Success: PK Battle ${pkBattle['id']} found');
-            _updateDebugInfo('pk_battle', pkBattle);
-            
-            PKEvents.setCurrentPKBattleId(pkBattle['id']);
-            
-            // Use server start time for accurate timer
-            if (pkBattle['start_time'] != null) {
-              final serverStartTime = DateTime.parse(pkBattle['start_time']);
-              PKEvents.setCurrentPKBattleStartTime(serverStartTime);
-              debugPrint('⏰ Server start time: $serverStartTime');
-              debugPrint('⏰ End time will be: ${serverStartTime.add(Duration(minutes: 3))}');
-            }
-            
-            debugPrint('✅ Got PK battle data from server: ${pkBattle['id']}');
-            setState(() {}); // Refresh UI
-          } else {
-            _logApiCall('getLatestActivePKBattleForUser', 'No active PK battle found');
-            debugPrint('❌ No active PK battle found for user $currentUserId');
-          }
-        } else {
-          _logApiCall('Error', 'User ID not found in shared preferences');
-          debugPrint('❌ User ID not found in shared preferences');
-        }
+        _logApiCall('Error', 'Stream ID not available');
+        debugPrint('❌ Stream ID not available');
       }
     } catch (e) {
       _logApiCall('Error', 'Failed to fetch PK battle data: $e');
@@ -1342,7 +1377,7 @@ class _LivePageState extends State<LivePage>
                       ],
                     ),
                     child: Text(
-                      'PK Battle ID: ${PKEvents.currentPKBattleId ?? "Loading..."}',
+                      'PK Battle ID: ${_pkBattleId ?? PKEvents.currentPKBattleId ?? "Loading..."}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -1534,22 +1569,52 @@ class _LivePageState extends State<LivePage>
                           _showDebugInfo = !_showDebugInfo;
                         });
                       },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.orange, width: 1),
-                        ),
-                        child: Text(
-                          _showDebugInfo ? 'Hide Info' : 'Show Info',
-                          style: TextStyle(
-                            color: _showDebugInfo ? Colors.black : Colors.orange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      // child: Container(
+                      //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      //   decoration: BoxDecoration(
+                      //     color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.7),
+                      //     borderRadius: BorderRadius.circular(20),
+                      //     border: Border.all(color: Colors.orange, width: 1),
+                      //   ),
+                      //   child: Text(
+                      //     _showDebugInfo ? 'Hide Info' : 'Show Info',
+                      //     style: TextStyle(
+                      //       color: _showDebugInfo ? Colors.black : Colors.orange,
+                      //       fontSize: 12,
+                      //       fontWeight: FontWeight.bold,
+                      //     ),
+                      //   ),
+                      // ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Debug Info button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PKBattleDebugScreen(
+                              streamId: _debugInfo['stream_id'],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
+                      // child: Container(
+                      //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      //   decoration: BoxDecoration(
+                      //     color: Colors.purple.withOpacity(0.8),
+                      //     borderRadius: BorderRadius.circular(20),
+                      //     border: Border.all(color: Colors.purple, width: 1),
+                      //   ),
+                      //   child: const Text(
+                      //     'Debug Info',
+                      //     style: TextStyle(
+                      //       color: Colors.white,
+                      //       fontSize: 12,
+                      //       fontWeight: FontWeight.bold,
+                      //     ),
+                      //   ),
+                      // ),
                     ),
                     // Debug Info Panel
                     if (_showDebugInfo)

@@ -14,6 +14,7 @@ import '../live/live_video_screen.dart';
 import '../live/live_audio_screen.dart';
 import '../../services/live_stream_service.dart';
 import '../../common.dart';
+import 'pk_battle_debug_screen.dart';
 
 // Removed main() and MyApp. Only HomePage is exported for navigation.
 
@@ -474,6 +475,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                           ),
                         ],
                       ),
+                      
                     ],
                   ),
                 ),
