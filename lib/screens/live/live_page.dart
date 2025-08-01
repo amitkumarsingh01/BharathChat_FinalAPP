@@ -239,6 +239,11 @@ class _LivePageState extends State<LivePage>
         _currentUser = user;
         _giftsLoading = false;
       });
+      
+      debugPrint('🎁 === GIFT LOADING COMPLETED ===');
+      debugPrint('🎁 Total gifts loaded: ${gifts.length}');
+      debugPrint('🎁 Current user diamonds: ${user['diamonds']}');
+      debugPrint('🎁 First gift: ${gifts.isNotEmpty ? gifts.first['name'] : 'No gifts'}');
     } catch (e) {
       _logApiCall('Error', 'Failed to fetch data: $e');
       setState(() {
@@ -248,9 +253,38 @@ class _LivePageState extends State<LivePage>
   }
 
   Future<void> _sendGiftFromList(dynamic gift) async {
-    if (_sendingGift) return;
-    if (_currentUser == null) return;
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('🎁 === GIFT SENDING STARTED [${requestId}] ===');
+    debugPrint('🎁 [${requestId}] Gift Details:');
+    debugPrint('🎁 [${requestId}] - Name: ${gift['name']}');
+    debugPrint('🎁 [${requestId}] - ID: ${gift['id']}');
+    debugPrint('🎁 [${requestId}] - Diamond Amount: ${gift['diamond_amount']}');
+    debugPrint('🎁 [${requestId}] - GIF Filename: ${gift['gif_filename']}');
+    debugPrint('🎁 [${requestId}] Current User State:');
+    debugPrint('🎁 [${requestId}] - User ID: ${_currentUser?['id']}');
+    debugPrint('🎁 [${requestId}] - Username: ${_currentUser?['username']}');
+    debugPrint('🎁 [${requestId}] - First Name: ${_currentUser?['first_name']}');
+    debugPrint('🎁 [${requestId}] - Current Diamonds: ${_currentUser?['diamonds']}');
+    debugPrint('🎁 [${requestId}] - Can Afford: ${(_currentUser?['diamonds'] ?? 0) >= (gift['diamond_amount'] ?? 0)}');
+    debugPrint('🎁 [${requestId}] App State:');
+    debugPrint('🎁 [${requestId}] - Already Sending: $_sendingGift');
+    debugPrint('🎁 [${requestId}] - Live State: ${liveStateNotifier.value}');
+    debugPrint('🎁 [${requestId}] - Is Host: ${widget.isHost}');
+    debugPrint('🎁 [${requestId}] - PK Battle ID: ${PKEvents.currentPKBattleId}');
+    debugPrint('🎁 [${requestId}] - Live ID: ${widget.liveID}');
+    debugPrint('🎁 [${requestId}] - Local User ID: ${widget.localUserID}');
+    debugPrint('🎁 [${requestId}] - Receiver ID: ${widget.receiverId}');
+    
+    if (_sendingGift) {
+      debugPrint('❌ [${requestId}] Already sending gift, skipping...');
+      return;
+    }
+    if (_currentUser == null) {
+      debugPrint('❌ [${requestId}] Current user is null, skipping...');
+      return;
+    }
     if (_currentUser!['diamonds'] < gift['diamond_amount']) {
+      debugPrint('❌ [${requestId}] Not enough diamonds! User has: ${_currentUser!['diamonds']}, Gift costs: ${gift['diamond_amount']}');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Not enough diamonds!'),
@@ -261,39 +295,85 @@ class _LivePageState extends State<LivePage>
     }
 
     // Check if we're in PK battle mode
-    final isPKBattle =
-        liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
+    final isPKBattle = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
+    debugPrint('🎁 [${requestId}] Is PK Battle: $isPKBattle');
+    debugPrint('🎁 [${requestId}] Live State Value: ${liveStateNotifier.value}');
+    debugPrint('🎁 [${requestId}] Expected PK Battle State: ${ZegoLiveStreamingState.inPKBattle}');
 
     if (isPKBattle && !widget.isHost) {
+      debugPrint('🎁 [${requestId}] PK Battle mode - showing host selection dialog');
+      debugPrint('🎁 [${requestId}] Left Host: ${_leftHostName} (${_leftHostId})');
+      debugPrint('🎁 [${requestId}] Right Host: ${_rightHostName} (${_rightHostId})');
+      
       // Show host selection dialog for PK battle
       final selectedHost = await _showHostSelectionDialog();
-      if (selectedHost == null) return; // User cancelled
+      debugPrint('🎁 [${requestId}] Host selection dialog result: $selectedHost');
+      
+      if (selectedHost == null) {
+        debugPrint('🎁 [${requestId}] User cancelled host selection');
+        return; // User cancelled
+      }
 
+      debugPrint('🎁 [${requestId}] Selected host ID: $selectedHost');
+      debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with selected host...');
       await _sendGiftToHost(gift, selectedHost);
 
       // Update PK progress bar diamond count
+      debugPrint('🎁 [${requestId}] Updating PK diamond count...');
       _updatePKDiamondCount(selectedHost, gift['diamond_amount']);
     } else {
+      debugPrint('🎁 [${requestId}] Normal gift sending mode');
+      debugPrint('🎁 [${requestId}] Is Host: ${widget.isHost}');
+      debugPrint('🎁 [${requestId}] Receiver ID: ${widget.receiverId}');
+      debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with receiver ID...');
       // Normal gift sending (not in PK battle or host sending)
       await _sendGiftToHost(gift, widget.receiverId);
     }
   }
 
   Future<void> _sendGiftToHost(dynamic gift, int receiverId) async {
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('🎁 === SENDING GIFT TO HOST [${requestId}] ===');
+    debugPrint('🎁 [${requestId}] Receiver ID: $receiverId');
+    debugPrint('🎁 [${requestId}] Gift Details: ${gift['name']} (${gift['id']}) - ${gift['diamond_amount']} diamonds');
+    debugPrint('🎁 [${requestId}] Sender: ${_currentUser?['id']} - ${_currentUser?['first_name']}');
+    debugPrint('🎁 [${requestId}] Sender Diamonds Before: ${_currentUser?['diamonds']}');
+    debugPrint('🎁 [${requestId}] Current Live State: ${liveStateNotifier.value}');
+    debugPrint('🎁 [${requestId}] PK Battle ID: ${PKEvents.currentPKBattleId}');
+    
     setState(() {
       _sendingGift = true;
       _currentUser!['diamonds'] -= gift['diamond_amount'];
     });
+    
+    debugPrint('🎁 Sender Diamonds After: ${_currentUser?['diamonds']}');
+    
     try {
       bool success = false;
       
       // Check if we're in PK battle mode
-      final isPKBattle = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
+      // FIXED: Use PK Battle ID presence instead of live state
+      final isPKBattle = PKEvents.currentPKBattleId != null;
+      debugPrint('🎁 [${requestId}] Is PK Battle: $isPKBattle');
+      debugPrint('🎁 [${requestId}] PK Battle ID: ${PKEvents.currentPKBattleId}');
+      debugPrint('🎁 [${requestId}] Live State: ${liveStateNotifier.value}');
+      debugPrint('🎁 [${requestId}] Expected PK State: ${ZegoLiveStreamingState.inPKBattle}');
       
-      if (isPKBattle && PKEvents.currentPKBattleId != null) {
+      if (isPKBattle) {
+        debugPrint('🎁 [${requestId}] Using PK Battle Gift API');
         // Send gift for PK battle
         final senderId = _currentUser?['id'];
+        debugPrint('🎁 [${requestId}] Sender ID: $senderId');
+        
         if (senderId != null) {
+          debugPrint('🎁 [${requestId}] PK Battle Gift API Parameters:');
+          debugPrint('🎁 [${requestId}]   - PK Battle ID: ${PKEvents.currentPKBattleId}');
+          debugPrint('🎁 [${requestId}]   - Sender ID: $senderId');
+          debugPrint('🎁 [${requestId}]   - Receiver ID: $receiverId');
+          debugPrint('🎁 [${requestId}]   - Gift ID: ${gift['id']}');
+          debugPrint('🎁 [${requestId}]   - Amount: ${gift['diamond_amount']}');
+          debugPrint('🎁 [${requestId}] Calling ApiService.sendPKBattleGift...');
+          
           success = await ApiService.sendPKBattleGift(
             pkBattleId: PKEvents.currentPKBattleId!,
             senderId: senderId,
@@ -301,18 +381,36 @@ class _LivePageState extends State<LivePage>
             giftId: gift['id'],
             amount: gift['diamond_amount'],
           );
+          
+          debugPrint('🎁 [${requestId}] PK Battle Gift API Result: $success');
+        } else {
+          debugPrint('❌ [${requestId}] Sender ID is null, cannot send PK battle gift');
         }
       } else {
+        debugPrint('🎁 [${requestId}] Using Normal Gift API');
+        debugPrint('🎁 [${requestId}] Normal Gift API Parameters:');
+        debugPrint('🎁 [${requestId}]   - Receiver ID: $receiverId');
+        debugPrint('🎁 [${requestId}]   - Gift ID: ${gift['id']}');
+        debugPrint('🎁 [${requestId}]   - Amount: ${gift['diamond_amount']}');
+        debugPrint('🎁 [${requestId}]   - Live Stream ID: ${int.tryParse(widget.liveID) ?? 0}');
+        debugPrint('🎁 [${requestId}]   - Live Stream Type: ${widget.isHost ? 'host' : 'audience'}');
+        debugPrint('🎁 [${requestId}] Calling ApiService.sendGift...');
+        
         // Normal gift sending
         success = await ApiService.sendGift(
           receiverId: receiverId,
           giftId: gift['id'],
+          amount: gift['diamond_amount'],
           liveStreamId: int.tryParse(widget.liveID) ?? 0,
           liveStreamType: widget.isHost ? 'host' : 'audience',
         );
+        
+        debugPrint('🎁 [${requestId}] Normal Gift API Result: $success');
       }
       
       if (success) {
+        debugPrint('✅ [${requestId}] Gift sent successfully!');
+        
         // Send ZEGOCLOUD in-room command for gift notification
         final message = jsonEncode({
           "type": "gift",
@@ -324,23 +422,53 @@ class _LivePageState extends State<LivePage>
           "gif_filename": gift['gif_filename'],
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
-        await ZegoUIKit().sendInRoomCommand(widget.liveID, [message]);
+        
+        debugPrint('🎁 Gift sent successfully via API!');
+        debugPrint('🎁 Note: ZEGOCLOUD in-room command is disabled due to API issues');
+        debugPrint('🎁 Gift animation will still show locally');
+        
+        // If this is a PK battle gift, trigger immediate score update
+        if (isPKBattle) {
+          debugPrint('🎁 PK Battle gift sent! Triggering immediate score update...');
+          debugPrint('🎁   - PK Battle ID: ${PKEvents.currentPKBattleId}');
+          debugPrint('🎁   - Receiver ID: $receiverId');
+          debugPrint('🎁   - Gift Amount: ${gift['diamond_amount']}');
+          
+          // Trigger score update after a short delay to allow backend to process
+          Future.delayed(Duration(milliseconds: 500), () {
+            debugPrint('🎁 Triggering PK battle score update...');
+            _triggerPKBattleScoreUpdate();
+          });
+        }
 
         // Show success message
         if (mounted) {
+          final successMessage = isPKBattle
+            ? '${gift['name']} sent to PK Battle! (+${gift['diamond_amount']} points)'
+            : '${gift['name']} sent successfully!';
+          
+          debugPrint('🎁 Showing success message: $successMessage');
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${gift['name']} sent successfully!'),
+              content: Text(successMessage),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
           );
         }
+        
         // Trigger gift animation (same as gift panel)
-        final gifUrl =
-            'https://server.bharathchat.com/uploads/gifts/' +
-            gift['gif_filename'];
+        final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
         final senderName = _currentUser?['first_name'] ?? 'User';
+        final isPKBattleGift = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle && PKEvents.currentPKBattleId != null;
+        
+        debugPrint('🎁 Creating gift animation:');
+        debugPrint('🎁   - Gift Name: ${gift['name']}');
+        debugPrint('🎁   - GIF URL: $gifUrl');
+        debugPrint('🎁   - Sender: $senderName');
+        debugPrint('🎁   - Is PK Battle Gift: $isPKBattleGift');
+        
         setState(() {
           _activeGiftAnimations.add(
             GiftAnimation(
@@ -348,24 +476,32 @@ class _LivePageState extends State<LivePage>
               giftName: gift['name'],
               gifUrl: gifUrl,
               senderName: senderName,
+              isPKBattleGift: isPKBattleGift,
               onAnimationComplete: () {
+                debugPrint('🎁 Gift animation completed, removing from list');
                 setState(() {
                   _activeGiftAnimations.removeWhere(
-                    (w) =>
-                        (w.key as ValueKey).value ==
-                        'gift_anim_${_giftAnimKey - 1}',
+                    (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
                   );
                 });
               },
             ),
           );
         });
+        
+        debugPrint('✅ Gift sending process completed successfully');
         // Optionally: refresh user data
         setState(() {});
       } else {
+        debugPrint('❌ Gift send failed - API returned false');
         throw Exception('Gift send failed');
       }
     } catch (e) {
+      debugPrint('❌ [${requestId}] === GIFT SENDING ERROR ===');
+      debugPrint('❌ [${requestId}] Error: $e');
+      debugPrint('❌ [${requestId}] Error type: ${e.runtimeType}');
+      debugPrint('❌ [${requestId}] Stack trace: ${StackTrace.current}');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -376,6 +512,7 @@ class _LivePageState extends State<LivePage>
         );
       }
     } finally {
+      debugPrint('🎁 Gift sending process finished, resetting sending state');
       setState(() {
         _sendingGift = false;
       });
@@ -383,6 +520,12 @@ class _LivePageState extends State<LivePage>
   }
 
   Future<int?> _showHostSelectionDialog() async {
+    debugPrint('🎁 === HOST SELECTION DIALOG ===');
+    debugPrint('🎁 Left Host Name: $_leftHostName, ID: $_leftHostId');
+    debugPrint('🎁 Right Host Name: $_rightHostName, ID: $_rightHostId');
+    debugPrint('🎁 PK Battle ID: ${PKEvents.currentPKBattleId}');
+    debugPrint('🎁 Current User: ${_currentUser?['id']} - ${_currentUser?['first_name']}');
+    
     return await showDialog<int>(
       context: context,
       builder: (context) {
@@ -392,50 +535,125 @@ class _LivePageState extends State<LivePage>
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            'Choose Host',
+            '🎁 Choose Gift Recipient',
             style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
           ),
-          content: const Text(
-            'Which host would you like to send the gift to?',
-            style: TextStyle(color: Colors.white),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Which host would you like to send the gift to?',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              // Left Host Info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🟢 Left Host: ${_leftHostName ?? 'Unknown'}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'ID: ${_leftHostId ?? 'N/A'}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Right Host Info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '🟠 Right Host: ${_rightHostName ?? 'Unknown'}',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'ID: ${_rightHostId ?? 'N/A'}',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           actions: [
+            // Left Host Button
             TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: Colors.blue.withOpacity(0.2),
-                foregroundColor: Colors.blue,
-                side: BorderSide(color: Colors.blue),
+                backgroundColor: Colors.green.withOpacity(0.2),
+                foregroundColor: Colors.green,
+                side: BorderSide(color: Colors.green),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(1), // Host 1
-              child: const Text(
-                'Host 1',
-                style: TextStyle(
-                  color: Colors.blue,
+              onPressed: () {
+                debugPrint('🎁 User selected LEFT HOST: ${_leftHostId} - ${_leftHostName}');
+                Navigator.of(context).pop(int.tryParse(_leftHostId ?? '0') ?? 0);
+              },
+              child: Text(
+                '🟢 ${_leftHostName ?? 'Left Host'}',
+                style: const TextStyle(
+                  color: Colors.green,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+            // Right Host Button
             TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: Colors.pink.withOpacity(0.2),
-                foregroundColor: Colors.pink,
-                side: BorderSide(color: Colors.pink),
+                backgroundColor: Colors.orange.withOpacity(0.2),
+                foregroundColor: Colors.orange,
+                side: BorderSide(color: Colors.orange),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(2), // Host 2
-              child: const Text(
-                'Host 2',
-                style: TextStyle(
-                  color: Colors.pink,
+              onPressed: () {
+                debugPrint('🎁 User selected RIGHT HOST: ${_rightHostId} - ${_rightHostName}');
+                Navigator.of(context).pop(int.tryParse(_rightHostId ?? '0') ?? 0);
+              },
+              child: Text(
+                '🟠 ${_rightHostName ?? 'Right Host'}',
+                style: const TextStyle(
+                  color: Colors.orange,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
+            // Cancel Button
             TextButton(
               style: TextButton.styleFrom(
                 backgroundColor: Colors.black,
@@ -445,8 +663,11 @@ class _LivePageState extends State<LivePage>
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(null), // Cancel
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              onPressed: () {
+                debugPrint('🎁 User cancelled host selection');
+                Navigator.of(context).pop(null);
+              },
+              child: const Text('❌ Cancel', style: TextStyle(color: Colors.grey)),
             ),
           ],
         );
@@ -458,6 +679,14 @@ class _LivePageState extends State<LivePage>
     dynamic gift,
     VoidCallback onConfirm,
   ) async {
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    debugPrint('🎁 [${requestId}] === GIFT CONFIRMATION DIALOG ===');
+    debugPrint('🎁 [${requestId}] Gift: ${gift['name']} (${gift['id']})');
+    debugPrint('🎁 [${requestId}] Diamond Amount: ${gift['diamond_amount']}');
+    debugPrint('🎁 [${requestId}] Current User: ${_currentUser?['id']} - ${_currentUser?['first_name']}');
+    debugPrint('🎁 [${requestId}] User Diamonds: ${_currentUser?['diamonds']}');
+    debugPrint('🎁 [${requestId}] Can Afford: ${(_currentUser?['diamonds'] ?? 0) >= (gift['diamond_amount'] ?? 0)}');
+    
     await showDialog(
       context: context,
       builder: (context) {
@@ -484,7 +713,10 @@ class _LivePageState extends State<LivePage>
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                debugPrint('🎁 [${requestId}] User cancelled gift confirmation');
+                Navigator.of(context).pop();
+              },
               child: const Text(
                 'Cancel',
                 style: TextStyle(color: Colors.orange),
@@ -499,6 +731,8 @@ class _LivePageState extends State<LivePage>
                 ),
               ),
               onPressed: () {
+                debugPrint('🎁 [${requestId}] User confirmed gift sending');
+                debugPrint('🎁 [${requestId}] Calling onConfirm callback...');
                 Navigator.of(context).pop();
                 onConfirm();
               },
@@ -517,11 +751,24 @@ class _LivePageState extends State<LivePage>
     super.dispose();
   }
 
-  void _updatePKDiamondCount(int hostNumber, int diamonds) {
-    // This method will be called when gifts are sent during PK battles
-    // The surface widget will handle the actual diamond count updates
-    // For now, we'll just log the update
-    print('PK Battle: Host $hostNumber received $diamonds diamonds');
+  void _updatePKDiamondCount(int hostId, int diamondAmount) {
+    debugPrint('🎁 === UPDATING PK DIAMOND COUNT ===');
+    debugPrint('🎁 Host ID: $hostId');
+    debugPrint('🎁 Diamond Amount: $diamondAmount');
+    debugPrint('🎁 Left Host ID: $_leftHostId');
+    debugPrint('🎁 Right Host ID: $_rightHostId');
+    
+    if (hostId.toString() == _leftHostId) {
+      debugPrint('🎁 Adding $diamondAmount diamonds to LEFT host (${_leftHostName})');
+    } else if (hostId.toString() == _rightHostId) {
+      debugPrint('🎁 Adding $diamondAmount diamonds to RIGHT host (${_rightHostName})');
+    } else {
+      debugPrint('❌ Host ID $hostId not found in PK battle hosts');
+      debugPrint('❌ Available hosts: Left=$_leftHostId, Right=$_rightHostId');
+    }
+    
+    // The actual score update is handled by the progress bar's periodic fetch
+    debugPrint('🎁 Progress bar will automatically update scores from server');
   }
 
   void _logApiCall(String apiName, String details) {
@@ -656,6 +903,60 @@ class _LivePageState extends State<LivePage>
     );
   }
 
+  Widget _buildDebugSection(String title, Map<String, String> data) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.orange,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (data.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            child: Column(
+              children: data.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${entry.key}: ',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+
   void _handlePKBattleNotification(String message, {
     String? leftHostId,
     String? rightHostId,
@@ -729,6 +1030,13 @@ class _LivePageState extends State<LivePage>
     
     debugPrint('🎯 PK battle data cleared due to auto-end');
   }
+
+  void _triggerPKBattleScoreUpdate() {
+    debugPrint('🎯 Manually triggering PK battle score update');
+    setState(() {}); // Force rebuild to refresh progress bar
+  }
+
+
 
   void _hidePKBattleNotification() {
     setState(() {
@@ -884,12 +1192,19 @@ class _LivePageState extends State<LivePage>
           setState(() {
             _leftHostId = pkBattle['left_host_id']?.toString();
             _rightHostId = pkBattle['right_host_id']?.toString();
+            _leftHostName = pkBattle['left_host_name'];
+            _rightHostName = pkBattle['right_host_name'];
             _showPKBattleTimer = true;
           });
+          
+          debugPrint('👤 Left Host: ${pkBattle['left_host_name']} (${pkBattle['left_host_id']})');
+          debugPrint('👤 Right Host: ${pkBattle['right_host_name']} (${pkBattle['right_host_id']})');
           
           // Update debug info with both hosts
           _updateDebugInfo('left_host_id', pkBattle['left_host_id']);
           _updateDebugInfo('right_host_id', pkBattle['right_host_id']);
+          _updateDebugInfo('left_host_name', pkBattle['left_host_name']);
+          _updateDebugInfo('right_host_name', pkBattle['right_host_name']);
           _updateDebugInfo('left_score', pkBattle['left_score']);
           _updateDebugInfo('right_score', pkBattle['right_score']);
           _updateDebugInfo('left_stream_id', pkBattle['left_stream_id']);
@@ -1263,6 +1578,10 @@ class _LivePageState extends State<LivePage>
                             pkBattleId: PKEvents.currentPKBattleId!,
                             leftHostName: _leftHostName,
                             rightHostName: _rightHostName,
+                            onScoreUpdate: () {
+                              debugPrint('🎯 PK Battle score update received');
+                              setState(() {}); // Refresh UI
+                            },
                           )
                         : Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1399,6 +1718,26 @@ class _LivePageState extends State<LivePage>
                   child: w,
                 ),
               ),
+            // Debug indicator for gift status (audience only)
+            if (!widget.isHost)
+              Positioned(
+                left: 12,
+                bottom: 160,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Gifts: ${_gifts.length} | Loading: $_giftsLoading | Diamonds: ${_currentUser?['diamonds'] ?? 'N/A'}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ),
             // Horizontal gift list above the bottom buttons (audience only)
             if (!widget.isHost && !_giftsLoading && _gifts.isNotEmpty)
               Positioned(
@@ -1421,11 +1760,19 @@ class _LivePageState extends State<LivePage>
                       return GestureDetector(
                         onTap:
                             canAfford && !_sendingGift
-                                ? () => _showGiftConfirmationDialog(
-                                  gift,
-                                  () => _sendGiftFromList(gift),
-                                )
-                                : null,
+                                ? () {
+                                    debugPrint('🎁 Gift tapped: ${gift['name']}');
+                                    debugPrint('🎁 Can afford: $canAfford, Sending: $_sendingGift');
+                                    _showGiftConfirmationDialog(
+                                      gift,
+                                      () => _sendGiftFromList(gift),
+                                    );
+                                  }
+                                : () {
+                                    debugPrint('❌ Gift not clickable: ${gift['name']}');
+                                    debugPrint('❌ Can afford: $canAfford, Sending: $_sendingGift');
+                                    debugPrint('❌ User diamonds: ${_currentUser?['diamonds']}, Gift cost: ${gift['diamond_amount']}');
+                                  },
                         child: Opacity(
                           opacity: canAfford ? 1.0 : 0.5,
                           child: Container(
@@ -1503,6 +1850,308 @@ class _LivePageState extends State<LivePage>
 
             // Overlay active gift animations (host and audience)
             ..._activeGiftAnimations,
+            
+            // Floating Debug Button
+            Positioned(
+              top: 50,
+              right: 12,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showDebugInfo = !_showDebugInfo;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.orange, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined,
+                        color: _showDebugInfo ? Colors.black : Colors.orange,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'DEBUG',
+                        style: TextStyle(
+                          color: _showDebugInfo ? Colors.black : Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            
+            // Debug Overlay Panel
+            if (_showDebugInfo)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.8),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          Row(
+                            children: [
+                              const Icon(Icons.bug_report, color: Colors.orange, size: 24),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'LIVE DEBUG PANEL',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _showDebugInfo = false;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // Scrollable content
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Basic Info Section
+                                  _buildDebugSection('📱 BASIC INFO', {
+                                    'Is Host': widget.isHost.toString(),
+                                    'Live ID': widget.liveID,
+                                    'Local User ID': widget.localUserID,
+                                    'Receiver ID': widget.receiverId.toString(),
+                                    'Has Active PK Battle': (widget.activePKBattle != null).toString(),
+                                  }),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // User Info Section
+                                  _buildDebugSection('👤 USER INFO', {
+                                    'User ID': '${_currentUser?['id'] ?? 'N/A'}',
+                                    'Username': '${_currentUser?['username'] ?? 'N/A'}',
+                                    'Name': '${_currentUser?['first_name'] ?? ''} ${_currentUser?['last_name'] ?? ''}'.trim(),
+                                    'Diamonds': '${_currentUser?['diamonds'] ?? 'N/A'}',
+                                    'Sending Gift': _sendingGift.toString(),
+                                  }),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // PK Battle Info Section
+                                  if (PKEvents.currentPKBattleId != null)
+                                    _buildDebugSection('🎮 PK BATTLE INFO', {
+                                      'PK Battle ID': PKEvents.currentPKBattleId.toString(),
+                                      'Left Host': '${_debugInfo['left_host_name'] ?? _leftHostName ?? 'Unknown'} (${_leftHostId ?? 'N/A'})',
+                                      'Right Host': '${_debugInfo['right_host_name'] ?? _rightHostName ?? 'Unknown'} (${_rightHostId ?? 'N/A'})',
+                                      'Left Score': _debugInfo['left_score']?.toString() ?? '0',
+                                      'Right Score': _debugInfo['right_score']?.toString() ?? '0',
+                                      'Status': _debugInfo['pk_battle_status']?.toString() ?? 'N/A',
+                                      'Show Timer': _showPKBattleTimer.toString(),
+                                      'Show Notification': _showPKBattleNotification.toString(),
+                                    }),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // Gift Info Section
+                                  _buildDebugSection('🎁 GIFT INFO', {
+                                    'Gifts Loaded': '${_gifts.length}',
+                                    'Gifts Loading': _giftsLoading.toString(),
+                                    'Active Animations': '${_activeGiftAnimations.length}',
+                                    'Live State': liveStateNotifier.value.toString(),
+                                    'Stream ID': _debugInfo['stream_id']?.toString() ?? 'N/A',
+                                  }),
+                                  
+                                  // PK Battle Gift Log Section
+                                  if (ApiService.lastPKBattleGiftLog != null)
+                                    _buildDebugSection('📡 PK BATTLE GIFT LOG', {
+                                      'Timestamp': ApiService.lastPKBattleGiftLog!['timestamp'] ?? 'N/A',
+                                      'Request ID': ApiService.lastPKBattleGiftLog!['request_id'] ?? 'N/A',
+                                      'Success': ApiService.lastPKBattleGiftLog!['success']?.toString() ?? 'N/A',
+                                      'Status Code': ApiService.lastPKBattleGiftLog!['response_status']?.toString() ?? 'N/A',
+                                      'API Duration': ApiService.lastPKBattleGiftLog!['api_call_duration'] ?? 'N/A',
+                                      'Total Duration': ApiService.lastPKBattleGiftLog!['total_duration'] ?? 'N/A',
+                                      'PK Battle ID': ApiService.lastPKBattleGiftLog!['request']?['pk_battle_id']?.toString() ?? 'N/A',
+                                      'Sender ID': ApiService.lastPKBattleGiftLog!['request']?['sender_id']?.toString() ?? 'N/A',
+                                      'Receiver ID': ApiService.lastPKBattleGiftLog!['request']?['receiver_id']?.toString() ?? 'N/A',
+                                      'Gift ID': ApiService.lastPKBattleGiftLog!['request']?['gift_id']?.toString() ?? 'N/A',
+                                      'Amount': ApiService.lastPKBattleGiftLog!['request']?['amount']?.toString() ?? 'N/A',
+                                      'Response Status': ApiService.lastPKBattleGiftLog!['response_data']?['status']?.toString() ?? 'N/A',
+                                      'Left Score': ApiService.lastPKBattleGiftLog!['response_data']?['left_score']?.toString() ?? 'N/A',
+                                      'Right Score': ApiService.lastPKBattleGiftLog!['response_data']?['right_score']?.toString() ?? 'N/A',
+                                    }),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // Test Buttons Section
+                                  _buildDebugSection('🧪 TEST ACTIONS', {}),
+                                  const SizedBox(height: 8),
+                                  
+                                  // Test Gift Button
+                                  if (_gifts.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () {
+                                        debugPrint('🎁 Testing gift sending with first gift: ${_gifts.first['name']}');
+                                        _sendGiftFromList(_gifts.first);
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.8),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          '🎁 TEST GIFT SEND',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Test Host Selection Button
+                                  if (liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle && !widget.isHost)
+                                    GestureDetector(
+                                      onTap: () async {
+                                        debugPrint('🎁 Testing host selection dialog');
+                                        final result = await _showHostSelectionDialog();
+                                        debugPrint('🎁 Host selection result: $result');
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.8),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          '👥 TEST HOST SELECTION',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  
+                                  const SizedBox(height: 8),
+                                  
+                                  // Test Host Name Fetching Button
+                                  if (_leftHostId != null || _rightHostId != null)
+                                    GestureDetector(
+                                      onTap: () async {
+                                        debugPrint('🧪 Testing host name fetching');
+                                        if (_leftHostId != null) {
+                                          await ApiService.testGetUserById(int.tryParse(_leftHostId!) ?? 0);
+                                        }
+                                        if (_rightHostId != null) {
+                                          await ApiService.testGetUserById(int.tryParse(_rightHostId!) ?? 0);
+                                        }
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.purple.withOpacity(0.8),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          '🧪 TEST HOST NAME FETCH',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  
+                                  const SizedBox(height: 16),
+                                  
+                                  // API Logs Section
+                                  _buildDebugSection('📡 API LOGS (Last 10)', {}),
+                                  const SizedBox(height: 8),
+                                  
+                                  Container(
+                                    height: 200,
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[900],
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: ListView.builder(
+                                      itemCount: _allApiLogs.take(10).length,
+                                      itemBuilder: (context, index) {
+                                        final log = _allApiLogs.take(10).toList()[index];
+                                        Color logColor = Colors.white;
+                                        
+                                        if (log.contains('🎁')) logColor = Colors.green;
+                                        else if (log.contains('❌')) logColor = Colors.red;
+                                        else if (log.contains('🎯')) logColor = Colors.orange;
+                                        else if (log.contains('🚀')) logColor = Colors.blue;
+                                        
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 1),
+                                          child: Text(
+                                            log,
+                                            style: TextStyle(
+                                              color: logColor,
+                                              fontSize: 10,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // Watermark logo in top left, even further below, with transparent gradient text
             Positioned(
               top: 100,
@@ -1563,61 +2212,61 @@ class _LivePageState extends State<LivePage>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     // Toggle button
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _showDebugInfo = !_showDebugInfo;
-                        });
-                      },
-                      // child: Container(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      //   decoration: BoxDecoration(
-                      //     color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.7),
-                      //     borderRadius: BorderRadius.circular(20),
-                      //     border: Border.all(color: Colors.orange, width: 1),
-                      //   ),
-                      //   child: Text(
-                      //     _showDebugInfo ? 'Hide Info' : 'Show Info',
-                      //     style: TextStyle(
-                      //       color: _showDebugInfo ? Colors.black : Colors.orange,
-                      //       fontSize: 12,
-                      //       fontWeight: FontWeight.bold,
-                      //     ),
-                      //   ),
-                      // ),
-                    ),
+                    // GestureDetector(
+                    //   onTap: () {
+                    //     setState(() {
+                    //       _showDebugInfo = !_showDebugInfo;
+                    //     });
+                    //   },
+                    //   child: Container(
+                    //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    //     decoration: BoxDecoration(
+                    //       color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.7),
+                    //       borderRadius: BorderRadius.circular(20),
+                    //       border: Border.all(color: Colors.orange, width: 1),
+                    //     ),
+                    //     child: Text(
+                    //       _showDebugInfo ? 'Hide Info' : 'Show Info',
+                    //       style: TextStyle(
+                    //         color: _showDebugInfo ? Colors.black : Colors.orange,
+                    //         fontSize: 12,
+                    //         fontWeight: FontWeight.bold,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
                     const SizedBox(height: 8),
                     // Debug Info button
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PKBattleDebugScreen(
-                              streamId: _debugInfo['stream_id'],
-                            ),
-                          ),
-                        );
-                      },
-                      // child: Container(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      //   decoration: BoxDecoration(
-                      //     color: Colors.purple.withOpacity(0.8),
-                      //     borderRadius: BorderRadius.circular(20),
-                      //     border: Border.all(color: Colors.purple, width: 1),
-                      //   ),
-                      //   child: const Text(
-                      //     'Debug Info',
-                      //     style: TextStyle(
-                      //       color: Colors.white,
-                      //       fontSize: 12,
-                      //       fontWeight: FontWeight.bold,
-                      //     ),
-                      //   ),
-                      // ),
-                    ),
+                    // GestureDetector(
+                    //   onTap: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => PKBattleDebugScreen(
+                    //           streamId: _debugInfo['stream_id'],
+                    //         ),
+                    //       ),
+                    //     );
+                    //   },
+                    //   child: Container(
+                    //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.purple.withOpacity(0.8),
+                    //       borderRadius: BorderRadius.circular(20),
+                    //       border: Border.all(color: Colors.purple, width: 1),
+                    //     ),
+                    //     child: const Text(
+                    //       'Debug Info',
+                    //       style: TextStyle(
+                    //         color: Colors.white,
+                    //         fontSize: 12,
+                    //         fontWeight: FontWeight.bold,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
                     // Debug Info Panel
-                    if (_showDebugInfo)
+                    if (_showDebugInfo && 1>2)
                       Container(
                         width: 300,
                         margin: const EdgeInsets.only(top: 8),
@@ -1704,6 +2353,49 @@ class _LivePageState extends State<LivePage>
                               'Show PK Timer': _showPKBattleTimer.toString(),
                               'Show PK Notification': _showPKBattleNotification.toString(),
                             }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Gift Info
+                            _buildInfoSection('Gift Info', {
+                              'Current User': '${_currentUser?['id'] ?? 'N/A'} - ${_currentUser?['first_name'] ?? 'Unknown'}',
+                              'User Diamonds': '${_currentUser?['diamonds'] ?? 'N/A'}',
+                              'Sending Gift': _sendingGift.toString(),
+                              'Live State': liveStateNotifier.value.toString(),
+                              'Is Host': widget.isHost.toString(),
+                              'Left Host': '${_leftHostName ?? 'Unknown'} (${_leftHostId ?? 'N/A'})',
+                              'Right Host': '${_rightHostName ?? 'Unknown'} (${_rightHostId ?? 'N/A'})',
+                              'Active Gift Animations': _activeGiftAnimations.length.toString(),
+                              'Gifts Loaded': '${_gifts.length}',
+                              'Gifts Loading': _giftsLoading.toString(),
+                            }),
+                            
+                            const SizedBox(height: 8),
+                            
+                            // Test Gift Button
+                            if (_gifts.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  debugPrint('🎁 Testing gift sending with first gift: ${_gifts.first['name']}');
+                                  _sendGiftFromList(_gifts.first);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.green, width: 1),
+                                  ),
+                                  child: const Text(
+                                    'Test Gift Send',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             
                             const SizedBox(height: 8),
                             

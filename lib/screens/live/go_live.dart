@@ -215,6 +215,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   CameraController? _cameraController;
   List<dynamic> backgroundImages = [];
   List<dynamic> musicList = [];
+  List<dynamic> gifts = [];
   String? selectedBackgroundImage;
   String? selectedMusic;
   final _audioPlayer = AudioPlayer();
@@ -275,9 +276,11 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   Future<void> _loadBackgroundData() async {
     final images = await ApiService.getBackgroundImages();
     final music = await ApiService.getMusic();
+    final giftsData = await ApiService.getGifts();
     setState(() {
       backgroundImages = images;
       musicList = music;
+      gifts = giftsData;
     });
   }
 
@@ -893,6 +896,200 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     ],
                   ),
                 ),
+
+                const SizedBox(height: 20),
+
+                // Gifts Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Available Gifts',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 120,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: gifts.length,
+                          itemBuilder: (context, index) {
+                            final gift = gifts[index];
+                            return Container(
+                              width: 100,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[900],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey[700]!,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Gift Image
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[800],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        'https://server.bharathchat.com/uploads/gifts/${gift['gif_filename']}',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[800],
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Icon(
+                                              Icons.card_giftcard,
+                                              color: Colors.white,
+                                              size: 30,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Gift Name
+                                  Text(
+                                    gift['name'] ?? 'Gift',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // Diamond Amount
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${gift['diamond_amount']} 💎',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Debug PK Battle Gift API Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Debug Tools',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey[700]!,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Test PK Battle Gift API',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'This will test the /pk-battle/gift API call with sample data',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: _testPKBattleGiftAPI,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.bug_report,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      label: const Text(
+                                        'Test PK Battle Gift API',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -960,6 +1157,83 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
         ),
       ],
     );
+  }
+
+  // Debug method to test PK Battle Gift API
+  void _testPKBattleGiftAPI() async {
+    try {
+      print('🔧 [DEBUG] Testing PK Battle Gift API...');
+      
+      // Sample data for testing (using the exact values from your curl example)
+      const int pkBattleId = 150;
+      const int senderId = 5;
+      const int receiverId = 5;
+      const int giftId = 2;
+      const int amount = 1;
+      
+      print('🔧 [DEBUG] This will call the EXACT same API as your curl command:');
+      print('🔧 [DEBUG] curl -X POST https://server.bharathchat.com/pk-battle/gift');
+      print('🔧 [DEBUG] with body: {');
+      print('🔧 [DEBUG]   "pk_battle_id": $pkBattleId,');
+      print('🔧 [DEBUG]   "sender_id": $senderId,');
+      print('🔧 [DEBUG]   "receiver_id": $receiverId,');
+      print('🔧 [DEBUG]   "gift_id": $giftId,');
+      print('🔧 [DEBUG]   "amount": $amount');
+      print('🔧 [DEBUG] }');
+      
+      print('🔧 [DEBUG] PK Battle Gift API Parameters:');
+      print('🔧 [DEBUG]   - PK Battle ID: $pkBattleId');
+      print('🔧 [DEBUG]   - Sender ID: $senderId');
+      print('🔧 [DEBUG]   - Receiver ID: $receiverId');
+      print('🔧 [DEBUG]   - Gift ID: $giftId');
+      print('🔧 [DEBUG]   - Amount: $amount');
+      
+      print('🔧 [DEBUG] Calling ApiService.sendPKBattleGift...');
+      final success = await ApiService.sendPKBattleGift(
+        pkBattleId: pkBattleId,
+        senderId: senderId,
+        receiverId: receiverId,
+        giftId: giftId,
+        amount: amount,
+      );
+      
+      print('🔧 [DEBUG] PK Battle Gift API Result: $success');
+      
+      if (success) {
+        print('✅ [DEBUG] PK Battle Gift API test SUCCESS!');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ PK Battle Gift API test successful!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        print('❌ [DEBUG] PK Battle Gift API test FAILED!');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ PK Battle Gift API test failed!'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ [DEBUG] PK Battle Gift API test ERROR: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ PK Battle Gift API test error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   void _goLive(BuildContext context) async {

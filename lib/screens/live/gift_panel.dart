@@ -75,11 +75,12 @@ class _GiftPanelState extends State<GiftPanel> {
         });
       }
       print(
-        '[GiftPanel] Sending gift API call: receiverId=${widget.receiverId}, giftId=${gift['id']}, liveStreamId=${widget.liveStreamId}, liveStreamType=${widget.liveStreamType}',
+        '[GiftPanel] Sending gift API call: receiverId=${widget.receiverId}, giftId=${gift['id']}, amount=${gift['diamond_amount']}, liveStreamId=${widget.liveStreamId}, liveStreamType=${widget.liveStreamType}',
       );
       final success = await ApiService.sendGift(
         receiverId: widget.receiverId,
         giftId: gift['id'],
+        amount: gift['diamond_amount'],
         liveStreamId: widget.liveStreamId ?? 0,
         liveStreamType: widget.liveStreamType ?? '',
       );
@@ -98,10 +99,9 @@ class _GiftPanelState extends State<GiftPanel> {
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
         print(
-          '[GiftPanel] Sending in-room command to roomId=${widget.roomId}: $message',
+          '[GiftPanel] Gift sent successfully via API!',
         );
-        await ZegoUIKit().sendInRoomCommand(widget.roomId, [message]);
-        print('[GiftPanel] In-room command sent.');
+        print('[GiftPanel] Note: ZEGOCLOUD in-room command is disabled due to API issues');
 
         // Show success message
         if (mounted) {

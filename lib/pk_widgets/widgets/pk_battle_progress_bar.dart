@@ -6,12 +6,14 @@ class PKBattleProgressBar extends StatefulWidget {
   final int pkBattleId;
   final String? leftHostName;
   final String? rightHostName;
+  final VoidCallback? onScoreUpdate;
 
   const PKBattleProgressBar({
     Key? key,
     required this.pkBattleId,
     this.leftHostName,
     this.rightHostName,
+    this.onScoreUpdate,
   }) : super(key: key);
 
   @override
@@ -27,16 +29,38 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar> {
   void initState() {
     super.initState();
     _fetchScore();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchScore());
+    // Update more frequently during PK battles to show gift scores immediately
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _fetchScore());
   }
 
   Future<void> _fetchScore() async {
     final result = await ApiService.getPKBattleById(widget.pkBattleId);
     if (result != null && mounted) {
-      setState(() {
-        leftScore = result['left_score'] ?? 0;
-        rightScore = result['right_score'] ?? 0;
-      });
+      final newLeftScore = result['left_score'] ?? 0;
+      final newRightScore = result['right_score'] ?? 0;
+      
+      // Check if scores changed
+      if (newLeftScore != leftScore || newRightScore != rightScore) {
+        debugPrint('🎯 === PK BATTLE SCORE UPDATE ===');
+        debugPrint('🎯 PK Battle ID: ${widget.pkBattleId}');
+        debugPrint('🎯 Left Host: ${widget.leftHostName} - Score: $leftScore → $newLeftScore');
+        debugPrint('🎯 Right Host: ${widget.rightHostName} - Score: $rightScore → $newRightScore');
+        debugPrint('🎯 Total Score: ${leftScore + rightScore} → ${newLeftScore + newRightScore}');
+        
+        setState(() {
+          leftScore = newLeftScore;
+          rightScore = newRightScore;
+        });
+        
+        // Notify parent about score update
+        if (widget.onScoreUpdate != null) {
+          widget.onScoreUpdate!();
+        }
+        
+        debugPrint('🎯 PK Battle Scores Updated - Left: $leftScore, Right: $rightScore');
+      }
+    } else {
+      debugPrint('❌ Failed to fetch PK battle scores for ID: ${widget.pkBattleId}');
     }
   }
 

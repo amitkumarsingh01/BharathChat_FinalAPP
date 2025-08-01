@@ -57,9 +57,11 @@ class ApiService {
   static String? _token;
   static int? _currentUserId;
   static Map<String, dynamic>? _currentUserData;
+  static Map<String, dynamic>? _lastPKBattleGiftLog;
 
   static int? get currentUserId => _currentUserId;
   static Map<String, dynamic>? get currentUserData => _currentUserData;
+  static Map<String, dynamic>? get lastPKBattleGiftLog => _lastPKBattleGiftLog;
 
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
@@ -234,6 +236,35 @@ class ApiService {
     final data = json.decode(response.body);
     _currentUserData = data;
     return data;
+  }
+
+  static Future<Map<String, dynamic>?> getUserById(int userId) async {
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    try {
+      apiLog('👤 [USER-$requestId] Fetching user $userId from $baseUrl/users/$userId');
+      apiLog('👤 [USER-$requestId] Headers: $_headers');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/users/$userId'),
+        headers: _headers,
+      );
+      
+      apiLog('👤 [USER-$requestId] Response status: ${response.statusCode}');
+      apiLog('👤 [USER-$requestId] Response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final userData = json.decode(response.body);
+        apiLog('👤 [USER-$requestId] Successfully fetched user data: $userData');
+        apiLog('👤 [USER-$requestId] Username: ${userData['username']}');
+        return userData;
+      } else {
+        apiLog('❌ [USER-$requestId] Failed to get user $userId: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      apiLog('❌ [USER-$requestId] Error getting user $userId: $e');
+      return null;
+    }
   }
 
   static Future<int> getCurrentUserDiamonds() async {
@@ -439,11 +470,12 @@ class ApiService {
     }
   }
 
-  /// Send a gift from current user to a host (for PK battle)
+  /// Send a gift from current user to a host
   /// Returns true if successful, throws otherwise
   static Future<bool> sendGift({
     required int receiverId,
     required int giftId,
+    required int amount,
     int? liveStreamId,
     String? liveStreamType,
   }) async {
@@ -453,6 +485,7 @@ class ApiService {
       body: json.encode({
         'receiver_id': receiverId,
         'gift_id': giftId,
+        'amount': amount,
         'live_stream_id': liveStreamId ?? 0,
         'live_stream_type': liveStreamType ?? '',
       }),
@@ -460,7 +493,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return true;
     } else {
-      throw Exception('Failed to send gift: \\${response.body}');
+      throw Exception('Failed to send gift: ${response.body}');
     }
   }
   // Diamond endpoints
@@ -1029,11 +1062,35 @@ class ApiService {
               apiLog('✅ [API-$requestId] Total request duration: ${totalDuration.inMilliseconds}ms');
               apiLog('✅ [API-$requestId] Returning PK battle data...');
               
+              // Fetch host names
+              String? leftHostName;
+              String? rightHostName;
+              
+              try {
+                if (battle['left_host_id'] != null) {
+                  final leftHost = await getUserById(battle['left_host_id']);
+                  leftHostName = leftHost?['username'] ?? 'Unknown';
+                  apiLog('👤 [API-$requestId] Left host name fetched: $leftHostName (ID: ${battle['left_host_id']})');
+                }
+                
+                if (battle['right_host_id'] != null) {
+                  final rightHost = await getUserById(battle['right_host_id']);
+                  rightHostName = rightHost?['username'] ?? 'Unknown';
+                  apiLog('👤 [API-$requestId] Right host name fetched: $rightHostName (ID: ${battle['right_host_id']})');
+                }
+              } catch (e) {
+                apiLog('⚠️ [API-$requestId] Error fetching host names: $e');
+                leftHostName = 'Unknown';
+                rightHostName = 'Unknown';
+              }
+              
               final result = {
                 'pk_battle_id': battle['pk_battle_id'],
                 'start_time': battle['start_time'],
                 'left_host_id': battle['left_host_id'],
                 'right_host_id': battle['right_host_id'],
+                'left_host_name': leftHostName,
+                'right_host_name': rightHostName,
                 'left_stream_id': battle['left_stream_id'],
                 'right_stream_id': battle['right_stream_id'],
                 'left_score': battle['left_score'],
@@ -1087,6 +1144,23 @@ class ApiService {
       apiLog('💥 [API-$requestId] Exception message: $e');
       apiLog('💥 [API-$requestId] Stack trace: ${StackTrace.current}');
       return null;
+    }
+  }
+
+  // Test method to manually fetch user information
+  static Future<void> testGetUserById(int userId) async {
+    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+    apiLog('🧪 [TEST-$requestId] Testing user fetch for ID: $userId');
+    
+    try {
+      final userData = await getUserById(userId);
+      if (userData != null) {
+        apiLog('🧪 [TEST-$requestId] ✅ Successfully fetched user: ${userData['username']}');
+      } else {
+        apiLog('🧪 [TEST-$requestId] ❌ Failed to fetch user $userId');
+      }
+    } catch (e) {
+      apiLog('🧪 [TEST-$requestId] ❌ Exception: $e');
     }
   }
 
@@ -1154,9 +1228,33 @@ class ApiService {
             apiLog('✅ [GIFT-$requestId] Receiver ID: $receiverId');
             apiLog('✅ [GIFT-$requestId] Gift ID: $giftId');
             apiLog('✅ [GIFT-$requestId] Amount: $amount');
+            
+            // Store the success log for debug display
+            _lastPKBattleGiftLog = {
+              'timestamp': DateTime.now().toString(),
+              'request_id': requestId,
+              'request': requestBody,
+              'response_status': response.statusCode,
+              'response_data': data,
+              'success': true,
+              'api_call_duration': '${apiCallDuration.inMilliseconds}ms',
+              'total_duration': '${totalDuration.inMilliseconds}ms',
+            };
           } else {
             apiLog('⚠️ [GIFT-$requestId] Gift send failed - status not "score updated"');
             apiLog('⚠️ [GIFT-$requestId] Actual status: ${data['status']}');
+            
+            // Store the failure log for debug display
+            _lastPKBattleGiftLog = {
+              'timestamp': DateTime.now().toString(),
+              'request_id': requestId,
+              'request': requestBody,
+              'response_status': response.statusCode,
+              'response_data': data,
+              'success': false,
+              'api_call_duration': '${apiCallDuration.inMilliseconds}ms',
+              'total_duration': '${totalDuration.inMilliseconds}ms',
+            };
           }
           
           return isSuccess;
@@ -1169,6 +1267,19 @@ class ApiService {
         apiLog('❌ [GIFT-$requestId] HTTP request failed');
         apiLog('❌ [GIFT-$requestId] Status code: ${response.statusCode}');
         apiLog('❌ [GIFT-$requestId] Error response body: ${response.body}');
+        
+        // Store the HTTP error log for debug display
+        _lastPKBattleGiftLog = {
+          'timestamp': DateTime.now().toString(),
+          'request_id': requestId,
+          'request': requestBody,
+          'response_status': response.statusCode,
+          'response_data': response.body,
+          'success': false,
+          'api_call_duration': '${apiCallDuration.inMilliseconds}ms',
+          'total_duration': '${totalDuration.inMilliseconds}ms',
+        };
+        
         return false;
       }
     } catch (e) {
@@ -1177,6 +1288,26 @@ class ApiService {
       apiLog('💥 [GIFT-$requestId] Exception type: ${e.runtimeType}');
       apiLog('💥 [GIFT-$requestId] Exception message: $e');
       apiLog('💥 [GIFT-$requestId] Stack trace: ${StackTrace.current}');
+      
+      // Store the exception log for debug display
+      _lastPKBattleGiftLog = {
+        'timestamp': DateTime.now().toString(),
+        'request_id': requestId,
+        'request': {
+          'pk_battle_id': pkBattleId,
+          'sender_id': senderId,
+          'receiver_id': receiverId,
+          'gift_id': giftId,
+          'amount': amount,
+        },
+        'response_status': null,
+        'response_data': e.toString(),
+        'success': false,
+        'api_call_duration': 'N/A',
+        'total_duration': '${totalDuration.inMilliseconds}ms',
+        'exception_type': e.runtimeType.toString(),
+      };
+      
       return false;
     }
   }

@@ -7,6 +7,7 @@ class GiftAnimation extends StatefulWidget {
   final String gifUrl;
   final String senderName;
   final VoidCallback? onAnimationComplete;
+  final bool isPKBattleGift;
 
   const GiftAnimation({
     Key? key,
@@ -14,6 +15,7 @@ class GiftAnimation extends StatefulWidget {
     required this.gifUrl,
     required this.senderName,
     this.onAnimationComplete,
+    this.isPKBattleGift = false,
   }) : super(key: key);
 
   @override
@@ -174,6 +176,30 @@ class _GiftAnimationState extends State<GiftAnimation>
                           ),
                           textAlign: TextAlign.center,
                         ),
+
+                        // PK Battle indicator
+                        if (widget.isPKBattleGift) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.yellow, Colors.orange],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              '🎮 PK BATTLE GIFT 🎮',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
 
                         // const SizedBox(height: 16),
 

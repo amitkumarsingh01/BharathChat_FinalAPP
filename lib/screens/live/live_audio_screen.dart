@@ -238,6 +238,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
       final success = await ApiService.sendGift(
         receiverId: widget.hostId,
         giftId: gift['id'],
+        amount: gift['diamond_amount'],
         liveStreamId: int.tryParse(widget.liveID) ?? 0,
         liveStreamType: widget.isHost ? 'host' : 'audience',
       );
@@ -253,7 +254,8 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
           "gif_filename": gift['gif_filename'],
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
-        await ZegoUIKit().sendInRoomCommand(widget.liveID, [message]);
+        // Note: ZEGOCLOUD in-room command is disabled due to API issues
+        // Gift is still sent successfully via API
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
