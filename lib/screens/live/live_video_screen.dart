@@ -64,12 +64,13 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
     });
   }
 
-  void _showGiftAnimation(String giftName, String gifUrl, String senderName) {
+  void _showGiftAnimation(String giftName, String gifUrl, String senderName, {String? pkBattleSide}) {
     setState(() {
       giftAnimations.add({
         'giftName': giftName,
         'gifUrl': gifUrl,
         'senderName': senderName,
+        'pkBattleSide': pkBattleSide,
         'id': DateTime.now().millisecondsSinceEpoch,
       });
     });
@@ -133,6 +134,7 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
             giftName: anim['giftName'],
             gifUrl: anim['gifUrl'],
             senderName: anim['senderName'],
+            pkBattleSide: anim['pkBattleSide'],
             onAnimationComplete: () => _removeGiftAnimation(anim['id']),
           ),
         ),

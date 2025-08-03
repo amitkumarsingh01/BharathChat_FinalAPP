@@ -73,12 +73,13 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
     // You can add additional logic here, like showing a notification
   }
 
-  void _showGiftAnimation(String giftName, String gifUrl, String senderName) {
+  void _showGiftAnimation(String giftName, String gifUrl, String senderName, {String? pkBattleSide}) {
     setState(() {
       giftAnimations.add({
         'giftName': giftName,
         'gifUrl': gifUrl,
         'senderName': senderName,
+        'pkBattleSide': pkBattleSide,
         'id': DateTime.now().millisecondsSinceEpoch,
       });
     });
@@ -142,6 +143,7 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
             giftName: anim['giftName'],
             gifUrl: anim['gifUrl'],
             senderName: anim['senderName'],
+            pkBattleSide: anim['pkBattleSide'],
             onAnimationComplete: () => _removeGiftAnimation(anim['id']),
           ),
         ),

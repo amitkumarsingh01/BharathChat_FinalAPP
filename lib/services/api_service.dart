@@ -1311,4 +1311,23 @@ class ApiService {
       return false;
     }
   }
+
+  // Get PK Battle Transactions
+  static Future<Map<String, dynamic>> getPKBattleTransactions(int pkBattleId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pk-battle/$pkBattleId/transactions'),
+        headers: _headers,
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        throw Exception('Failed to load PK battle transactions: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching PK battle transactions: $e');
+    }
+  }
 }

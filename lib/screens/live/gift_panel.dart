@@ -10,7 +10,7 @@ class GiftPanel extends StatefulWidget {
   final String? liveStreamType;
   final String roomId;
   final Function()? onGiftSent;
-  final Function(String giftName, String gifUrl, String senderName)?
+  final Function(String giftName, String gifUrl, String senderName, {String? pkBattleSide})?
   onGiftAnimation;
   final VoidCallback? onClose;
 
@@ -118,7 +118,11 @@ class _GiftPanelState extends State<GiftPanel> {
             'https://server.bharathchat.com/uploads/gifts/' +
             gift['gif_filename'];
         final senderName = currentUser?['first_name'] ?? 'User';
-        widget.onGiftAnimation?.call(gift['name'], gifUrl, senderName);
+        
+        // Determine PK battle side based on receiver ID
+        String? pkBattleSide;
+        // This will be determined by the parent component based on the actual PK battle context
+        widget.onGiftAnimation?.call(gift['name'], gifUrl, senderName, pkBattleSide: pkBattleSide);
         // Call callback
         widget.onGiftSent?.call();
       } else {

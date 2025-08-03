@@ -183,12 +183,13 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     }
   }
 
-  void _showGiftAnimation(String giftName, String gifUrl, String senderName) {
+  void _showGiftAnimation(String giftName, String gifUrl, String senderName, {String? pkBattleSide}) {
     setState(() {
       giftAnimations.add({
         'giftName': giftName,
         'gifUrl': gifUrl,
         'senderName': senderName,
+        'pkBattleSide': pkBattleSide,
         'id': DateTime.now().millisecondsSinceEpoch,
       });
     });
@@ -271,6 +272,9 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             'https://server.bharathchat.com/uploads/gifts/' +
             gift['gif_filename'];
         final senderName = currentUser?['first_name'] ?? 'User';
+        
+        // Note: For live_audio_screen, PK battle side will be determined by the parent component
+        // This is a simplified version - in a real PK battle, you'd need to determine the side
         setState(() {
           _activeGiftAnimations.add(
             GiftAnimation(
@@ -736,6 +740,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               giftName: anim['giftName'],
               gifUrl: anim['gifUrl'],
               senderName: anim['senderName'],
+              pkBattleSide: anim['pkBattleSide'],
               onAnimationComplete: () => _removeGiftAnimation(anim['id']),
             ),
           ),

@@ -99,6 +99,10 @@ class _LivePageState extends State<LivePage>
     // Set up log callback to capture API logs
     _setLogCallback();
 
+    // Listen for in-room commands (gift animations from other users)
+    // Note: We'll handle this through the ZegoUIKitPrebuiltLiveStreaming events
+    // The gift animations will be broadcasted via sendInRoomCommand
+
     // Initialize debug info
     _updateDebugInfo('is_host', widget.isHost);
     _updateDebugInfo('live_id', widget.liveID);
@@ -145,6 +149,10 @@ class _LivePageState extends State<LivePage>
       
       PKEvents.setCurrentPKBattleId(widget.activePKBattle!['id']);
       _pkBattleId = widget.activePKBattle!['id']?.toString();
+      
+      // Start polling for transactions when audience joins with active PK battle
+      _startPKBattleTransactionsPolling();
+      
       if (widget.activePKBattle!['start_time'] != null) {
         final serverStartTime = DateTime.parse(widget.activePKBattle!['start_time']);
         PKEvents.setCurrentPKBattleStartTime(serverStartTime);
@@ -211,6 +219,104 @@ class _LivePageState extends State<LivePage>
       }
     });
     _fetchGiftsAndUser();
+    
+    // Start periodic fetching of PK battle transactions for gift animations
+    _startPKBattleTransactionsPolling();
+  }
+
+  // Variables for PK battle transactions polling
+  Timer? _pkBattleTransactionsTimer;
+  Set<String> _processedTransactionIds = {};
+  int _lastTransactionPollTime = 0;
+
+  void _startPKBattleTransactionsPolling() {
+    debugPrint('🔄 Starting PK battle transactions polling...');
+    _pkBattleTransactionsTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      _fetchAndDisplayPKBattleTransactions();
+    });
+  }
+
+  void _stopPKBattleTransactionsPolling() {
+    debugPrint('🛑 Stopping PK battle transactions polling...');
+    _pkBattleTransactionsTimer?.cancel();
+    _pkBattleTransactionsTimer = null;
+  }
+
+  Future<void> _fetchAndDisplayPKBattleTransactions() async {
+    if (PKEvents.currentPKBattleId == null) {
+      return; // No active PK battle
+    }
+
+    try {
+      final transactions = await ApiService.getPKBattleTransactions(PKEvents.currentPKBattleId!);
+      
+      if (transactions['transactions'] != null) {
+        final List<dynamic> transactionList = transactions['transactions'];
+        
+        for (final transaction in transactionList) {
+          final transactionId = transaction['id'].toString();
+          
+          // Skip if we've already processed this transaction
+          if (_processedTransactionIds.contains(transactionId)) {
+            continue;
+          }
+          
+          // Skip if transaction is too old (older than 10 seconds)
+          final createdAt = DateTime.parse(transaction['created_at']);
+          final now = DateTime.now();
+          if (now.difference(createdAt).inSeconds > 10) {
+            continue;
+          }
+          
+          // Process the transaction and create gift animation
+          _processPKBattleTransaction(transaction);
+          _processedTransactionIds.add(transactionId);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching PK battle transactions: $e');
+    }
+  }
+
+  void _processPKBattleTransaction(Map<String, dynamic> transaction) {
+    try {
+      final giftDetails = transaction['gift_details'];
+      final senderDetails = transaction['sender_details'];
+      final receiverDetails = transaction['receiver_details'];
+      
+      if (giftDetails == null || senderDetails == null) {
+        return;
+      }
+      
+      final giftName = giftDetails['name'];
+      final gifFilename = giftDetails['gif_filename'];
+      final senderName = senderDetails['username'] ?? '${senderDetails['first_name']} ${senderDetails['last_name']}';
+      
+      // Determine PK battle side based on receiver
+      String? pkBattleSide;
+      if (transaction['receiver_id'] == transaction['left_host_id']) {
+        pkBattleSide = 'left';
+      } else if (transaction['receiver_id'] == transaction['right_host_id']) {
+        pkBattleSide = 'right';
+      }
+      
+      // Create GIF URL
+      final gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+      
+      debugPrint('🎁 Processing PK battle transaction:');
+      debugPrint('🎁   - Transaction ID: ${transaction['id']}');
+      debugPrint('🎁   - Gift: $giftName');
+      debugPrint('🎁   - Sender: $senderName');
+      debugPrint('🎁   - Receiver: ${receiverDetails['username']}');
+      debugPrint('🎁   - PK Battle Side: $pkBattleSide');
+      debugPrint('🎁   - GIF URL: $gifUrl');
+      
+      // Create gift animation
+      _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+      
+    } catch (e) {
+      debugPrint('❌ Error processing PK battle transaction: $e');
+    }
   }
 
   Future<void> _fetchGiftsAndUser() async {
@@ -294,40 +400,53 @@ class _LivePageState extends State<LivePage>
       return;
     }
 
-    // Check if we're in PK battle mode
-    final isPKBattle = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
-    debugPrint('🎁 [${requestId}] Is PK Battle: $isPKBattle');
-    debugPrint('🎁 [${requestId}] Live State Value: ${liveStateNotifier.value}');
-    debugPrint('🎁 [${requestId}] Expected PK Battle State: ${ZegoLiveStreamingState.inPKBattle}');
+    // Set sending flag early to prevent multiple sends
+    setState(() {
+      _sendingGift = true;
+    });
 
-    if (isPKBattle && !widget.isHost) {
-      debugPrint('🎁 [${requestId}] PK Battle mode - showing host selection dialog');
-      debugPrint('🎁 [${requestId}] Left Host: ${_leftHostName} (${_leftHostId})');
-      debugPrint('🎁 [${requestId}] Right Host: ${_rightHostName} (${_rightHostId})');
-      
-      // Show host selection dialog for PK battle
-      final selectedHost = await _showHostSelectionDialog();
-      debugPrint('🎁 [${requestId}] Host selection dialog result: $selectedHost');
-      
-      if (selectedHost == null) {
-        debugPrint('🎁 [${requestId}] User cancelled host selection');
-        return; // User cancelled
+    try {
+      // Check if we're in PK battle mode
+      final isPKBattle = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle;
+      debugPrint('🎁 [${requestId}] Is PK Battle: $isPKBattle');
+      debugPrint('🎁 [${requestId}] Live State Value: ${liveStateNotifier.value}');
+      debugPrint('🎁 [${requestId}] Expected PK Battle State: ${ZegoLiveStreamingState.inPKBattle}');
+
+      if (isPKBattle && !widget.isHost) {
+        debugPrint('🎁 [${requestId}] PK Battle mode - showing host selection dialog');
+        debugPrint('🎁 [${requestId}] Left Host: ${_leftHostName} (${_leftHostId})');
+        debugPrint('🎁 [${requestId}] Right Host: ${_rightHostName} (${_rightHostId})');
+        
+        // Show host selection dialog for PK battle
+        final selectedHost = await _showHostSelectionDialog();
+        debugPrint('🎁 [${requestId}] Host selection dialog result: $selectedHost');
+        
+        if (selectedHost == null) {
+          debugPrint('🎁 [${requestId}] User cancelled host selection');
+          return; // User cancelled
+        }
+
+        debugPrint('🎁 [${requestId}] Selected host ID: $selectedHost');
+        debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with selected host...');
+        await _sendGiftToHost(gift, selectedHost);
+
+        // Update PK progress bar diamond count
+        debugPrint('🎁 [${requestId}] Updating PK diamond count...');
+        _updatePKDiamondCount(selectedHost, gift['diamond_amount']);
+      } else {
+        debugPrint('🎁 [${requestId}] Normal gift sending mode');
+        debugPrint('🎁 [${requestId}] Is Host: ${widget.isHost}');
+        debugPrint('🎁 [${requestId}] Receiver ID: ${widget.receiverId}');
+        debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with receiver ID...');
+        // Normal gift sending (not in PK battle or host sending)
+        await _sendGiftToHost(gift, widget.receiverId);
       }
-
-      debugPrint('🎁 [${requestId}] Selected host ID: $selectedHost');
-      debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with selected host...');
-      await _sendGiftToHost(gift, selectedHost);
-
-      // Update PK progress bar diamond count
-      debugPrint('🎁 [${requestId}] Updating PK diamond count...');
-      _updatePKDiamondCount(selectedHost, gift['diamond_amount']);
-    } else {
-      debugPrint('🎁 [${requestId}] Normal gift sending mode');
-      debugPrint('🎁 [${requestId}] Is Host: ${widget.isHost}');
-      debugPrint('🎁 [${requestId}] Receiver ID: ${widget.receiverId}');
-      debugPrint('🎁 [${requestId}] Calling _sendGiftToHost with receiver ID...');
-      // Normal gift sending (not in PK battle or host sending)
-      await _sendGiftToHost(gift, widget.receiverId);
+    } finally {
+      // Always reset the sending flag
+      setState(() {
+        _sendingGift = false;
+      });
+      debugPrint('🎁 [${requestId}] Gift sending process finished, resetting sending state');
     }
   }
 
@@ -342,7 +461,6 @@ class _LivePageState extends State<LivePage>
     debugPrint('🎁 [${requestId}] PK Battle ID: ${PKEvents.currentPKBattleId}');
     
     setState(() {
-      _sendingGift = true;
       _currentUser!['diamonds'] -= gift['diamond_amount'];
     });
     
@@ -424,8 +542,7 @@ class _LivePageState extends State<LivePage>
         });
         
         debugPrint('🎁 Gift sent successfully via API!');
-        debugPrint('🎁 Note: ZEGOCLOUD in-room command is disabled due to API issues');
-        debugPrint('🎁 Gift animation will still show locally');
+        debugPrint('🎁 Creating gift animation for sender and receiver...');
         
         // If this is a PK battle gift, trigger immediate score update
         if (isPKBattle) {
@@ -458,36 +575,40 @@ class _LivePageState extends State<LivePage>
           );
         }
         
-        // Trigger gift animation (same as gift panel)
+        // Create gift animation using the reusable method
         final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
         final senderName = _currentUser?['first_name'] ?? 'User';
-        final isPKBattleGift = liveStateNotifier.value == ZegoLiveStreamingState.inPKBattle && PKEvents.currentPKBattleId != null;
         
-        debugPrint('🎁 Creating gift animation:');
+        // Determine PK battle side for animation positioning
+        String? pkBattleSide;
+        if (isPKBattle && !widget.isHost) {
+          // For audience, determine which side based on selected host
+          if (receiverId == int.tryParse(_leftHostId ?? '0')) {
+            pkBattleSide = 'left';
+          } else if (receiverId == int.tryParse(_rightHostId ?? '0')) {
+            pkBattleSide = 'right';
+          }
+        } else if (isPKBattle && widget.isHost) {
+          // For host, determine which side based on their position
+          if (receiverId == widget.receiverId) {
+            // This host received the gift, determine their side
+            if (widget.receiverId == int.tryParse(_leftHostId ?? '0')) {
+              pkBattleSide = 'left';
+            } else if (widget.receiverId == int.tryParse(_rightHostId ?? '0')) {
+              pkBattleSide = 'right';
+            }
+          }
+        }
+        
+        debugPrint('🎁 Creating gift animation for sender:');
         debugPrint('🎁   - Gift Name: ${gift['name']}');
         debugPrint('🎁   - GIF URL: $gifUrl');
         debugPrint('🎁   - Sender: $senderName');
-        debugPrint('🎁   - Is PK Battle Gift: $isPKBattleGift');
+        debugPrint('🎁   - PK Battle Side: $pkBattleSide');
+        debugPrint('🎁   - Receiver ID: $receiverId');
         
-        setState(() {
-          _activeGiftAnimations.add(
-            GiftAnimation(
-              key: ValueKey('gift_anim_${_giftAnimKey++}'),
-              giftName: gift['name'],
-              gifUrl: gifUrl,
-              senderName: senderName,
-              isPKBattleGift: isPKBattleGift,
-              onAnimationComplete: () {
-                debugPrint('🎁 Gift animation completed, removing from list');
-                setState(() {
-                  _activeGiftAnimations.removeWhere(
-                    (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
-                  );
-                });
-              },
-            ),
-          );
-        });
+        // Create gift animation for sender
+        _createGiftAnimation(gift['name'], gifUrl, senderName, pkBattleSide);
         
         debugPrint('✅ Gift sending process completed successfully');
         // Optionally: refresh user data
@@ -512,10 +633,7 @@ class _LivePageState extends State<LivePage>
         );
       }
     } finally {
-      debugPrint('🎁 Gift sending process finished, resetting sending state');
-      setState(() {
-        _sendingGift = false;
-      });
+      debugPrint('🎁 Gift sending process finished');
     }
   }
 
@@ -548,64 +666,64 @@ class _LivePageState extends State<LivePage>
               ),
               const SizedBox(height: 16),
               // Left Host Info
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '🟢 Left Host: ${_leftHostName ?? 'Unknown'}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'ID: ${_leftHostId ?? 'N/A'}',
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Right Host Info
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '🟠 Right Host: ${_rightHostName ?? 'Unknown'}',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      'ID: ${_rightHostId ?? 'N/A'}',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.all(12),
+              //   decoration: BoxDecoration(
+              //     color: Colors.green.withOpacity(0.1),
+              //     borderRadius: BorderRadius.circular(8),
+              //     border: Border.all(color: Colors.green),
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Text(
+              //         '🟢 Left Host: ${_leftHostName ?? 'Unknown'}',
+              //         style: const TextStyle(
+              //           color: Colors.green,
+              //           fontWeight: FontWeight.bold,
+              //           fontSize: 14,
+              //         ),
+              //       ),
+              //       Text(
+              //         'ID: ${_leftHostId ?? 'N/A'}',
+              //         style: const TextStyle(
+              //           color: Colors.green,
+              //           fontSize: 12,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 8),
+              // // Right Host Info
+              // Container(
+              //   padding: const EdgeInsets.all(12),
+              //   decoration: BoxDecoration(
+              //     color: Colors.orange.withOpacity(0.1),
+              //     borderRadius: BorderRadius.circular(8),
+              //     border: Border.all(color: Colors.orange),
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Text(
+              //         '🟠 Right Host: ${_rightHostName ?? 'Unknown'}',
+              //         style: const TextStyle(
+              //           color: Colors.orange,
+              //           fontWeight: FontWeight.bold,
+              //           fontSize: 14,
+              //         ),
+              //       ),
+              //       Text(
+              //         'ID: ${_rightHostId ?? 'N/A'}',
+              //         style: const TextStyle(
+              //           color: Colors.orange,
+              //           fontSize: 12,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
           actions: [
@@ -674,6 +792,7 @@ class _LivePageState extends State<LivePage>
       },
     );
   }
+
 
   Future<void> _showGiftConfirmationDialog(
     dynamic gift,
@@ -748,6 +867,7 @@ class _LivePageState extends State<LivePage>
   void dispose() {
     liveStateNotifier.removeListener(_onLiveStateChanged);
     _likeController.dispose();
+    _stopPKBattleTransactionsPolling();
     super.dispose();
   }
 
@@ -1066,6 +1186,11 @@ class _LivePageState extends State<LivePage>
         if (pkBattle != null) {
           debugPrint('✅ Stream ID fetch found PK battle: ${pkBattle['pk_battle_id']}');
           PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
+          
+          // Restart polling for transactions when new PK battle starts
+          _stopPKBattleTransactionsPolling();
+          _startPKBattleTransactionsPolling();
+          
           setState(() {
             _pkBattleId = pkBattle['pk_battle_id']?.toString();
             // For audience, also update host information and show timer
@@ -1106,6 +1231,67 @@ class _LivePageState extends State<LivePage>
         });
       }
     }
+  }
+
+  // Handle in-room commands for gift animations
+  void _handleInRoomCommand(String command) {
+    try {
+      final data = jsonDecode(command);
+      if (data['type'] == 'gift') {
+        debugPrint('🎁 Processing gift command: $data');
+        
+        final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + data['gif_filename'];
+        final senderName = data['sender_name'] ?? 'User';
+        final giftName = data['gift_name'] ?? 'Gift';
+        
+        // Determine PK battle side if applicable
+        String? pkBattleSide;
+        final isPKBattle = PKEvents.currentPKBattleId != null;
+        if (isPKBattle && data['receiver_id'] != null) {
+          final receiverId = data['receiver_id'];
+          if (receiverId == int.tryParse(_leftHostId ?? '0')) {
+            pkBattleSide = 'left';
+          } else if (receiverId == int.tryParse(_rightHostId ?? '0')) {
+            pkBattleSide = 'right';
+          }
+        }
+        
+        // Create gift animation
+        _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+      }
+    } catch (e) {
+      debugPrint('❌ Error processing in-room command: $e');
+    }
+  }
+
+  // Create gift animation (reusable method)
+  void _createGiftAnimation(String giftName, String gifUrl, String senderName, String? pkBattleSide) {
+    debugPrint('🎁 Creating gift animation:');
+    debugPrint('🎁   - Gift Name: $giftName');
+    debugPrint('🎁   - GIF URL: $gifUrl');
+    debugPrint('🎁   - Sender: $senderName');
+    debugPrint('🎁   - PK Battle Side: $pkBattleSide');
+    
+    setState(() {
+      _activeGiftAnimations.add(
+        GiftAnimation(
+          key: ValueKey('gift_anim_${_giftAnimKey++}'),
+          giftName: giftName,
+          gifUrl: gifUrl,
+          senderName: senderName,
+          isPKBattleGift: PKEvents.currentPKBattleId != null,
+          pkBattleSide: pkBattleSide,
+          onAnimationComplete: () {
+            debugPrint('🎁 Gift animation completed, removing from list');
+            setState(() {
+              _activeGiftAnimations.removeWhere(
+                (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
+              );
+            });
+          },
+        ),
+      );
+    });
   }
 
   void _onLiveStateChanged() {
@@ -1174,6 +1360,10 @@ class _LivePageState extends State<LivePage>
           debugPrint('🔧 Setting PK Battle ID: ${pkBattle['pk_battle_id']}');
           PKEvents.setCurrentPKBattleId(pkBattle['pk_battle_id']);
           debugPrint('🔧 PK Battle ID set to: ${PKEvents.currentPKBattleId}');
+          
+          // Restart polling for transactions when new PK battle starts
+          _stopPKBattleTransactionsPolling();
+          _startPKBattleTransactionsPolling();
           
           // Update local state for UI reactivity
           setState(() {
@@ -1271,6 +1461,9 @@ class _LivePageState extends State<LivePage>
       rightScore: rightScore,
       winnerId: winnerId,
     );
+
+    // Stop polling for transactions when PK battle ends
+    _stopPKBattleTransactionsPolling();
 
     // Show popup
     if (mounted) {
@@ -1453,6 +1646,7 @@ class _LivePageState extends State<LivePage>
                 onStateUpdated: (state) {
                   liveStateNotifier.value = state;
                 },
+
                 onLeaveConfirmation: (
                   ZegoLiveStreamingLeaveConfirmationEvent event,
                   Future<bool> Function() defaultAction,
@@ -1875,25 +2069,25 @@ class _LivePageState extends State<LivePage>
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined,
-                        color: _showDebugInfo ? Colors.black : Colors.orange,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'DEBUG',
-                        style: TextStyle(
-                          color: _showDebugInfo ? Colors.black : Colors.orange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                  // child: Row(
+                  //   mainAxisSize: MainAxisSize.min,
+                  //   children: [
+                  //     Icon(
+                  //       _showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined,
+                  //       color: _showDebugInfo ? Colors.black : Colors.orange,
+                  //       size: 16,
+                  //     ),
+                  //     const SizedBox(width: 4),
+                  //     Text(
+                  //       'DEBUG',
+                  //       style: TextStyle(
+                  //         color: _showDebugInfo ? Colors.black : Colors.orange,
+                  //         fontSize: 12,
+                  //         fontWeight: FontWeight.bold,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
                 ),
               ),
             ),
@@ -2366,6 +2560,8 @@ class _LivePageState extends State<LivePage>
                               'Left Host': '${_leftHostName ?? 'Unknown'} (${_leftHostId ?? 'N/A'})',
                               'Right Host': '${_rightHostName ?? 'Unknown'} (${_rightHostId ?? 'N/A'})',
                               'Active Gift Animations': _activeGiftAnimations.length.toString(),
+                              'Transaction Polling': _pkBattleTransactionsTimer != null ? 'Active' : 'Inactive',
+                              'Processed Transactions': _processedTransactionIds.length.toString(),
                               'Gifts Loaded': '${_gifts.length}',
                               'Gifts Loading': _giftsLoading.toString(),
                             }),

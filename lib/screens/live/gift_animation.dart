@@ -8,6 +8,7 @@ class GiftAnimation extends StatefulWidget {
   final String senderName;
   final VoidCallback? onAnimationComplete;
   final bool isPKBattleGift;
+  final String? pkBattleSide; // 'left' or 'right' for PK battle positioning
 
   const GiftAnimation({
     Key? key,
@@ -16,6 +17,7 @@ class GiftAnimation extends StatefulWidget {
     required this.senderName,
     this.onAnimationComplete,
     this.isPKBattleGift = false,
+    this.pkBattleSide, // New parameter for PK battle side
   }) : super(key: key);
 
   @override
@@ -78,19 +80,19 @@ class _GiftAnimationState extends State<GiftAnimation>
     });
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
   Future<void> _playGiftSound() async {
     try {
       await _audioPlayer.play(AssetSource('gift_sound.mp3'));
     } catch (e) {
       print('Error playing gift sound: $e');
     }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _audioPlayer.dispose();
-    super.dispose();
   }
 
   @override
@@ -101,7 +103,6 @@ class _GiftAnimationState extends State<GiftAnimation>
         return Positioned.fill(
           child: Container(
             color: Colors.transparent,
-            // color: Colors.black.withOpacity(0.3 * _opacityAnimation.value),
             child: Center(
               child: Transform.scale(
                 scale: _scaleAnimation.value,
@@ -110,7 +111,6 @@ class _GiftAnimationState extends State<GiftAnimation>
                   child: Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      // color: Colors.black.withOpacity(0.8),
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.transparent, width: 3),
@@ -130,24 +130,22 @@ class _GiftAnimationState extends State<GiftAnimation>
                             child: CachedNetworkImage(
                               imageUrl: widget.gifUrl,
                               fit: BoxFit.cover,
-                              placeholder:
-                                  (context, url) => Container(
-                                    color: Colors.grey[800],
-                                    child: const Icon(
-                                      Icons.card_giftcard,
-                                      color: Colors.white,
-                                      size: 60,
-                                    ),
-                                  ),
-                              errorWidget:
-                                  (context, url, error) => Container(
-                                    color: Colors.grey[800],
-                                    child: const Icon(
-                                      Icons.card_giftcard,
-                                      color: Colors.white,
-                                      size: 60,
-                                    ),
-                                  ),
+                              placeholder: (context, url) => Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.card_giftcard,
+                                  color: Colors.white,
+                                  size: 60,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.card_giftcard,
+                                  color: Colors.white,
+                                  size: 60,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -178,7 +176,35 @@ class _GiftAnimationState extends State<GiftAnimation>
                         ),
 
                         // PK Battle indicator
-                        if (widget.isPKBattleGift) ...[
+                        if (widget.isPKBattleGift && widget.pkBattleSide != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: widget.pkBattleSide == 'left' 
+                                  ? [Colors.green, Colors.lightGreen]
+                                  : [Colors.orange, Colors.deepOrange],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              widget.pkBattleSide == 'left' 
+                                ? '🟢 LEFT SIDE 🟢'
+                                : '🟠 RIGHT SIDE 🟠',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+
+                        // PK Battle indicator (general)
+                        if (widget.isPKBattleGift && widget.pkBattleSide == null) ...[
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
