@@ -485,26 +485,28 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.event_seat,
-                                            color: Colors.white54,
-                                            size: 20,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '$seats Seats',
-                                            style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                      // Row(
+                                      //   children: [
+                                      //     Icon(
+                                      //       Icons.event_seat,
+                                      //       color: Colors.white54,
+                                      //       size: 20,
+                                      //     ),
+                                      //     const SizedBox(width: 4),
+                                      //     Text(
+                                      //       '$seats Seats',
+                                      //       style: const TextStyle(
+                                      //         color: Colors.white54,
+                                      //         fontWeight: FontWeight.bold,
+                                      //         fontSize: 14,
+                                      //       ),
+                                      //     ),
+                                      //   ],
+                                      // ),
                                       const SizedBox(height: 8),
                                       Container(
+                                        height: 30,
+                                        width: 100,
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
                                             colors: [
@@ -516,7 +518,7 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                             end: Alignment.bottomRight,
                                           ),
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            25,
                                           ),
                                         ),
                                         child: ElevatedButton.icon(
@@ -556,15 +558,15 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                           },
                                           icon: const Icon(
                                             Icons.headset_mic,
-                                            color: Colors.black,
+                                            color: Colors.white,
                                             size: 20,
                                           ),
                                           label: const Text(
                                             'Join',
                                             style: TextStyle(
-                                              color: Colors.black,
+                                              color: Colors.white,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                                              fontSize: 14,
                                             ),
                                           ),
                                           style: ElevatedButton.styleFrom(
@@ -574,10 +576,10 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                             ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                              vertical: 10,
-                                            ),
+                                            // padding: const EdgeInsets.symmetric(
+                                            //   horizontal: 18,
+                                            //   vertical: 10,
+                                            // ),
                                           ),
                                         ),
                                       ),

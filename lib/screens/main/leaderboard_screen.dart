@@ -201,9 +201,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final periodStr = _periodToString(selectedPeriod);
     String url;
     if (selectedFilter == FilterType.credited) {
-      url = 'https://server.bharathchat.com/user-star-history?period=$periodStr';
+      url =
+          'https://server.bharathchat.com/user-star-history?period=$periodStr';
     } else {
-      url = 'https://server.bharathchat.com/user-diamond-history?period=$periodStr';
+      url =
+          'https://server.bharathchat.com/user-diamond-history?period=$periodStr';
     }
     try {
       final response = await http.get(
@@ -223,9 +225,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           filteredUsers = List.from(users);
           // Sort by credited or debited
           if (selectedFilter == FilterType.credited) {
-            filteredUsers.sort((a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds));
+            filteredUsers.sort(
+              (a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds),
+            );
           } else {
-            filteredUsers.sort((a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds));
+            filteredUsers.sort(
+              (a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds),
+            );
           }
           isLoading = false;
         });
@@ -840,6 +846,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           ),
           const SizedBox(width: 12),
           Container(
+            height: 35,
+            width: 110,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [

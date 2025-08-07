@@ -22,6 +22,12 @@ class Language {
 
 const List<Language> languages = [
   Language(
+    name: 'Kannada',
+    nativeName: 'ಕನ್ನಡ',
+    code: 'kn',
+    backgroundColor: Color(0xFF4B0082), // Purple
+  ),
+  Language(
     name: 'Hindi',
     nativeName: 'हिंदी',
     code: 'hi',
@@ -57,12 +63,12 @@ const List<Language> languages = [
     code: 'pa',
     backgroundColor: Color(0xFF000080), // Navy
   ),
-  Language(
-    name: 'Kannada',
-    nativeName: 'ಕನ್ನಡ',
-    code: 'kn',
-    backgroundColor: Color(0xFF4B0082), // Purple
-  ),
+  // Language(
+  //   name: 'Kannada',
+  //   nativeName: 'ಕನ್ನಡ',
+  //   code: 'kn',
+  //   backgroundColor: Color(0xFF4B0082), // Purple
+  // ),
   Language(
     name: 'Malayalam',
     nativeName: 'മലയാളം',
@@ -86,9 +92,7 @@ Widget customAvatarBuilder(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           image: DecorationImage(
-            image: MemoryImage(
-              base64Decode(profilePic),
-            ),
+            image: MemoryImage(base64Decode(profilePic)),
             fit: BoxFit.cover,
           ),
         ),
@@ -99,19 +103,18 @@ Widget customAvatarBuilder(
   }
   return CachedNetworkImage(
     imageUrl: 'https://robohash.org/${user?.id}.png',
-    imageBuilder: (context, imageProvider) => Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        image: DecorationImage(
-          image: imageProvider,
-          fit: BoxFit.cover,
+    imageBuilder:
+        (context, imageProvider) => Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
+          ),
         ),
-      ),
-    ),
-    progressIndicatorBuilder: (context, url, downloadProgress) =>
-        CircularProgressIndicator(value: downloadProgress.progress),
+    progressIndicatorBuilder:
+        (context, url, downloadProgress) =>
+            CircularProgressIndicator(value: downloadProgress.progress),
     errorWidget: (context, url, error) {
       return ZegoAvatar(user: user, avatarSize: size);
     },
   );
-} 
+}
