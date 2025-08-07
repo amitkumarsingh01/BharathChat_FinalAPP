@@ -34,10 +34,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user!['profile_pic'].toString().isNotEmpty) {
       final profilePic = _user!['profile_pic'].toString();
       // If it's already a full URL, use as is; otherwise, prepend server URL
-      final isFullUrl = profilePic.startsWith('http://') || profilePic.startsWith('https://');
-      final url = isFullUrl
-          ? profilePic
-          : 'https://server.bharathchat.com/' + profilePic;
+      final isFullUrl =
+          profilePic.startsWith('http://') || profilePic.startsWith('https://');
+      final url =
+          isFullUrl
+              ? profilePic
+              : 'https://server.bharathchat.com/' + profilePic;
       return NetworkImage(url);
     }
     return null;
@@ -108,13 +110,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         await ApiService.removeUserProfilePic(_user!['id']);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Profile picture removed successfully'), backgroundColor: Colors.green),
+                            const SnackBar(
+                              content: Text(
+                                'Profile picture removed successfully',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
                           );
                         }
                       } catch (e) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Failed to remove profile picture'), backgroundColor: Colors.red),
+                            const SnackBar(
+                              content: Text('Failed to remove profile picture'),
+                              backgroundColor: Colors.red,
+                            ),
                           );
                         }
                       }
@@ -171,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit, color: Colors.orange),
+            icon: const Icon(Icons.edit, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -263,13 +273,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     //     ],
                     //   ),
                     // ),
-                    const SizedBox(height: 30),
-
+                    // const SizedBox(height: 30),
                     FutureBuilder<Map<String, dynamic>>(
-                      future: ApiService.getUserRelations(_user?['id'] ?? _user?['user_id']),
+                      future: ApiService.getUserRelations(
+                        _user?['id'] ?? _user?['user_id'],
+                      ),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(color: Colors.orange));
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.orange,
+                            ),
+                          );
                         }
                         if (snapshot.hasError) {
                           return const SizedBox();
@@ -286,24 +302,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const FollowedUser(),
+                                      builder:
+                                          (context) => const FollowedUser(),
                                     ),
                                   );
                                 },
                                 child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.grey[900],
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.transparent),
+                                    border: Border.all(
+                                      color: Colors.transparent,
+                                    ),
                                   ),
                                   child: Column(
                                     children: [
                                       Text(
                                         '$following',
                                         style: const TextStyle(
-                                          color: Colors.orange,
+                                          color: Colors.white,
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -327,24 +350,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const FollowedUser(), // Replace with Followers screen if exists
+                                      builder:
+                                          (context) =>
+                                              const FollowedUser(), // Replace with Followers screen if exists
                                     ),
                                   );
                                 },
                                 child: Container(
-                                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.grey[900],
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.transparent),
+                                    border: Border.all(
+                                      color: Colors.transparent,
+                                    ),
                                   ),
                                   child: Column(
                                     children: [
                                       Text(
                                         '$followers',
                                         style: const TextStyle(
-                                          color: Colors.orange,
+                                          color: Colors.white,
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -407,7 +438,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => StarHistoryScreen(userId: _user?['id'] ?? _user?['user_id']),
+                          builder:
+                              (context) => StarHistoryScreen(
+                                userId: _user?['id'] ?? _user?['user_id'],
+                              ),
                         ),
                       );
                     }),
@@ -454,7 +488,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: ElevatedButton(
                         onPressed: _logout,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: Colors.grey[800],
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -479,12 +513,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.grey[900],
+        // color: Colors.grey[900],
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.transparent),
       ),
       child: ListTile(
-        leading: Icon(icon, color: Colors.orange),
+        leading: Icon(icon, color: Colors.white),
         title: Text(
           title,
           style: const TextStyle(
@@ -494,7 +529,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         trailing: const Icon(
           Icons.arrow_forward_ios,
-          color: Colors.orange,
+          color: Colors.white,
           size: 16,
         ),
         onTap: onTap,

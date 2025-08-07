@@ -231,82 +231,81 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                     //     ],
                     //   ),
                     // ),
-                    const Divider(color: Colors.transparent),
-
+                    // const Divider(color: Colors.transparent),
                     if (_sliders.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      CarouselSlider(
-                        options: CarouselOptions(
-                          height: MediaQuery.of(context).size.width * 6 / 16,
-                          autoPlay: true,
-                          enlargeCenterPage: true,
-                          viewportFraction: 0.9,
-                        ),
-                        items:
-                            _sliders.map((slider) {
-                              return Container(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Colors.grey[900],
-                                  border: Border.all(color: Colors.transparent),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child:
-                                      slider['img'].startsWith('data:image')
-                                          ? Image.memory(
-                                            base64Decode(
-                                              slider['img'].split(',')[1],
-                                            ),
-                                            fit: BoxFit.cover,
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                            errorBuilder: (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) {
-                                              return Container(
-                                                color: Colors.grey[800],
-                                                child: const Center(
-                                                  child: Icon(
-                                                    Icons.error_outline,
-                                                    color: Colors.white,
-                                                    size: 40,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          )
-                                          : Image.network(
-                                            slider['img'] ?? '',
-                                            fit: BoxFit.cover,
-                                            width: double.infinity,
-                                            height: double.infinity,
-                                            errorBuilder: (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) {
-                                              return Container(
-                                                color: Colors.grey[800],
-                                                child: const Center(
-                                                  child: Icon(
-                                                    Icons.error_outline,
-                                                    color: Colors.white,
-                                                    size: 40,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                ),
-                              );
-                            }).toList(),
-                      ),
+                      // const SizedBox(height: 20),
+                      // CarouselSlider(
+                      //   options: CarouselOptions(
+                      //     height: MediaQuery.of(context).size.width * 6 / 16,
+                      //     autoPlay: true,
+                      //     enlargeCenterPage: true,
+                      //     viewportFraction: 0.9,
+                      //   ),
+                      //   items:
+                      //       _sliders.map((slider) {
+                      //         return Container(
+                      //           margin: const EdgeInsets.symmetric(
+                      //             horizontal: 5,
+                      //           ),
+                      //           decoration: BoxDecoration(
+                      //             borderRadius: BorderRadius.circular(12),
+                      //             color: Colors.grey[900],
+                      //             border: Border.all(color: Colors.transparent),
+                      //           ),
+                      //           child: ClipRRect(
+                      //             borderRadius: BorderRadius.circular(12),
+                      //             child:
+                      //                 slider['img'].startsWith('data:image')
+                      //                     ? Image.memory(
+                      //                       base64Decode(
+                      //                         slider['img'].split(',')[1],
+                      //                       ),
+                      //                       fit: BoxFit.cover,
+                      //                       width: double.infinity,
+                      //                       height: double.infinity,
+                      //                       errorBuilder: (
+                      //                         context,
+                      //                         error,
+                      //                         stackTrace,
+                      //                       ) {
+                      //                         return Container(
+                      //                           color: Colors.grey[800],
+                      //                           child: const Center(
+                      //                             child: Icon(
+                      //                               Icons.error_outline,
+                      //                               color: Colors.white,
+                      //                               size: 40,
+                      //                             ),
+                      //                           ),
+                      //                         );
+                      //                       },
+                      //                     )
+                      //                     : Image.network(
+                      //                       slider['img'] ?? '',
+                      //                       fit: BoxFit.cover,
+                      //                       width: double.infinity,
+                      //                       height: double.infinity,
+                      //                       errorBuilder: (
+                      //                         context,
+                      //                         error,
+                      //                         stackTrace,
+                      //                       ) {
+                      //                         return Container(
+                      //                           color: Colors.grey[800],
+                      //                           child: const Center(
+                      //                             child: Icon(
+                      //                               Icons.error_outline,
+                      //                               color: Colors.white,
+                      //                               size: 40,
+                      //                             ),
+                      //                           ),
+                      //                         );
+                      //                       },
+                      //                     ),
+                      //           ),
+                      //         );
+                      //       }).toList(),
+                      // ),
                     ],
 
                     // Audio Rooms List
@@ -372,30 +371,32 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
                                         child:
-                                            profilePic != null && profilePic.isNotEmpty
+                                            profilePic != null &&
+                                                    profilePic.isNotEmpty
                                                 ? (profilePic.startsWith('http')
                                                     ? Image.network(
-                                                        profilePic,
-                                                        width: 90,
-                                                        height: 90,
-                                                        fit: BoxFit.cover,
-                                                      )
+                                                      profilePic,
+                                                      width: 90,
+                                                      height: 90,
+                                                      fit: BoxFit.cover,
+                                                    )
                                                     : Image.network(
-                                                        'https://server.bharathchat.com/' + profilePic,
-                                                        width: 90,
-                                                        height: 90,
-                                                        fit: BoxFit.cover,
-                                                      ))
+                                                      'https://server.bharathchat.com/' +
+                                                          profilePic,
+                                                      width: 90,
+                                                      height: 90,
+                                                      fit: BoxFit.cover,
+                                                    ))
                                                 : Container(
-                                                    width: 90,
-                                                    height: 90,
-                                                    color: Colors.black,
-                                                    child: const Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                      size: 50,
-                                                    ),
+                                                  width: 90,
+                                                  height: 90,
+                                                  color: Colors.black,
+                                                  child: const Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                    size: 50,
                                                   ),
+                                                ),
                                       ),
                                     ),
                                     Positioned(

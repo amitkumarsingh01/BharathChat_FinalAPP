@@ -42,7 +42,9 @@ class _MainScreenState extends State<MainScreen> {
           },
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.black,
-          selectedItemColor: Colors.orange,
+          // selectedItemColor: Colors.orange,
+          selectedItemColor: Colors.white,
+          // unselectedItemColor: Colors.white54,
           unselectedItemColor: Colors.white54,
           items: [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
