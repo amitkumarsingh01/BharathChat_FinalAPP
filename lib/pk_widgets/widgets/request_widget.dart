@@ -128,20 +128,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                     decoration: InputDecoration(
                       hintText: 'Host ID',
                       hintStyle: TextStyle(color: Colors.white70),
-                      filled: true,
-                      fillColor: Colors.black26,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 0,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white70, width: 1.5),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white, width: 2),
-                      ),
+                      filled: false,
                     ),
                   ),
                 ),

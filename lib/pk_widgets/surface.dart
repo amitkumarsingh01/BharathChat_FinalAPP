@@ -433,7 +433,7 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
             ? Stack(
               children: [
                 // PK Progress Bar (only visible during PK battle)
-                if (_isPKBattleActive)
+                // if (_isPKBattleActive)
                   // Positioned(
                   //   bottom:
                   //       baseYPos +
@@ -525,7 +525,7 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
                 //         widget.requestingHostsMapRequestIDNotifier,
                 //   ),
                 // ),
-                if (!_isPKBattleActive)
+                // if (!_isPKBattleActive)
                   Positioned(
                     // bottom: baseYPos + 60 + 5,
                     bottom: baseYPos + 30 + 5,
@@ -539,7 +539,7 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
                       },
                     ),
                   ),
-                if (!_isPKBattleActive)
+                // if (!_isPKBattleActive)
                   Positioned(
                     bottom: baseYPos + 30 + 5,
                     right: 1,
