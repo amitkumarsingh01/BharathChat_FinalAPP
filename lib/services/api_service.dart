@@ -1505,4 +1505,23 @@ class ApiService {
       throw Exception('Error fetching PK battle transactions: $e');
     }
   }
+
+  // Get Live Video Streams
+  static Future<List<Map<String, dynamic>>> getLiveVideoStreams() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/go-live-video/'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        throw Exception('Failed to load live video streams: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching live video streams: $e');
+    }
+  }
 }

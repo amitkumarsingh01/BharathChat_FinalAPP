@@ -157,6 +157,23 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
     );
   }
 
+  // Helper function to format elapsed time
+  String formatElapsedTime(DateTime? createdAt) {
+    if (createdAt == null) return 'LIVE';
+    
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+    
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours} hour${hours > 1 ? 's' : ''} ${minutes} min';
+    } else {
+      return '${minutes} min';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -309,13 +326,66 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                     ],
 
                     // Audio Rooms List
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _audioRooms.length,
-                      itemBuilder: (context, index) {
-                        final room = _audioRooms.reversed.toList()[index];
+                    Builder(
+                      builder: (context) {
+                        final filteredRooms = _audioRooms.where((room) {
+                          // Filter rooms less than 5 minutes old
+                          if (room['created_at'] == null) return false;
+                          try {
+                            final createdAt = DateTime.parse(room['created_at']);
+                            final now = DateTime.now();
+                            final difference = now.difference(createdAt);
+                            return difference.inMinutes < 5; // Less than 5 minutes
+                          } catch (e) {
+                            return false;
+                          }
+                        }).toList();
+
+                        if (filteredRooms.isEmpty) {
+                           return Center(
+                             child: Container(
+                               height: MediaQuery.of(context).size.height * 0.8,
+                               padding: const EdgeInsets.all(32),
+                               child: Column(
+                                 mainAxisAlignment: MainAxisAlignment.center,
+                                 children: [
+                                   Icon(
+                                     Icons.mic_off,
+                                     size: 64,
+                                     color: Colors.grey[600],
+                                   ),
+                                   const SizedBox(height: 16),
+                                   Text(
+                                     'There is no Audio Live',
+                                     style: TextStyle(
+                                       color: Colors.grey[400],
+                                       fontSize: 18,
+                                       fontWeight: FontWeight.bold,
+                                     ),
+                                     textAlign: TextAlign.center,
+                                   ),
+                                   const SizedBox(height: 8),
+                                   Text(
+                                     'Join Live Audio',
+                                     style: TextStyle(
+                                       color: Colors.grey[500],
+                                       fontSize: 14,
+                                     ),
+                                     textAlign: TextAlign.center,
+                                   ),
+                                 ],
+                               ),
+                             ),
+                           );
+                         }
+
+                                                return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredRooms.length,
+                          itemBuilder: (context, index) {
+                            final room = filteredRooms.reversed.toList()[index];
                         final user = _usersById[room['user_id']];
                         final userName =
                             user != null
@@ -329,6 +399,16 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                         final seats =
                             room['seats'] ?? 7; // fallback if not present
                         final listeners = room['viewers'] ?? 0;
+                        
+                        // Parse created_at timestamp
+                        DateTime? createdAt;
+                        if (room['created_at'] != null) {
+                          try {
+                            createdAt = DateTime.parse(room['created_at']);
+                          } catch (e) {
+                            createdAt = null;
+                          }
+                        }
                         return GestureDetector(
                           onTap: () async {
                             // Join audio room logic
@@ -399,30 +479,7 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                                 ),
                                       ),
                                     ),
-                                    Positioned(
-                                      top: 20,
-                                      left: 20,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'LIVE',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+
                                   ],
                                 ),
                                 // Main info
@@ -590,6 +647,8 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                             ),
                           ),
                         );
+                      },
+                    );
                       },
                     ),
                   ],

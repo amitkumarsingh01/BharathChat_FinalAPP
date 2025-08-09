@@ -1526,7 +1526,7 @@ class _LivePageState extends State<LivePage>
     // If pkBattle is not a valid property, comment or remove the next line
     // config.pkBattle = pkConfig();
     config.topMenuBar.buttons = [
-      ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+      // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
     ];
 
     // Add virtual gift, like, and diamond buttons for both host and audience
@@ -1866,40 +1866,40 @@ class _LivePageState extends State<LivePage>
                 ),
               ),
             // PK Battle ID display (separate, big, at 300px)
-            if (_showPKBattleTimer)
-              Positioned(
-                bottom: 300,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF4CAF50), Color(0xFFFFEB3B), Color(0xFF4CAF50)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      'PK Battle ID: ${_pkBattleId ?? PKEvents.currentPKBattleId ?? "Loading..."}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            // if (_showPKBattleTimer)
+            //   Positioned(
+            //     bottom: 300,
+            //     left: 0,
+            //     right: 0,
+            //     child: Center(
+            //       child: Container(
+            //         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            //         decoration: BoxDecoration(
+            //           gradient: const LinearGradient(
+            //             colors: [Color(0xFF4CAF50), Color(0xFFFFEB3B), Color(0xFF4CAF50)],
+            //             begin: Alignment.topLeft,
+            //             end: Alignment.bottomRight,
+            //           ),
+            //           borderRadius: BorderRadius.circular(20),
+            //           boxShadow: [
+            //             BoxShadow(
+            //               color: Colors.black.withOpacity(0.3),
+            //               blurRadius: 8,
+            //               offset: const Offset(0, 4),
+            //             ),
+            //           ],
+            //         ),
+            //         child: Text(
+            //           'PK Battle ID: ${_pkBattleId ?? PKEvents.currentPKBattleId ?? "Loading..."}',
+            //           style: const TextStyle(
+            //             color: Colors.white,
+            //             fontWeight: FontWeight.bold,
+            //             fontSize: 18,
+            //           ),
+            //         ),
+            //       ),
+            //     ),
+            //   ),
             // Burst hearts overlay (audience only)
             if (!widget.isHost)
               ..._burstHearts.map(
@@ -2046,51 +2046,51 @@ class _LivePageState extends State<LivePage>
             ..._activeGiftAnimations,
             
             // Floating Debug Button
-            Positioned(
-              top: 50,
-              right: 12,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _showDebugInfo = !_showDebugInfo;
-                  });
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.orange, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  // child: Row(
-                  //   mainAxisSize: MainAxisSize.min,
-                  //   children: [
-                  //     Icon(
-                  //       _showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined,
-                  //       color: _showDebugInfo ? Colors.black : Colors.orange,
-                  //       size: 16,
-                  //     ),
-                  //     const SizedBox(width: 4),
-                  //     Text(
-                  //       'DEBUG',
-                  //       style: TextStyle(
-                  //         color: _showDebugInfo ? Colors.black : Colors.orange,
-                  //         fontSize: 12,
-                  //         fontWeight: FontWeight.bold,
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
-                ),
-              ),
-            ),
+            // Positioned(
+            //   top: 50,
+            //   right: 12,
+            //   child: GestureDetector(
+            //     onTap: () {
+            //       setState(() {
+            //         _showDebugInfo = !_showDebugInfo;
+            //       });
+            //     },
+            //     child: Container(
+            //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            //       decoration: BoxDecoration(
+            //         color: _showDebugInfo ? Colors.orange : Colors.black.withOpacity(0.8),
+            //         borderRadius: BorderRadius.circular(20),
+            //         border: Border.all(color: Colors.orange, width: 2),
+            //         boxShadow: [
+            //           BoxShadow(
+            //             color: Colors.black.withOpacity(0.3),
+            //             blurRadius: 8,
+            //             offset: const Offset(0, 2),
+            //           ),
+            //         ],
+            //       ),
+            //       // child: Row(
+            //       //   mainAxisSize: MainAxisSize.min,
+            //       //   children: [
+            //       //     Icon(
+            //       //       _showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined,
+            //       //       color: _showDebugInfo ? Colors.black : Colors.orange,
+            //       //       size: 16,
+            //       //     ),
+            //       //     const SizedBox(width: 4),
+            //       //     Text(
+            //       //       'DEBUG',
+            //       //       style: TextStyle(
+            //       //         color: _showDebugInfo ? Colors.black : Colors.orange,
+            //       //         fontSize: 12,
+            //       //         fontWeight: FontWeight.bold,
+            //       //       ),
+            //       //     ),
+            //       //   ],
+            //       // ),
+            //     ),
+            //   ),
+            // ),
             
             // Debug Overlay Panel
             if (_showDebugInfo)
@@ -2706,47 +2706,6 @@ class _LivePageState extends State<LivePage>
         ...((widget.isHost && user.id != widget.localUserID)
             ? hostWidgets
             : []),
-        Positioned(
-          top: 5,
-          right: 35,
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircleAvatar(
-              backgroundColor: Colors.purple.withOpacity(0.6),
-              child: Icon(
-                user.camera.value ? Icons.videocam : Icons.videocam_off,
-                color: Colors.white,
-                size: 15,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 5,
-          right: 5,
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircleAvatar(
-              backgroundColor: Colors.purple.withOpacity(0.6),
-              child: Icon(
-                user.microphone.value ? Icons.mic : Icons.mic_off,
-                color: Colors.white,
-                size: 15,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 25,
-          right: 5,
-          child: Container(
-            height: 18,
-            color: Colors.purple,
-            child: Text(user.name),
-          ),
-        ),
       ],
     );
   }

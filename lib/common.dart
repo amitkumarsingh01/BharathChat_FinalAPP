@@ -84,6 +84,7 @@ Widget customAvatarBuilder(
   Map<String, dynamic> extraInfo, {
   String? profilePic,
 }) {
+  // Always return a simple avatar without username display
   if (profilePic != null && profilePic.isNotEmpty) {
     try {
       return Container(
@@ -98,23 +99,22 @@ Widget customAvatarBuilder(
         ),
       );
     } catch (e) {
-      // fallback to default
+      // fallback to simple avatar
     }
   }
-  return CachedNetworkImage(
-    imageUrl: 'https://robohash.org/${user?.id}.png',
-    imageBuilder:
-        (context, imageProvider) => Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            image: DecorationImage(image: imageProvider, fit: BoxFit.cover),
-          ),
-        ),
-    progressIndicatorBuilder:
-        (context, url, downloadProgress) =>
-            CircularProgressIndicator(value: downloadProgress.progress),
-    errorWidget: (context, url, error) {
-      return ZegoAvatar(user: user, avatarSize: size);
-    },
+  
+  // Return a simple avatar without any username or user information
+  return Container(
+    width: size.width,
+    height: size.height,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.grey[300],
+    ),
+    child: Icon(
+      Icons.person,
+      size: size.width * 0.5,
+      color: Colors.grey[600],
+    ),
   );
 }

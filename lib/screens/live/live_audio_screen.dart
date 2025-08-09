@@ -417,13 +417,12 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     final config =
         widget.isHost
             ? (ZegoUIKitPrebuiltLiveStreamingConfig.host()
-              ..turnOnCameraWhenJoining =
-                  false // No camera for audio
+              ..turnOnCameraWhenJoining = false
               ..turnOnMicrophoneWhenJoining = true
               ..useSpeakerWhenJoining = true
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
-                ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+                // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
               // Bottom menu bar - audio-specific buttons with extend buttons
               ..bottomMenuBar.hostButtons = [
@@ -439,7 +438,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..useSpeakerWhenJoining = true
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
-                ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+                // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
               // Bottom menu bar - audience buttons for audio with extend buttons
               ..bottomMenuBar.audienceButtons = [

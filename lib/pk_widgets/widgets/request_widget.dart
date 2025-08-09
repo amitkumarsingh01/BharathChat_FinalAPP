@@ -96,71 +96,97 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
           //
           //   ),
           // ),
-          SizedBox(
-            width: 100,
-            height: 30,
-            child: TextFormField(
-              controller: _hostIDController,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Host ID',
-                hintStyle: TextStyle(color: Colors.white54),
-                filled: true,
-                fillColor: Colors.black.withOpacity(0.5),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 0,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Color(0xFFffa030), width: 1.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Color(0xFFfe9b00), width: 2),
-                ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFffa030),
+                  Color(0xFFfe9b00),
+                  Color(0xFFf67d00),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFFffa030).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-          ),
-          SizedBox(
-            height: 30,
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _hostIDController,
-              builder: (context, value, _) {
-                return SizedBox(
-                  width: 110,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      shape: RoundedRectangleBorder(
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 100,
+                  height: 30,
+                  child: TextFormField(
+                    controller: _hostIDController,
+                    style: TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Host ID',
+                      hintStyle: TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 0,
+                      ),
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.white70, width: 1.5),
                       ),
-                      elevation: 2,
-                      backgroundColor: Color(0xFFffa030),
-                      shadowColor: Color(0xFFffa030).withOpacity(0.18),
-                    ),
-                    icon: Icon(Icons.send, color: Colors.white, size: 16),
-                    label: const Text(
-                      'Request',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 15,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(color: Colors.white, width: 2),
                       ),
                     ),
-                    onPressed:
-                        value.text.isEmpty
-                            ? null
-                            : () async {
-                              FocusScope.of(context).unfocus();
-                              await sendPKBattleRequest(
-                                context,
-                                _hostIDController.text.trim(),
-                              );
-                            },
                   ),
-                );
-              },
+                ),
+                SizedBox(width: 12),
+                SizedBox(
+                  height: 30,
+                  child: ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _hostIDController,
+                    builder: (context, value, _) {
+                      return SizedBox(
+                        width: 110,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 2,
+                            backgroundColor: Colors.white,
+                            shadowColor: Colors.black26,
+                          ),
+                          icon: Icon(Icons.send, color: Color(0xFFffa030), size: 16),
+                          label: Text(
+                            'Request',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFffa030),
+                              fontSize: 15,
+                            ),
+                          ),
+                          onPressed: value.text.isEmpty
+                              ? null
+                              : () async {
+                                  FocusScope.of(context).unfocus();
+                                  await sendPKBattleRequest(
+                                    context,
+                                    _hostIDController.text.trim(),
+                                  );
+                                },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],

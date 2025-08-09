@@ -16,6 +16,8 @@ class _SearchScreenState extends State<SearchScreen> {
   String _searchQuery = '';
   Set<int> _following = {};
   Set<int> _blocked = {};
+  Map<int, int> _followersCounts = {};
+  Map<int, int> _followingCounts = {};
 
   @override
   void initState() {
@@ -32,11 +34,33 @@ class _SearchScreenState extends State<SearchScreen> {
       final currentUserId = ApiService.currentUserId;
       // Use the new /users/{user_id}/relations API
       final relations = await ApiService.getUserSimpleRelations(currentUserId);
+      
+      // Load followers and following counts for each user
+      Map<int, int> followersCounts = {};
+      Map<int, int> followingCounts = {};
+      
+      for (var user in users) {
+        if (user['id'] != currentUserId) {
+          try {
+            final followers = await ApiService.getUserFollowers(user['id']);
+            final following = await ApiService.getUserFollowing(user['id']);
+            followersCounts[user['id']] = followers.length;
+            followingCounts[user['id']] = following.length;
+          } catch (e) {
+            // If there's an error fetching counts, set to 0
+            followersCounts[user['id']] = 0;
+            followingCounts[user['id']] = 0;
+          }
+        }
+      }
+      
       // relations['following'] and relations['blocked'] are lists of user IDs
       setState(() {
         _users = users.where((u) => u['id'] != currentUserId).toList();
         _following = Set<int>.from(relations['following'] ?? []);
         _blocked = Set<int>.from(relations['blocked'] ?? []);
+        _followersCounts = followersCounts;
+        _followingCounts = followingCounts;
         _isLoading = false;
       });
     } catch (e) {
@@ -378,13 +402,39 @@ class _SearchScreenState extends State<SearchScreen> {
                                           ),
                                       ],
                                     ),
-                                    Text(
-                                      'Diamonds: ${user['diamonds'] ?? 0}',
-                                      style: const TextStyle(
-                                        color: Colors.orange,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${_followersCounts[user['id']] ?? 0}',
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          ' followers • ',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${_followingCounts[user['id']] ?? 0}',
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          ' following',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     if (user['bio'] != null &&
                                         (user['bio'] as String).isNotEmpty)
@@ -414,7 +464,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   Padding(
                                     padding: const EdgeInsets.all(2.0),
                                     child: Container(
-                                      width: 90,
+                                      width: 120,
                                       height: 28,
                                       decoration: BoxDecoration(
                                         gradient:

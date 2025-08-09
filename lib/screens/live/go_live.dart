@@ -88,8 +88,7 @@ class _HomePageState extends State<HomePage> {
                     ..useSpeakerWhenJoining = true
                     // Top menu bar settings
                     ..topMenuBar.buttons = [
-                      ZegoLiveStreamingMenuBarButtonName.minimizingButton,
-                      ZegoLiveStreamingMenuBarButtonName.switchCameraButton,
+                      // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                     ]
                     // Bottom menu bar settings
                     ..bottomMenuBar.hostButtons = [
@@ -104,6 +103,7 @@ class _HomePageState extends State<HomePage> {
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
                     ..audioVideoView.showMicrophoneStateOnView = true,
+                    
             ),
       ),
     );
@@ -857,78 +857,16 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
 
                 const SizedBox(height: 20),
 
-                // Hashtags
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Select Hashtag',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children:
-                              hashtags.map((tag) {
-                                bool isSelected = selectedHashtag == tag;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() => selectedHashtag = tag);
-                                  },
-                                  child: Container(
-                                    margin: const EdgeInsets.only(right: 12),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient:
-                                          isSelected
-                                              ? LinearGradient(
-                                                colors: [
-                                                  Color(0xFFffa030),
-                                                  Color(0xFFfe9b00),
-                                                  Color(0xFFf67d00),
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              )
-                                              : null,
-                                      color:
-                                          isSelected
-                                              ? null
-                                              : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color:
-                                            isSelected
-                                                ? Color(0xFFffa030)
-                                                : Colors.grey,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      tag,
-                                      style: TextStyle(
-                                        color:
-                                            isSelected
-                                                ? Colors.black
-                                                : Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                        ),
-                      ),
-                    ],
+                // Hidden hashtag with default value "iamlive"
+                Container(
+                  width: 0,
+                  height: 0,
+                  child: const Text(
+                    'iamlive',
+                    style: TextStyle(
+                      fontSize: 0,
+                      color: Colors.transparent,
+                    ),
                   ),
                 ),
 
@@ -1656,6 +1594,22 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 : (nameController.text.isNotEmpty
                     ? nameController.text
                     : 'Host');
+        
+        // Get user profile picture
+        String? userAvatarUrl;
+        if (userData != null && userData['profile_pic'] != null) {
+          final profilePic = userData['profile_pic'].toString();
+          if (profilePic.isNotEmpty) {
+            userAvatarUrl = profilePic.startsWith('http') 
+                ? profilePic 
+                : 'https://server.bharathchat.com/$profilePic';
+          }
+        }
+        
+        // Create userName with avatar info for Zego
+        final userNameWithAvatar = userAvatarUrl != null 
+            ? '${userName}|avatar:$userAvatarUrl'
+            : userName;
 
         // Create the appropriate configuration
         late final ZegoUIKitPrebuiltLiveStreamingConfig config;
@@ -1667,8 +1621,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..turnOnMicrophoneWhenJoining = true
                 ..useSpeakerWhenJoining = true
                 ..topMenuBar.buttons = [
-                  ZegoLiveStreamingMenuBarButtonName.minimizingButton,
-                  ZegoLiveStreamingMenuBarButtonName.switchCameraButton,
+                  // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]
                 ..bottomMenuBar.hostButtons = [
                   ZegoLiveStreamingMenuBarButtonName.toggleCameraButton,
@@ -1687,7 +1640,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..turnOnMicrophoneWhenJoining = true
                 ..useSpeakerWhenJoining = true
                 ..topMenuBar.buttons = [
-                  ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+                  // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]
                 ..bottomMenuBar.hostButtons = [
                   ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
@@ -1698,6 +1651,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..audioVideoView.showAvatarInAudioMode = true
                 ..audioVideoView.showSoundWavesInAudioMode = true
                 ..audioVideoView.showMicrophoneStateOnView = true;
+
         }
 
         // Navigate to the appropriate screen based on mode

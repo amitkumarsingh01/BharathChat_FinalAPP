@@ -232,6 +232,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Add video lives from server
       for (var live in videoLives) {
+        // Parse created_at timestamp
+        DateTime? createdAt;
+        if (live['created_at'] != null) {
+          try {
+            createdAt = DateTime.parse(live['created_at']);
+          } catch (e) {
+            print('Error parsing created_at: $e');
+          }
+        }
+        
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'video_${live['id']}',
@@ -240,12 +250,23 @@ class _HomeScreenState extends State<HomeScreen> {
             host: live['host_name'] ?? 'Host',
             liveId: live['id'] ?? 0,
             userId: live['user_id'] ?? 0, // Pass userId
+            createdAt: createdAt, // Add created_at timestamp
           ),
         );
       }
 
       // Add audio lives from server
       for (var live in audioLives) {
+        // Parse created_at timestamp
+        DateTime? createdAt;
+        if (live['created_at'] != null) {
+          try {
+            createdAt = DateTime.parse(live['created_at']);
+          } catch (e) {
+            print('Error parsing created_at: $e');
+          }
+        }
+        
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'audio_${live['id']}',
@@ -254,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
             host: live['host_name'] ?? live['chat_room'] ?? 'Host',
             liveId: live['id'] ?? 0,
             userId: live['user_id'] ?? 0, // Pass userId
+            createdAt: createdAt, // Add created_at timestamp
           ),
         );
       }
@@ -865,10 +887,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .toList()
                                 .reversed
                                 .toList();
+                        
+                        // Filter streams less than 5 minutes old
+                        final recentStreams = videoStreams.where((stream) {
+                          if (stream.createdAt == null) return false;
+                          final now = DateTime.now();
+                          final difference = now.difference(stream.createdAt!);
+                          return difference.inMinutes < 5; // Less than 5 minutes
+                        }).toList();
+                        
                         // Only unique hosts by userId
                         final Set<int> seenUserIds = {};
                         final uniqueHostStreams = <dynamic>[];
-                        for (final stream in videoStreams) {
+                        for (final stream in recentStreams) {
                           if (stream.userId != null &&
                               !seenUserIds.contains(stream.userId)) {
                             seenUserIds.add(stream.userId);
@@ -879,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              'No popular hosts live right now!',
+                              'No recent hosts live right now!',
                               style: TextStyle(color: Colors.white70),
                             ),
                           );
@@ -974,28 +1005,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     ),
                                           ),
                                         ),
-                                        Positioned(
-                                          bottom: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red,
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: const Text(
-                                              'LIVE',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -1230,9 +1240,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .reversed
                                 .toList();
 
-                        // Filter by selected language and category
+                        // Filter by selected language and category, and less than 5 minutes old
                         final filteredVideoStreams =
                             videoStreams.where((stream) {
+                              // First check if stream is less than 5 minutes old
+                              if (stream.createdAt != null) {
+                                final now = DateTime.now();
+                                final difference = now.difference(stream.createdAt!);
+                                if (difference.inMinutes >= 5) return false; // Skip if 5+ minutes old
+                              } else {
+                                return false; // Skip if no created_at timestamp
+                              }
+                              
                               final user = _usersById[stream.userId];
                               // Find the matching live data from _videoLives by live_url or id
                               final live = _videoLives.firstWhere(
@@ -1257,7 +1276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              'No live video streams. Start one or check back later!',
+                              'No recent live video streams. Start one or check back later!',
                               style: TextStyle(color: Colors.white70),
                             ),
                           );
@@ -1336,43 +1355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       ),
                                                     ),
                                           ),
-                                          // LIVE badge (top-left)
-                                          Positioned(
-                                            top: 8,
-                                            left: 8,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(0),
-                                              decoration: BoxDecoration(
-                                                color: Colors.transparent,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
 
-                                              // child: Image.asset('assets/live.jpg', width: 22, height: 22),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        4,
-                                                      ), // optional rounded corners
-                                                ),
-                                                child: const Text(
-                                                  'LIVE',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 10,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
                                           // Watching count (top-right)
                                           Positioned(
                                             top: 8,
@@ -1544,5 +1527,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
     );
+  }
+
+  // Helper function to format elapsed time
+  String formatElapsedTime(DateTime? createdAt) {
+    if (createdAt == null) return 'LIVE';
+    
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+    
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours} hour${hours > 1 ? 's' : ''} ${minutes} min';
+    } else {
+      return '${minutes} min';
+    }
   }
 }
