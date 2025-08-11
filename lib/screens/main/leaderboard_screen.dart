@@ -130,7 +130,7 @@ class LeaderboardScreen extends StatefulWidget {
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
 
-enum PeriodType { daily, weekly, monthly }
+enum PeriodType { daily, weekly, monthly, yesterday, last_week, last_month }
 
 class _LeaderboardScreenState extends State<LeaderboardScreen>
     with SingleTickerProviderStateMixin {
@@ -147,7 +147,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   void initState() {
     super.initState();
     _checkUserActive();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(_onTabChanged);
     _fetchLeaderboard();
     _fetchCurrentUser();
@@ -195,6 +195,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         return 'weekly';
       case PeriodType.monthly:
         return 'monthly';
+      case PeriodType.yesterday:
+        return 'yesterday';
+      case PeriodType.last_week:
+        return 'last_week';
+      case PeriodType.last_month:
+        return 'last_month';
     }
   }
 
@@ -370,11 +376,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                     fontSize: 14,
                   ),
                   unselectedLabelColor: Colors.white54,
-                  isScrollable: false,
+                  isScrollable: true,
                   tabs: const [
                     Tab(text: 'Daily'),
                     Tab(text: 'Weekly'),
                     Tab(text: 'Monthly'),
+                    Tab(text: 'Yesterday'),
+                    Tab(text: 'Last Week'),
+                    Tab(text: 'Last Month'),
                   ],
                 ),
               ),
@@ -397,7 +406,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                       filteredUsers.length > 3 ? filteredUsers.sublist(3) : [],
                     ),
                   ),
-                  if (currentUserData != null) _buildBottomBar(),
+                  // if (currentUserData != null) _buildBottomBar(),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
@@ -768,135 +777,135 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     );
   }
 
-  Widget _buildBottomBar() {
-    if (isCurrentUserLoading || currentUserData == null) {
-      return const SizedBox.shrink();
-    }
-    ImageProvider? profileImage;
-    if (currentUserData!['profile_pic'] != null &&
-        currentUserData!['profile_pic'].toString().isNotEmpty) {
-      final profilePic = currentUserData!['profile_pic'].toString();
-      if (profilePic.startsWith('http')) {
-        profileImage = NetworkImage(profilePic);
-      } else {
-        profileImage = NetworkImage('https://server.bharathchat.com/${profilePic}');
-      }
-    }
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1a1a),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.orange, width: 2),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey[700],
-            backgroundImage: profileImage,
-            child:
-                profileImage == null
-                    ? Text(
-                      (currentUserData!['first_name'] ?? 'U')
-                          .toString()
-                          .substring(0, 1)
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                    : null,
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'You',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _getCurrentUserFilterValue(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(width: 4),
-              if (selectedFilter == FilterType.credited) ...[
-                Image.asset('assets/star.png', width: 18, height: 18),
-                const SizedBox(width: 4),
-                // const Text('Stars', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              ] else ...[
-                Image.asset('assets/diamond.png', width: 18, height: 18),
-                const SizedBox(width: 4),
-                // const Text('Diamonds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-              ],
-            ],
-          ),
-          const SizedBox(width: 12),
-          Container(
-            height: 35,
-            width: 110,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFFffa030),
-                  Color(0xFFfe9b00),
-                  Color(0xFFf67d00),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 1,
-                  vertical: 8,
-                ),
-                elevation: 0,
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Gift Now',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, size: 16),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildBottomBar() {
+  //   if (isCurrentUserLoading || currentUserData == null) {
+  //     return const SizedBox.shrink();
+  //   }
+  //   ImageProvider? profileImage;
+  //   if (currentUserData!['profile_pic'] != null &&
+  //       currentUserData!['profile_pic'].toString().isNotEmpty) {
+  //     final profilePic = currentUserData!['profile_pic'].toString();
+  //     if (profilePic.startsWith('http')) {
+  //       profileImage = NetworkImage(profilePic);
+  //     } else {
+  //       profileImage = NetworkImage(
+  //         'https://server.bharathchat.com/${profilePic}',
+  //       );
+  //     }
+  //   }
+  //   return Container(
+  //     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  //     decoration: BoxDecoration(
+  //       color: const Color(0xFF1a1a1a),
+  //       borderRadius: BorderRadius.circular(25),
+  //       border: Border.all(color: Colors.orange, width: 2),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         CircleAvatar(
+  //           radius: 18,
+  //           backgroundColor: Colors.grey[700],
+  //           backgroundImage: profileImage,
+  //           child:
+  //               profileImage == null
+  //                   ? Text(
+  //                     (currentUserData!['first_name'] ?? 'U')
+  //                         .toString()
+  //                         .substring(0, 1)
+  //                         .toUpperCase(),
+  //                     style: const TextStyle(
+  //                       color: Colors.white,
+  //                       fontSize: 14,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   )
+  //                   : null,
+  //         ),
+  //         const SizedBox(width: 12),
+  //         const Text(
+  //           'You',
+  //           style: TextStyle(
+  //             color: Colors.white,
+  //             fontWeight: FontWeight.bold,
+  //             fontSize: 16,
+  //           ),
+  //         ),
+  //         const Spacer(),
+  //         Row(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Text(
+  //               _getCurrentUserFilterValue(),
+  //               style: const TextStyle(
+  //                 color: Colors.white,
+  //                 fontWeight: FontWeight.bold,
+  //                 fontSize: 16,
+  //               ),
+  //             ),
+  //             const SizedBox(width: 4),
+  //             if (selectedFilter == FilterType.credited) ...[
+  //               Image.asset('assets/star.png', width: 18, height: 18),
+  //               const SizedBox(width: 4),
+  //               // const Text('Stars', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+  //             ] else ...[
+  //               Image.asset('assets/diamond.png', width: 18, height: 18),
+  //               const SizedBox(width: 4),
+  //               // const Text('Diamonds', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+  //             ],
+  //           ],
+  //         ),
+  //         const SizedBox(width: 12),
+
+  //         Container(
+  //           height: 35,
+  //           width: 110,
+  //           decoration: BoxDecoration(
+  //             gradient: LinearGradient(
+  //               colors: [
+  //                 Color(0xFFffa030),
+  //                 Color(0xFFfe9b00),
+  //                 Color(0xFFf67d00),
+  //               ],
+  //               begin: Alignment.topLeft,
+  //               end: Alignment.bottomRight,
+  //             ),
+  //             borderRadius: BorderRadius.circular(20),
+  //           ),
+  //           child: ElevatedButton(
+  //             onPressed: () {
+  //               Navigator.push(
+  //                 context,
+  //                 MaterialPageRoute(builder: (context) => const MainScreen()),
+  //               );
+  //             },
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: Colors.transparent,
+  //               shadowColor: Colors.transparent,
+  //               foregroundColor: Colors.black,
+  //               shape: RoundedRectangleBorder(
+  //                 borderRadius: BorderRadius.circular(20),
+  //               ),
+  //               padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 8),
+  //               elevation: 0,
+  //             ),
+  //             child: const Row(
+  //               mainAxisSize: MainAxisSize.min,
+  //               children: [
+  //                 Text(
+  //                   'Gift Now',
+  //                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+  //                 ),
+  //                 SizedBox(width: 4),
+  //                 Icon(Icons.arrow_forward, size: 16),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   void dispose() {
