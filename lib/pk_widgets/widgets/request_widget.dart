@@ -97,6 +97,8 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
           //   ),
           // ),
           Container(
+            width: 200,
+            height: 50,
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -146,7 +148,11 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                             backgroundColor: Colors.white,
                             shadowColor: Colors.transparent,
                           ),
-                          icon: Icon(Icons.send, color: Color(0xFFffa030), size: 16),
+                          icon: Icon(
+                            Icons.send,
+                            color: Color(0xFFffa030),
+                            size: 16,
+                          ),
                           label: Text(
                             'Request',
                             style: TextStyle(
@@ -155,15 +161,16 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                               fontSize: 15,
                             ),
                           ),
-                          onPressed: value.text.isEmpty
-                              ? null
-                              : () async {
-                                  FocusScope.of(context).unfocus();
-                                  await sendPKBattleRequest(
-                                    context,
-                                    _hostIDController.text.trim(),
-                                  );
-                                },
+                          onPressed:
+                              value.text.isEmpty
+                                  ? null
+                                  : () async {
+                                    FocusScope.of(context).unfocus();
+                                    await sendPKBattleRequest(
+                                      context,
+                                      _hostIDController.text.trim(),
+                                    );
+                                  },
                         ),
                       );
                     },

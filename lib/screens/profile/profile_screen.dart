@@ -169,343 +169,330 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF181A20),
+        body: const Center(
+          child: CircularProgressIndicator(color: Colors.orange),
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen(),
-                ),
-              ).then((_) => _loadUserData());
-            },
+      backgroundColor: const Color(0xFF181A20),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar with background image
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            backgroundColor: const Color(0xFF181A20),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
+                  ).then((_) => _loadUserData());
+                },
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Background image (using profile pic as background)
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.blue.withOpacity(0.8),
+                          Colors.purple.withOpacity(0.6),
+                        ],
+                      ),
+                    ),
+                    child:
+                        _getProfileImage() != null
+                            ? Image(
+                              image: _getProfileImage()!,
+                              fit: BoxFit.cover,
+                            )
+                            : Container(color: Colors.grey[800]),
+                  ),
+                  // Gradient overlay
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.7),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
-      body:
-          _isLoading
-              ? const Center(
-                child: CircularProgressIndicator(color: Colors.orange),
-              )
-              : SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Profile Picture with edit icon overlay
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.orange,
-                          backgroundImage: _getProfileImage(),
-                          child:
-                              _getProfileImage() == null
-                                  ? Text(
-                                    _getUserInitial(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                  : null,
+          // Profile content
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+
+                  // User name with star icon
+                  Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        _user?['first_name'] ?? 'User',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
-                        // Removed edit icon and image picker logic from here
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // User Info
-                    Text(
-                      _user?['first_name'] ?? 'User',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _user?['phone_number'] ?? '',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _user?['phone_number'] ?? '',
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                  const SizedBox(height: 16),
 
-                    // Diamond Balance
-                    // Container(
-                    //   padding: const EdgeInsets.all(16),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.grey[900],
-                    //     borderRadius: BorderRadius.circular(12),
-                    //     border: Border.all(color: Colors.transparent),
-                    //   ),
-                    //   child: Row(
-                    //     mainAxisAlignment: MainAxisAlignment.center,
-                    //     children: [
-                    //       Image.asset(
-                    //         'assets/diamond.png',
-                    //         width: 30,
-                    //         height: 30,
-                    //       ),
-                    //       const SizedBox(width: 8),
-                    //       Text(
-                    //         '${_user?['diamonds'] ?? 0} Diamonds',
-                    //         style: const TextStyle(
-                    //           color: Colors.white,
-                    //           fontSize: 20,
-                    //           fontWeight: FontWeight.bold,
-                    //         ),
-                    //       ),
-                    //     ],
-                    //   ),
-                    // ),
-                    // const SizedBox(height: 30),
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: ApiService.getUserRelations(
-                        _user?['id'] ?? _user?['user_id'],
-                      ),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.orange,
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError) {
-                          return const SizedBox();
-                        }
-                        final relations = snapshot.data;
-                        final followers = relations?['followers_count'] ?? 0;
-                        final following = relations?['following_count'] ?? 0;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) => const FollowedUser(),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[900],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.transparent,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        '$following',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'Following',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              const FollowedUser(), // Replace with Followers screen if exists
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[900],
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.transparent,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        '$followers',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'Followers',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                  // Followers and Following stats
+                  FutureBuilder<Map<String, dynamic>>(
+                    future: ApiService.getUserRelations(
+                      _user?['id'] ?? _user?['user_id'],
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // Profile Options
-                    _buildProfileOption(
-                      'Personal Information',
-                      Icons.person,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      ).then((_) => _loadUserData()),
-                    ),
-                    _buildProfileOption(
-                      'Bank Details',
-                      Icons.account_balance,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BankDetailsScreen(),
-                        ),
-                      ).then((_) => _loadUserData()),
-                    ),
-                    _buildProfileOption('Diamond History', Icons.history, () {
-                      if (_user?['id'] != null || _user?['user_id'] != null) {
-                        final userId = _user?['id'] ?? _user?['user_id'];
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) =>
-                                    DiamondHistoryScreen(userId: userId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.orange,
                           ),
                         );
                       }
-                    }),
-                    _buildProfileOption('Star History', Icons.star, () {
+                      if (snapshot.hasError) {
+                        return const SizedBox();
+                      }
+                      final relations = snapshot.data;
+                      final followers = relations?['followers_count'] ?? 0;
+                      final following = relations?['following_count'] ?? 0;
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const FollowedUser(),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      '$following',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Following',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const FollowedUser(), // Replace with Followers screen if exists
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      '$followers',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Followers',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Profile Options
+                  _buildProfileOption(
+                    'Personal Information',
+                    Icons.person,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    ).then((_) => _loadUserData()),
+                  ),
+                  _buildProfileOption(
+                    'Bank Details',
+                    Icons.account_balance,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BankDetailsScreen(),
+                      ),
+                    ).then((_) => _loadUserData()),
+                  ),
+                  _buildProfileOption('Diamond History', Icons.history, () {
+                    if (_user?['id'] != null || _user?['user_id'] != null) {
+                      final userId = _user?['id'] ?? _user?['user_id'];
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder:
-                              (context) => StarHistoryScreen(
-                                userId: _user?['id'] ?? _user?['user_id'],
-                              ),
+                              (context) => DiamondHistoryScreen(userId: userId),
                         ),
                       );
-                    }),
-                    _buildProfileOption('Withdraw Stars', Icons.money, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const WithdrawDiamond(),
-                        ),
-                      );
-                    }),
-                    _buildProfileOption('Blocked Users', Icons.block, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const BlockedUser(),
-                        ),
-                      );
-                      // Navigate to blocked users
-                    }),
-                    _buildProfileOption('Followed Users', Icons.person_add, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FollowedUser(),
-                        ),
-                      );
-                    }),
-                    _buildProfileOption('Help & Support', Icons.help, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HelpSupport(),
-                        ),
-                      );
-                      // Navigate to help
-                    }),
-                    const SizedBox(height: 20),
+                    }
+                  }),
+                  _buildProfileOption('Star History', Icons.star, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => StarHistoryScreen(
+                              userId: _user?['id'] ?? _user?['user_id'],
+                            ),
+                      ),
+                    );
+                  }),
+                  _buildProfileOption('Withdraw Diamonds', Icons.money, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const WithdrawDiamond(),
+                      ),
+                    );
+                  }),
+                  _buildProfileOption('Blocked Users', Icons.block, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BlockedUser(),
+                      ),
+                    );
+                    // Navigate to blocked users
+                  }),
+                  _buildProfileOption('Followed Users', Icons.person_add, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FollowedUser(),
+                      ),
+                    );
+                  }),
+                  _buildProfileOption('Help & Support', Icons.help, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpSupport(),
+                      ),
+                    );
+                    // Navigate to help
+                  }),
+                  const SizedBox(height: 20),
 
-                    // Logout Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _logout,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[800],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  // Logout Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _logout,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[800],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

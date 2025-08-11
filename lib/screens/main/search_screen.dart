@@ -13,11 +13,23 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   List<dynamic> _users = [];
   bool _isLoading = true;
+  bool _isLoadingCounts = false;
   String _searchQuery = '';
   Set<int> _following = {};
   Set<int> _blocked = {};
   Map<int, int> _followersCounts = {};
   Map<int, int> _followingCounts = {};
+
+  // Helper function to format count numbers
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}k';
+    } else {
+      return count.toString();
+    }
+  }
 
   @override
   void initState() {
@@ -30,42 +42,78 @@ class _SearchScreenState extends State<SearchScreen> {
       _isLoading = true;
     });
     try {
+      // Load users and relations in parallel
       final users = await ApiService.getAllUsers();
       final currentUserId = ApiService.currentUserId;
-      // Use the new /users/{user_id}/relations API
       final relations = await ApiService.getUserSimpleRelations(currentUserId);
-      
-      // Load followers and following counts for each user
-      Map<int, int> followersCounts = {};
-      Map<int, int> followingCounts = {};
-      
-      for (var user in users) {
-        if (user['id'] != currentUserId) {
-          try {
-            final followers = await ApiService.getUserFollowers(user['id']);
-            final following = await ApiService.getUserFollowing(user['id']);
-            followersCounts[user['id']] = followers.length;
-            followingCounts[user['id']] = following.length;
-          } catch (e) {
-            // If there's an error fetching counts, set to 0
-            followersCounts[user['id']] = 0;
-            followingCounts[user['id']] = 0;
-          }
-        }
-      }
-      
-      // relations['following'] and relations['blocked'] are lists of user IDs
+
+      // Filter out current user immediately
+      final filteredUsers =
+          users.where((u) => u['id'] != currentUserId).toList();
+
+      // Update UI with basic data first
       setState(() {
-        _users = users.where((u) => u['id'] != currentUserId).toList();
+        _users = filteredUsers;
         _following = Set<int>.from(relations['following'] ?? []);
         _blocked = Set<int>.from(relations['blocked'] ?? []);
-        _followersCounts = followersCounts;
-        _followingCounts = followingCounts;
         _isLoading = false;
+      });
+
+      // Load followers and following counts in parallel batches
+      setState(() {
+        _isLoadingCounts = true;
+      });
+      await _loadUserCountsInBatches(filteredUsers);
+      setState(() {
+        _isLoadingCounts = false;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserCountsInBatches(List<dynamic> users) async {
+    const int batchSize =
+        5; // Process 5 users at a time to avoid overwhelming the server
+    Map<int, int> followersCounts = {};
+    Map<int, int> followingCounts = {};
+
+    for (int i = 0; i < users.length; i += batchSize) {
+      final batch = users.skip(i).take(batchSize).toList();
+
+      // Create futures for parallel execution within the batch
+      final futures =
+          batch.map((user) async {
+            try {
+              final userId = user['id'];
+              final followers = await ApiService.getUserFollowers(userId);
+              final following = await ApiService.getUserFollowing(userId);
+              return {
+                'userId': userId,
+                'followers': followers.length,
+                'following': following.length,
+              };
+            } catch (e) {
+              final userId = user['id'];
+              return {'userId': userId, 'followers': 0, 'following': 0};
+            }
+          }).toList();
+
+      // Wait for all futures in the current batch to complete
+      final results = await Future.wait(futures);
+
+      // Update the counts maps
+      for (final result in results) {
+        followersCounts[result['userId']] = result['followers'];
+        followingCounts[result['userId']] = result['following'];
+      }
+
+      // Update UI after each batch to show progress
+      setState(() {
+        _followersCounts = Map.from(followersCounts);
+        _followingCounts = Map.from(followingCounts);
       });
     }
   }
@@ -404,14 +452,29 @@ class _SearchScreenState extends State<SearchScreen> {
                                     ),
                                     Row(
                                       children: [
-                                        Text(
-                                          '${_followersCounts[user['id']] ?? 0}',
-                                          style: const TextStyle(
-                                            color: Colors.orange,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                        _isLoadingCounts &&
+                                                !_followersCounts.containsKey(
+                                                  user['id'],
+                                                )
+                                            ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.orange,
+                                              ),
+                                            )
+                                            : Text(
+                                              _formatCount(
+                                                _followersCounts[user['id']] ??
+                                                    0,
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.orange,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                         const Text(
                                           ' followers • ',
                                           style: TextStyle(
@@ -419,14 +482,29 @@ class _SearchScreenState extends State<SearchScreen> {
                                             fontSize: 13,
                                           ),
                                         ),
-                                        Text(
-                                          '${_followingCounts[user['id']] ?? 0}',
-                                          style: const TextStyle(
-                                            color: Colors.orange,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                        _isLoadingCounts &&
+                                                !_followingCounts.containsKey(
+                                                  user['id'],
+                                                )
+                                            ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.orange,
+                                              ),
+                                            )
+                                            : Text(
+                                              _formatCount(
+                                                _followingCounts[user['id']] ??
+                                                    0,
+                                              ),
+                                              style: const TextStyle(
+                                                color: Colors.orange,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                         const Text(
                                           ' following',
                                           style: TextStyle(
@@ -464,7 +542,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   Padding(
                                     padding: const EdgeInsets.all(2.0),
                                     child: Container(
-                                      width: 120,
+                                      width: 80,
                                       height: 28,
                                       decoration: BoxDecoration(
                                         gradient:
@@ -539,7 +617,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                                   : 'Follow',
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 11,
+                                                fontSize: 9,
                                                 color: Colors.white,
                                               ),
                                             ),
