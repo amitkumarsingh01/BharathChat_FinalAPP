@@ -510,6 +510,29 @@ class ApiService {
     }
   }
 
+  /// Get recent gifts for a live stream since a specific time
+  /// Returns list of recent gifts for synchronization
+  static Future<List<dynamic>> getRecentGifts({
+    required int liveStreamId,
+    required DateTime since,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/gifts/recent?live_stream_id=$liveStreamId&since=${since.toIso8601String()}'),
+        headers: _headers,
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Failed to get recent gifts: ${response.statusCode} - ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('Error getting recent gifts: $e');
+      return [];
+    }
+  }
+
   // Diamond endpoints
   static Future<Map<String, dynamic>> addDiamonds(int amount) async {
     final response = await http.post(

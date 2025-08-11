@@ -1155,6 +1155,7 @@ class _PKBattleModalState extends State<PKBattleModal>
   Set<int> _blocked = {};
   Map<int, int> _followersCounts = {};
   Map<int, int> _followingCounts = {};
+  Map<String, dynamic>? _currentUserData;
 
   @override
   void initState() {
@@ -1165,9 +1166,52 @@ class _PKBattleModalState extends State<PKBattleModal>
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
-    _fetchUsers();
+    _loadUsersAndRelations();
     _fetchLiveStreams();
-    _loadUserRelations();
+    _loadCurrentUserData();
+  }
+
+  Future<void> _loadUsersAndRelations() async {
+    setState(() {
+      _loadingUsers = true;
+    });
+    try {
+      final users = await ApiService.getAllUsers();
+      final currentUserId = ApiService.currentUserId;
+      final relations = await ApiService.getUserSimpleRelations(currentUserId);
+      
+      // Load followers and following counts for each user
+      Map<int, int> followersCounts = {};
+      Map<int, int> followingCounts = {};
+      
+      for (var user in users) {
+        if (user['id'] != currentUserId) {
+          try {
+            final followers = await ApiService.getUserFollowers(user['id']);
+            final following = await ApiService.getUserFollowing(user['id']);
+            followersCounts[user['id']] = followers.length;
+            followingCounts[user['id']] = following.length;
+          } catch (e) {
+            // If there's an error fetching counts, set to 0
+            followersCounts[user['id']] = 0;
+            followingCounts[user['id']] = 0;
+          }
+        }
+      }
+      
+      setState(() {
+        _users = users.where((u) => u['id'] != currentUserId).map((u) => u as Map<String, dynamic>).toList();
+        _following = Set<int>.from(relations['following'] ?? []);
+        _blocked = Set<int>.from(relations['blocked'] ?? []);
+        _followersCounts = followersCounts;
+        _followingCounts = followingCounts;
+        _loadingUsers = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingUsers = false;
+      });
+    }
   }
 
   Future<void> _fetchLiveStreams() async {
@@ -1199,69 +1243,41 @@ class _PKBattleModalState extends State<PKBattleModal>
     }
   }
 
-  Future<void> _fetchUsers() async {
-    setState(() {
-      _loadingUsers = true;
-      _userError = null;
-    });
+
+
+  Future<void> _loadCurrentUserData() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://server.bharathchat.com/user/minimal'),
-        headers: {'accept': 'application/json'},
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          _users = data.map((u) => u as Map<String, dynamic>).toList();
-          _loadingUsers = false;
-        });
-      } else {
-        setState(() {
-          _userError = 'Failed to load users';
-          _loadingUsers = false;
-        });
-      }
-    } catch (e) {
+      final userData = await ApiService.getCurrentUser();
       setState(() {
-        _userError = 'Error: $e';
-        _loadingUsers = false;
+        _currentUserData = userData;
       });
+    } catch (e) {
+      print('Error loading current user data: $e');
     }
   }
 
-  Future<void> _loadUserRelations() async {
-    try {
-      final currentUserId = ApiService.currentUserId;
-      final relations = await ApiService.getUserSimpleRelations(currentUserId);
-      
-      // Load followers and following counts for each user
-      Map<int, int> followersCounts = {};
-      Map<int, int> followingCounts = {};
-      
-      for (var user in _users) {
-        if (user['id'] != currentUserId) {
-          try {
-            final followers = await ApiService.getUserFollowers(user['id']);
-            final following = await ApiService.getUserFollowing(user['id']);
-            followersCounts[user['id']] = followers.length;
-            followingCounts[user['id']] = following.length;
-          } catch (e) {
-            // If there's an error fetching counts, set to 0
-            followersCounts[user['id']] = 0;
-            followingCounts[user['id']] = 0;
-          }
-        }
-      }
-      
-      setState(() {
-        _following = Set<int>.from(relations['following'] ?? []);
-        _blocked = Set<int>.from(relations['blocked'] ?? []);
-        _followersCounts = followersCounts;
-        _followingCounts = followingCounts;
-      });
-    } catch (e) {
-      print('Error loading user relations: $e');
-    }
+  Widget _buildProfileInitial() {
+    final displayName = _currentUserData != null 
+        ? ((_currentUserData!['first_name'] ?? '') + ' ' + (_currentUserData!['last_name'] ?? '')).trim()
+        : 'U';
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[800],
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
   }
 
   void _blockUser(int userId) async {
@@ -1423,13 +1439,47 @@ class _PKBattleModalState extends State<PKBattleModal>
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const Text(
-            'PK Battle',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: Colors.white,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Profile Picture
+              Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Color(0xFFffa030),
+                    width: 2,
+                  ),
+                ),
+                child: ClipOval(
+                  child: _currentUserData != null && _currentUserData!['profile_pic'] != null && _currentUserData!['profile_pic'].isNotEmpty
+                      ? (_currentUserData!['profile_pic'].startsWith('http')
+                          ? Image.network(
+                              _currentUserData!['profile_pic'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => _buildProfileInitial(),
+                            )
+                          : Image.network(
+                              'https://server.bharathchat.com/${_currentUserData!['profile_pic']}',
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => _buildProfileInitial(),
+                            ))
+                      : _buildProfileInitial(),
+                ),
+              ),
+              // Title
+              const Text(
+                'PK Battle',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           TabBar(

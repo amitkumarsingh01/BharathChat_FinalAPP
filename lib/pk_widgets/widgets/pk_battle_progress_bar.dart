@@ -26,7 +26,10 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
   int rightScore = 0;
   Timer? _timer;
   late AnimationController _animationController;
+  late AnimationController _scoreAnimationController;
   late Animation<double> _pulseAnimation;
+  late Animation<double> _scoreAnimation;
+  Animation<double>? _glowAnimation;
 
   @override
   void initState() {
@@ -37,13 +40,27 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     
     // Setup pulse animation for the central gem
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+    _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.repeat(reverse: true);
+
+    // Setup score animation
+    _scoreAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _scoreAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _scoreAnimationController, curve: Curves.elasticOut),
+    );
+
+    // Setup glow animation - must be after _animationController is initialized
+    _glowAnimation = Tween<double>(begin: 0.3, end: 0.8).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
   }
 
   Future<void> _fetchScore() async {
@@ -65,6 +82,9 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
           rightScore = newRightScore;
         });
         
+        // Trigger score animation
+        _scoreAnimationController.forward(from: 0.0);
+        
         // Notify parent about score update
         if (widget.onScoreUpdate != null) {
           widget.onScoreUpdate!();
@@ -81,6 +101,7 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
   void dispose() {
     _timer?.cancel();
     _animationController.dispose();
+    _scoreAnimationController.dispose();
     super.dispose();
   }
 
@@ -91,110 +112,69 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     final rightPercent = total == 0 ? 0.5 : rightScore / total;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1a2e).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: const Color(0xFFffa030).withOpacity(0.3),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 0),
+      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+                    decoration: BoxDecoration(
+         color: Colors.transparent,
+         borderRadius: BorderRadius.circular(0),
+       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Host names row
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.leftHostName ?? 'Left',
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: Colors.cyan,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        color: Colors.cyan,
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  widget.rightHostName ?? 'Right',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: Colors.pink,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    shadows: [
-                      Shadow(
-                        color: Colors.pink,
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           // Main progress bar
           SizedBox(
-            height: 40,
+            height: 48,
             child: Stack(
               children: [
-                // Background bar
-                Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: const Color(0xFF2a2a3e),
-                  ),
-                ),
-                // Progress bars
+                                 // Background bar with enhanced styling
+                 Container(
+                   height: 48,
+                   decoration: BoxDecoration(
+                     borderRadius: BorderRadius.circular(0),
+                     color: Colors.transparent,
+                   ),
+                 ),
+                // Progress bars with enhanced gradients
                 Row(
                   children: [
-                    // Left side (Blue/Cyan)
+                    // Left side (Enhanced Blue/Cyan)
                     Expanded(
                       flex: (leftPercent * 1000).toInt(),
                       child: Container(
-                        height: 40,
+                        height: 48,
                         decoration: BoxDecoration(
                           borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            bottomLeft: Radius.circular(20),
+                            topLeft: Radius.circular(0),
+                            bottomLeft: Radius.circular(0),
                           ),
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [
-                              Color(0xFF00b4d8),
-                              Color(0xFF0096c7),
-                              Color(0xFF0077b6),
+                              const Color(0xFF00d4ff),
+                              const Color(0xFF00b4d8),
+                              const Color(0xFF0096c7),
+                              const Color(0xFF0077b6),
+                              const Color(0xFF005f8a),
                             ],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                                                     boxShadow: [
+                             BoxShadow(
+                               color: const Color(0xFF00b4d8).withOpacity(0.2),
+                               blurRadius: 4,
+                               spreadRadius: 1,
+                             ),
+                           ],
                         ),
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              bottomLeft: Radius.circular(20),
+                              topLeft: Radius.circular(0),
+                              bottomLeft: Radius.circular(0),
                             ),
                             gradient: LinearGradient(
                               colors: [
+                                Colors.white.withOpacity(0.2),
                                 Colors.white.withOpacity(0.1),
                                 Colors.transparent,
                                 Colors.white.withOpacity(0.05),
@@ -206,34 +186,44 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                         ),
                       ),
                     ),
-                    // Right side (Pink/Magenta)
+                    // Right side (Enhanced Pink/Magenta)
                     Expanded(
                       flex: (rightPercent * 1000).toInt(),
                       child: Container(
-                        height: 40,
+                        height: 48,
                         decoration: BoxDecoration(
                           borderRadius: const BorderRadius.only(
-                            topRight: Radius.circular(20),
-                            bottomRight: Radius.circular(20),
+                            topRight: Radius.circular(0),
+                            bottomRight: Radius.circular(0),
                           ),
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [
-                              Color(0xFFff69b4),
-                              Color(0xFFff1493),
-                              Color(0xFFc71585),
+                              const Color(0xFFff8fab),
+                              const Color(0xFFff69b4),
+                              const Color(0xFFff1493),
+                              const Color(0xFFc71585),
+                              const Color(0xFFa01585),
                             ],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                                                     boxShadow: [
+                             BoxShadow(
+                               color: const Color(0xFFff69b4).withOpacity(0.2),
+                               blurRadius: 4,
+                               spreadRadius: 1,
+                             ),
+                           ],
                         ),
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: const BorderRadius.only(
-                              topRight: Radius.circular(20),
-                              bottomRight: Radius.circular(20),
+                              topRight: Radius.circular(0),
+                              bottomRight: Radius.circular(0),
                             ),
                             gradient: LinearGradient(
                               colors: [
+                                Colors.white.withOpacity(0.2),
                                 Colors.white.withOpacity(0.1),
                                 Colors.transparent,
                                 Colors.white.withOpacity(0.05),
@@ -247,7 +237,7 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                     ),
                   ],
                 ),
-                // Central gem
+                // Central gem with enhanced effects
                 Positioned(
                   left: 0,
                   right: 0,
@@ -260,31 +250,47 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                         return Transform.scale(
                           scale: _pulseAnimation.value,
                           child: Container(
-                            width: 24,
-                            height: 24,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [
-                                  Color(0xFF9d4edd),
-                                  Color(0xFF7b2cbf),
-                                  Color(0xFF5a189a),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF9d4edd).withOpacity(0.6),
-                                  blurRadius: 12,
-                                  spreadRadius: 2,
-                                ),
-                              ],
+                                                           boxShadow: [
+                               BoxShadow(
+                                 color: const Color(0xFF9d4edd).withOpacity(0.3),
+                                 blurRadius: 8,
+                                 spreadRadius: 1,
+                               ),
+                             ],
                             ),
-                            child: const Icon(
-                              Icons.diamond,
-                              color: Colors.white,
-                              size: 16,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/diamond.png',
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          const Color(0xFFffd700),
+                                          const Color(0xFF9d4edd),
+                                          const Color(0xFF7b2cbf),
+                                          const Color(0xFF5a189a),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.diamond,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         );
@@ -292,129 +298,207 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                     ),
                   ),
                 ),
-                // Sword icons
+                // Enhanced sword icons
                 Positioned(
-                  left: 8,
+                  left: 10,
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF00b4d8),
-                            Color(0xFF0096c7),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF00b4d8).withOpacity(0.5),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                    child: _glowAnimation != null
+                        ? AnimatedBuilder(
+                            animation: _glowAnimation!,
+                            builder: (context, child) {
+                              return Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF00d4ff),
+                                      const Color(0xFF00b4d8),
+                                      const Color(0xFF0096c7),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                                                     boxShadow: [
+                                     BoxShadow(
+                                       color: const Color(0xFF00b4d8).withOpacity(_glowAnimation!.value * 0.3),
+                                       blurRadius: 6,
+                                       spreadRadius: 1,
+                                     ),
+                                   ],
+                                ),
+                                child: const Icon(
+                                  Icons.pentagon_sharp,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFF00d4ff),
+                                  const Color(0xFF00b4d8),
+                                  const Color(0xFF0096c7),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                                                               boxShadow: [
+                                   BoxShadow(
+                                     color: const Color(0xFF00b4d8).withOpacity(0.2),
+                                     blurRadius: 6,
+                                     spreadRadius: 1,
+                                   ),
+                                 ],
+                            ),
+                            child: const Icon(
+                              Icons.pentagon_sharp,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.pentagon_sharp,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
                   ),
                 ),
                 Positioned(
-                  right: 8,
+                  right: 10,
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFff69b4),
-                            Color(0xFFff1493),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFff69b4).withOpacity(0.5),
-                            blurRadius: 8,
-                            spreadRadius: 1,
+                    child: _glowAnimation != null
+                        ? AnimatedBuilder(
+                            animation: _glowAnimation!,
+                            builder: (context, child) {
+                              return Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFFff8fab),
+                                      const Color(0xFFff69b4),
+                                      const Color(0xFFff1493),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                                                     boxShadow: [
+                                     BoxShadow(
+                                       color: const Color(0xFFff69b4).withOpacity(_glowAnimation!.value * 0.3),
+                                       blurRadius: 6,
+                                       spreadRadius: 1,
+                                     ),
+                                   ],
+                                ),
+                                child: const Icon(
+                                  Icons.pentagon_sharp,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFff8fab),
+                                  const Color(0xFFff69b4),
+                                  const Color(0xFFff1493),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                                                               boxShadow: [
+                                   BoxShadow(
+                                     color: const Color(0xFFff69b4).withOpacity(0.2),
+                                     blurRadius: 6,
+                                     spreadRadius: 1,
+                                   ),
+                                 ],
+                            ),
+                            child: const Icon(
+                              Icons.pentagon_sharp,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.pentagon_sharp,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
                   ),
                 ),
-                // Score text overlay
+                // Enhanced score text overlay with animation
                 Positioned.fill(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            leftScore.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black,
-                                  blurRadius: 2,
+                  child: AnimatedBuilder(
+                    animation: _scoreAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: 0.8 + (_scoreAnimation.value * 0.2),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  leftScore.toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.8),
+                                        blurRadius: 4,
+                                        offset: const Offset(1, 1),
+                                      ),
+                                      Shadow(
+                                        color: const Color(0xFF00b4d8).withOpacity(0.6),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            rightScore.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black,
-                                  blurRadius: 2,
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  rightScore.toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.8),
+                                        blurRadius: 4,
+                                        offset: const Offset(1, 1),
+                                      ),
+                                      Shadow(
+                                        color: const Color(0xFFff69b4).withOpacity(0.6),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          // Total score
-          Text(
-            'Total: ${leftScore + rightScore}',
-            style: const TextStyle(
-              color: Color(0xFFffa030),
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
             ),
           ),
         ],

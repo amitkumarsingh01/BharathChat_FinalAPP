@@ -18,6 +18,7 @@ import 'package:finalchat/screens/live/gift_animation.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_timer.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_progress_bar.dart';
+import 'package:finalchat/pk_widgets/pk_battle_ended_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pk_battle_debug_screen.dart';
 
@@ -222,6 +223,9 @@ class _LivePageState extends State<LivePage>
     
     // Start periodic fetching of PK battle transactions for gift animations
     _startPKBattleTransactionsPolling();
+    
+    // Start gift polling for synchronization across devices
+    _startGiftPolling();
   }
 
   // Variables for PK battle transactions polling
@@ -538,8 +542,13 @@ class _LivePageState extends State<LivePage>
           "gift_name": gift['name'],
           "gift_amount": gift['diamond_amount'],
           "gif_filename": gift['gif_filename'],
+          "receiver_id": receiverId,
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
+        
+        // Note: ZEGOCLOUD command sending is disabled due to API limitations
+        // Gift animations will be synchronized through server-side polling
+        debugPrint('🎁 ZEGOCLOUD command sending disabled - using server polling for sync');
         
         debugPrint('🎁 Gift sent successfully via API!');
         debugPrint('🎁 Creating gift animation for sender and receiver...');
@@ -868,6 +877,7 @@ class _LivePageState extends State<LivePage>
     liveStateNotifier.removeListener(_onLiveStateChanged);
     _likeController.dispose();
     _stopPKBattleTransactionsPolling();
+    _stopGiftPolling();
     super.dispose();
   }
 
@@ -1085,30 +1095,22 @@ class _LivePageState extends State<LivePage>
     String? liveId,
     String? pkBattleId,
   }) {
-    debugPrint('🎯 Received PK battle notification: $message');
-    debugPrint('🎯 PK Battle ID from notification: $pkBattleId');
-    debugPrint('🎯 Current PKEvents PK Battle ID: ${PKEvents.currentPKBattleId}');
+    // PK battle notification handling disabled - no notifications shown
+    debugPrint('🎯 PK battle notification received but disabled: $message');
     
-    setState(() {
-      _showPKBattleNotification = true;
-      _pkBattleMessage = message;
-      _leftHostId = leftHostId;
-      _rightHostId = rightHostId;
-      _leftHostName = leftHostName;
-      _rightHostName = rightHostName;
-      _liveId = liveId;
-      
-      // Update PK battle ID - prioritize the one from notification, then from PKEvents
-      _pkBattleId = pkBattleId ?? PKEvents.currentPKBattleId?.toString();
-      debugPrint('🎯 Final PK Battle ID set to: $_pkBattleId');
-      
-      // Show timer when PK battle starts
-      if (message.contains('Started')) {
+    // Still update PK battle ID for internal tracking
+    _pkBattleId = pkBattleId ?? PKEvents.currentPKBattleId?.toString();
+    
+    // Show timer when PK battle starts (without notification)
+    if (message.contains('Started')) {
+      setState(() {
         _showPKBattleTimer = true;
-      } else if (message.contains('Ended')) {
+      });
+    } else if (message.contains('Ended')) {
+      setState(() {
         _showPKBattleTimer = false;
-      }
-    });
+      });
+    }
   }
 
   void _handlePKBattleAccepted(String leftHostId, String rightHostId, String leftHostName, String rightHostName, String liveId) async {
@@ -1233,7 +1235,74 @@ class _LivePageState extends State<LivePage>
     }
   }
 
-  // Handle in-room commands for gift animations
+  // Poll for recent gifts to synchronize animations across devices
+  Timer? _giftPollingTimer;
+  DateTime _lastGiftCheck = DateTime.now();
+  
+  void _startGiftPolling() {
+    _giftPollingTimer?.cancel();
+    _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _pollForRecentGifts();
+    });
+  }
+  
+  void _stopGiftPolling() {
+    _giftPollingTimer?.cancel();
+    _giftPollingTimer = null;
+  }
+  
+  Future<void> _pollForRecentGifts() async {
+    try {
+      final streamId = _debugInfo['stream_id'];
+      if (streamId == null) return;
+      
+      // Get recent gifts from the last 5 seconds
+      final recentGifts = await ApiService.getRecentGifts(
+        liveStreamId: int.tryParse(streamId) ?? 0,
+        since: _lastGiftCheck,
+      );
+      
+      if (recentGifts.isNotEmpty) {
+        debugPrint('🎁 Found ${recentGifts.length} recent gifts to sync');
+        
+        for (final gift in recentGifts) {
+          // Check if we already processed this gift
+          final giftKey = '${gift['sender_id']}_${gift['gift_id']}_${gift['timestamp']}';
+          if (!_processedGifts.contains(giftKey)) {
+            _processedGifts.add(giftKey);
+            
+            final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
+            final senderName = gift['sender_name'] ?? 'User';
+            final giftName = gift['gift_name'] ?? 'Gift';
+            
+            // Determine PK battle side if applicable
+            String? pkBattleSide;
+            final isPKBattle = PKEvents.currentPKBattleId != null;
+            if (isPKBattle && gift['receiver_id'] != null) {
+              final receiverId = gift['receiver_id'];
+              if (receiverId == int.tryParse(_leftHostId ?? '0')) {
+                pkBattleSide = 'left';
+              } else if (receiverId == int.tryParse(_rightHostId ?? '0')) {
+                pkBattleSide = 'right';
+              }
+            }
+            
+            // Create gift animation
+            _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+          }
+        }
+      }
+      
+      _lastGiftCheck = DateTime.now();
+    } catch (e) {
+      debugPrint('❌ Error polling for recent gifts: $e');
+    }
+  }
+  
+  // Set to track processed gifts to avoid duplicates
+  final Set<String> _processedGifts = {};
+  
+  // Handle in-room commands for gift animations (legacy - kept for compatibility)
   void _handleInRoomCommand(String command) {
     try {
       final data = jsonDecode(command);
@@ -1465,34 +1534,17 @@ class _LivePageState extends State<LivePage>
     // Stop polling for transactions when PK battle ends
     _stopPKBattleTransactionsPolling();
 
-    // Show popup
+    // Show improved popup using the service
     if (mounted) {
-      showDialog(
+      PKBattleEndedService.instance.showPKBattleEndedPopup(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('PK Battle Ended'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Winner: '
-                + (winnerId == 0
-                  ? 'Draw'
-                  : (winnerId == (result['left_host_id'])
-                      ? (_leftHostName ?? _leftHostId ?? 'Left')
-                      : (_rightHostName ?? _rightHostId ?? 'Right')))),
-              const SizedBox(height: 12),
-              Text('Final Scores:\n'
-                '${_leftHostName ?? _leftHostId ?? 'Left'}: $leftScore\n'
-                '${_rightHostName ?? _rightHostId ?? 'Right'}: $rightScore'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+        winnerId: winnerId,
+        leftScore: leftScore,
+        rightScore: rightScore,
+        leftHostName: _leftHostName,
+        rightHostName: _rightHostName,
+        leftHostId: _leftHostId,
+        rightHostId: _rightHostId,
       );
     }
   }
@@ -1711,27 +1763,11 @@ class _LivePageState extends State<LivePage>
                 },
               ),
             ),
-            // PK Battle notification overlay
-            if (_showPKBattleNotification)
-              Positioned(
-                top: 50,
-                left: 0,
-                right: 0,
-                child: PKBattleNotification(
-                  message: _pkBattleMessage,
-                  onDismiss: _hidePKBattleNotification,
-                  leftHostId: _leftHostId,
-                  rightHostId: _rightHostId,
-                  leftHostName: _leftHostName,
-                  rightHostName: _rightHostName,
-                  liveId: _liveId,
-                  pkBattleId: _pkBattleId,
-                ),
-              ),
-            // PK Battle timer overlay
+            // PK Battle notification overlay - disabled
+            // PK Battle timer overlay - positioned below progress bar
             if (_showPKBattleTimer)
               Positioned(
-                bottom: 120,
+                top: MediaQuery.of(context).size.height * 0.55 + 80, // Just below the progress bar
                 left: 0,
                 right: 0,
                 child: Center(
@@ -1760,7 +1796,7 @@ class _LivePageState extends State<LivePage>
             // PK Battle progress bar overlay
             if (_showPKBattleTimer)
               Positioned(
-                bottom: 200,
+                top: MediaQuery.of(context).size.height * 0.55,
                 left: 0,
                 right: 0,
                 child: Center(
@@ -1913,25 +1949,25 @@ class _LivePageState extends State<LivePage>
                 ),
               ),
             // Debug indicator for gift status (audience only)
-            if (!widget.isHost)
-              Positioned(
-                left: 12,
-                bottom: 160,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Gifts: ${_gifts.length} | Loading: $_giftsLoading | Diamonds: ${_currentUser?['diamonds'] ?? 'N/A'}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ),
+            // if (!widget.isHost)
+            //   Positioned(
+            //     left: 12,
+            //     bottom: 160,
+            //     child: Container(
+            //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            //       decoration: BoxDecoration(
+            //         color: Colors.black.withOpacity(0.7),
+            //         borderRadius: BorderRadius.circular(8),
+            //       ),
+            //       child: Text(
+            //         'Gifts: ${_gifts.length} | Loading: $_giftsLoading | Diamonds: ${_currentUser?['diamonds'] ?? 'N/A'}',
+            //         style: const TextStyle(
+            //           color: Colors.white,
+            //           fontSize: 10,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
             // Horizontal gift list above the bottom buttons (audience only)
             if (!widget.isHost && !_giftsLoading && _gifts.isNotEmpty)
               Positioned(

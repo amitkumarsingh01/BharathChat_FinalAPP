@@ -529,7 +529,7 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
                   Positioned(
                     // bottom: baseYPos + 60 + 5,
                     bottom: baseYPos + 30 + 5,
-                    left: 1,
+                    left: 15,
                     child: PKBattleButton(
                       onPressed: () {
                         // TODO: Implement PK battle logic

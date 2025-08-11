@@ -109,13 +109,6 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFFffa030).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
             ),
             child: Row(
               children: [
@@ -129,6 +122,9 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                       hintText: 'Host ID',
                       hintStyle: TextStyle(color: Colors.white70),
                       filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                     ),
                   ),
                 ),
@@ -146,9 +142,9 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            elevation: 2,
+                            elevation: 0,
                             backgroundColor: Colors.white,
-                            shadowColor: Colors.black26,
+                            shadowColor: Colors.transparent,
                           ),
                           icon: Icon(Icons.send, color: Color(0xFFffa030), size: 16),
                           label: Text(
