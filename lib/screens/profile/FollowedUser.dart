@@ -9,7 +9,8 @@ class FollowedUser extends StatefulWidget {
   State<FollowedUser> createState() => _FollowedUserState();
 }
 
-class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderStateMixin {
+class _FollowedUserState extends State<FollowedUser>
+    with SingleTickerProviderStateMixin {
   List<dynamic> _followers = [];
   List<dynamic> _following = [];
   bool _isLoading = true;
@@ -42,8 +43,10 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
       final followingIds = List<int>.from(relations['following_ids'] ?? []);
       final followersIds = List<int>.from(relations['followers_ids'] ?? []);
       final allUsers = await ApiService.getAllUsers();
-      final followingUsers = allUsers.where((u) => followingIds.contains(u['id'])).toList();
-      final followersUsers = allUsers.where((u) => followersIds.contains(u['id'])).toList();
+      final followingUsers =
+          allUsers.where((u) => followingIds.contains(u['id'])).toList();
+      final followersUsers =
+          allUsers.where((u) => followersIds.contains(u['id'])).toList();
       setState(() {
         _following = followingUsers;
         _followers = followersUsers;
@@ -102,37 +105,53 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
           indicatorColor: Colors.orange,
           labelColor: Colors.orange,
           unselectedLabelColor: Colors.white54,
-          tabs: const [
-            Tab(text: 'Following'),
-            Tab(text: 'Followers'),
-          ],
+          tabs: const [Tab(text: 'Following'), Tab(text: 'Followers')],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildUserList(_following, isFollowing: true, emptyText: 'No following users'),
-                _buildUserList(_followers, isFollowing: false, emptyText: 'No followers'),
-              ],
-            ),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Colors.amber),
+              )
+              : TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildUserList(
+                    _following,
+                    isFollowing: true,
+                    emptyText: 'No following users',
+                  ),
+                  _buildUserList(
+                    _followers,
+                    isFollowing: false,
+                    emptyText: 'No followers',
+                  ),
+                ],
+              ),
     );
   }
 
-  Widget _buildUserList(List<dynamic> users, {required bool isFollowing, required String emptyText}) {
+  Widget _buildUserList(
+    List<dynamic> users, {
+    required bool isFollowing,
+    required String emptyText,
+  }) {
     if (users.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(emptyText, style: const TextStyle(color: Colors.white54, fontSize: 16)),
+          child: Text(
+            emptyText,
+            style: const TextStyle(color: Colors.white54, fontSize: 16),
+          ),
         ),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.only(top: 16),
       itemCount: users.length,
-      separatorBuilder: (_, __) => const Divider(color: Colors.white12, height: 1),
+      separatorBuilder:
+          (_, __) => const Divider(color: Colors.white12, height: 1),
       itemBuilder: (context, index) {
         final user = users[index];
         return _userTile(user, isFollowing: isFollowing);
@@ -168,21 +187,28 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
               child: CircleAvatar(
                 radius: 28,
                 backgroundColor: Colors.grey[900],
-                backgroundImage: user['profile_pic'] != null && user['profile_pic'].isNotEmpty
-                    ? (user['profile_pic'].startsWith('http')
-                        ? NetworkImage(user['profile_pic'])
-                        : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
-                    : null,
-                child: (user['profile_pic'] == null || user['profile_pic'].isEmpty)
-                    ? Text(
-                        ((user['first_name'] ?? user['username'] ?? 'U') as String)[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                        ),
-                      )
-                    : null,
+                backgroundImage:
+                    user['profile_pic'] != null &&
+                            user['profile_pic'].isNotEmpty
+                        ? (user['profile_pic'].startsWith('http')
+                            ? NetworkImage(user['profile_pic'])
+                            : NetworkImage(
+                              'https://server.bharathchat.com/${user['profile_pic']}',
+                            ))
+                        : null,
+                child:
+                    (user['profile_pic'] == null || user['profile_pic'].isEmpty)
+                        ? Text(
+                          ((user['first_name'] ?? user['username'] ?? 'U')
+                                  as String)[0]
+                              .toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                          ),
+                        )
+                        : null,
               ),
             ),
             const SizedBox(width: 14),
@@ -191,14 +217,26 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFFffa030), Color(0xFFfe9b00), Color(0xFFf67d00)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ).createShader(bounds),
+                    shaderCallback:
+                        (bounds) => const LinearGradient(
+                          colors: [
+                            Color(0xFFffa030),
+                            Color(0xFFfe9b00),
+                            Color(0xFFf67d00),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds),
                     child: Text(
-                      ((user['first_name'] ?? '') + ' ' + (user['last_name'] ?? '')).trim().isNotEmpty
-                          ? ((user['first_name'] ?? '') + ' ' + (user['last_name'] ?? '')).trim()
+                      ((user['first_name'] ?? '') +
+                                  ' ' +
+                                  (user['last_name'] ?? ''))
+                              .trim()
+                              .isNotEmpty
+                          ? ((user['first_name'] ?? '') +
+                                  ' ' +
+                                  (user['last_name'] ?? ''))
+                              .trim()
                           : (user['username'] ?? 'User'),
                       style: const TextStyle(
                         color: Colors.white,
@@ -221,9 +259,15 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
             const SizedBox(width: 10),
             if (isFollowing)
               Container(
+                width: 90,
+                height: 28,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFffa030), Color(0xFFfe9b00), Color(0xFFf67d00)],
+                    colors: [
+                      Color(0xFFffa030),
+                      Color(0xFFfe9b00),
+                      Color(0xFFf67d00),
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -238,14 +282,17 @@ class _FollowedUserState extends State<FollowedUser> with SingleTickerProviderSt
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 0,
+                    ),
                     elevation: 0,
                   ),
                   child: const Text(
                     'Unfollow',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: 12,
                       color: Colors.white,
                     ),
                   ),

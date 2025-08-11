@@ -73,7 +73,12 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
     // You can add additional logic here, like showing a notification
   }
 
-  void _showGiftAnimation(String giftName, String gifUrl, String senderName, {String? pkBattleSide}) {
+  void _showGiftAnimation(
+    String giftName,
+    String gifUrl,
+    String senderName, {
+    String? pkBattleSide,
+  }) {
     setState(() {
       giftAnimations.add({
         'giftName': giftName,

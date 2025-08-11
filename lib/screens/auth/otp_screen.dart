@@ -41,24 +41,50 @@ class _OtpScreenState extends State<OtpScreen> {
       await ApiService.setToken(response['access_token']);
       await ApiService.setUserId(response['user_id']);
 
-      if (response['is_profile_complete'] == true) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-        );
-      } else {
+      // Now check if user profile is complete by calling getCurrentUser
+      try {
+        final userData = await ApiService.getCurrentUser();
+        print('User data after OTP verification: $userData'); // Debug log
+        
+        // Check if user has complete profile (first_name, last_name, username)
+        if (userData['first_name'] != null &&
+            userData['last_name'] != null &&
+            userData['username'] != null &&
+            userData['first_name'].toString().isNotEmpty &&
+            userData['last_name'].toString().isNotEmpty &&
+            userData['username'].toString().isNotEmpty) {
+          print('Profile is complete, navigating to MainScreen'); // Debug log
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          );
+        } else {
+          print('Profile is incomplete, navigating to RegistrationScreen'); // Debug log
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RegistrationScreen(
+                phoneNumber: widget.phoneNumber,
+                token: response['access_token'],
+              ),
+            ),
+          );
+        }
+      } catch (profileError) {
+        print('Error checking user profile: $profileError'); // Debug log
+        // If we can't get user profile, assume it's incomplete
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder:
-                (context) => RegistrationScreen(
-                  phoneNumber: widget.phoneNumber,
-                  token: response['access_token'],
-                ),
+            builder: (context) => RegistrationScreen(
+              phoneNumber: widget.phoneNumber,
+              token: response['access_token'],
+            ),
           ),
         );
       }
     } catch (e) {
+      print('OTP verification error: $e'); // Debug log
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Invalid OTP. Please try again.'),

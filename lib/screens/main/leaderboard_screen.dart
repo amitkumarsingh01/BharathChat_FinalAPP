@@ -76,11 +76,10 @@ class User {
 
   ImageProvider? getProfileImage() {
     if (profilePic != null && profilePic!.isNotEmpty) {
-      try {
-        return MemoryImage(base64Decode(profilePic!));
-      } catch (e) {
-        print('Error decoding profile image: $e');
-        return null;
+      if (profilePic!.startsWith('http')) {
+        return NetworkImage(profilePic!);
+      } else {
+        return NetworkImage('https://server.bharathchat.com/${profilePic!}');
       }
     }
     return null;
@@ -104,11 +103,13 @@ class User {
   }
 
   String getFormattedCreditedDiamonds() {
-    if (creditedDiamonds >= 1000) {
-      double k = creditedDiamonds / 1000.0;
+    // Multiply credited diamonds (stars) by 3
+    int multipliedStars = creditedDiamonds * 3;
+    if (multipliedStars >= 1000) {
+      double k = multipliedStars / 1000.0;
       return '${k.toStringAsFixed(1)}K';
     }
-    return creditedDiamonds.toString();
+    return multipliedStars.toString();
   }
 
   String getFormattedDebitedDiamonds() {
@@ -201,9 +202,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final periodStr = _periodToString(selectedPeriod);
     String url;
     if (selectedFilter == FilterType.credited) {
-      url = 'https://server.bharathchat.com/user-star-history?period=$periodStr';
+      url =
+          'https://server.bharathchat.com/user-star-history?period=$periodStr';
     } else {
-      url = 'https://server.bharathchat.com/user-diamond-history?period=$periodStr';
+      url =
+          'https://server.bharathchat.com/user-diamond-history?period=$periodStr';
     }
     try {
       final response = await http.get(
@@ -223,9 +226,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           filteredUsers = List.from(users);
           // Sort by credited or debited
           if (selectedFilter == FilterType.credited) {
-            filteredUsers.sort((a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds));
+            filteredUsers.sort(
+              (a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds),
+            );
           } else {
-            filteredUsers.sort((a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds));
+            filteredUsers.sort(
+              (a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds),
+            );
           }
           isLoading = false;
         });
@@ -768,12 +775,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     ImageProvider? profileImage;
     if (currentUserData!['profile_pic'] != null &&
         currentUserData!['profile_pic'].toString().isNotEmpty) {
-      try {
-        profileImage = MemoryImage(
-          base64Decode(currentUserData!['profile_pic']),
-        );
-      } catch (e) {
-        profileImage = null;
+      final profilePic = currentUserData!['profile_pic'].toString();
+      if (profilePic.startsWith('http')) {
+        profileImage = NetworkImage(profilePic);
+      } else {
+        profileImage = NetworkImage('https://server.bharathchat.com/${profilePic}');
       }
     }
     return Container(
@@ -840,6 +846,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           ),
           const SizedBox(width: 12),
           Container(
+            height: 35,
+            width: 110,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -867,7 +875,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
+                  horizontal: 1,
                   vertical: 8,
                 ),
                 elevation: 0,

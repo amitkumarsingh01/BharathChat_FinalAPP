@@ -72,6 +72,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   bool _sendingGift = false;
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
+  
+  // Gift polling for synchronization
+  Timer? _giftPollingTimer;
+  DateTime _lastGiftCheck = DateTime.now();
+  final Set<String> _processedGifts = {};
 
   @override
   void initState() {
@@ -107,6 +112,84 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     });
 
     _fetchGiftsAndUser();
+    
+    // Start gift polling for synchronization across devices
+    _startGiftPolling();
+  }
+  
+  // Gift polling methods for synchronization
+  void _startGiftPolling() {
+    _giftPollingTimer?.cancel();
+    _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _pollForRecentGifts();
+    });
+  }
+  
+  void _stopGiftPolling() {
+    _giftPollingTimer?.cancel();
+    _giftPollingTimer = null;
+  }
+  
+  Future<void> _pollForRecentGifts() async {
+    try {
+      // For audio screen, we'll use the liveID to get the stream ID
+      final liveId = widget.liveID;
+      int? streamId;
+      
+      if (liveId.startsWith('live_')) {
+        final parts = liveId.split('_');
+        if (parts.length >= 2) {
+          streamId = int.tryParse(parts[1]);
+        }
+      }
+      
+      if (streamId == null) return;
+      
+      // Get recent gifts from the last 5 seconds
+      final recentGifts = await ApiService.getRecentGifts(
+        liveStreamId: streamId,
+        since: _lastGiftCheck,
+      );
+      
+      if (recentGifts.isNotEmpty) {
+        print('🎁 Found ${recentGifts.length} recent gifts to sync in audio screen');
+        
+        for (final gift in recentGifts) {
+          // Check if we already processed this gift
+          final giftKey = '${gift['sender_id']}_${gift['gift_id']}_${gift['timestamp']}';
+          if (!_processedGifts.contains(giftKey)) {
+            _processedGifts.add(giftKey);
+            
+            final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
+            final senderName = gift['sender_name'] ?? 'User';
+            final giftName = gift['gift_name'] ?? 'Gift';
+            
+            // Create gift animation
+            setState(() {
+              _activeGiftAnimations.add(
+                GiftAnimation(
+                  key: ValueKey('gift_anim_${_giftAnimKey++}'),
+                  giftName: giftName,
+                  gifUrl: gifUrl,
+                  senderName: senderName,
+                  onAnimationComplete: () {
+                    setState(() {
+                      _activeGiftAnimations.removeWhere(
+                        (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
+                      );
+                    });
+                  },
+                ),
+              );
+            });
+          }
+        }
+      }
+      
+      _lastGiftCheck = DateTime.now();
+    } catch (e) {
+      print('❌ Error polling for recent gifts in audio screen: $e');
+    }
   }
 
   Future<void> _fetchGiftsAndUser() async {
@@ -405,6 +488,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     _audioPlayer.dispose();
     _userListSub?.cancel();
     _likeController.dispose();
+    _stopGiftPolling();
     if (widget.isHost) {
       _liveStreamService.removeStream(widget.liveID);
     }
@@ -417,13 +501,12 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     final config =
         widget.isHost
             ? (ZegoUIKitPrebuiltLiveStreamingConfig.host()
-              ..turnOnCameraWhenJoining =
-                  false // No camera for audio
+              ..turnOnCameraWhenJoining = false
               ..turnOnMicrophoneWhenJoining = true
               ..useSpeakerWhenJoining = true
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
-                ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+                // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
               // Bottom menu bar - audio-specific buttons with extend buttons
               ..bottomMenuBar.hostButtons = [
@@ -439,7 +522,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..useSpeakerWhenJoining = true
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
-                ZegoLiveStreamingMenuBarButtonName.minimizingButton,
+                // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
               // Bottom menu bar - audience buttons for audio with extend buttons
               ..bottomMenuBar.audienceButtons = [

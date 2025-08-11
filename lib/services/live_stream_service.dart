@@ -9,6 +9,7 @@ class LiveStream {
   final String host;
   final int liveId;
   final int userId;
+  final DateTime? createdAt; // Add created_at field
 
   LiveStream({
     required this.channelName,
@@ -17,6 +18,7 @@ class LiveStream {
     required this.host,
     required this.liveId,
     required this.userId,
+    this.createdAt, // Add to constructor
   });
 }
 
@@ -49,6 +51,7 @@ class LiveStreamService extends ChangeNotifier {
         host: _streams[idx].host,
         liveId: _streams[idx].liveId,
         userId: _streams[idx].userId,
+        createdAt: _streams[idx].createdAt, // Preserve the createdAt field
       );
       notifyListeners();
     }

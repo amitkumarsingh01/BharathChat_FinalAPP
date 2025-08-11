@@ -109,7 +109,7 @@ class _GiftAnimationState extends State<GiftAnimation>
                 child: SlideTransition(
                   position: _slideAnimation,
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
@@ -120,8 +120,8 @@ class _GiftAnimationState extends State<GiftAnimation>
                       children: [
                         // Gift GIF
                         Container(
-                          width: 200,
-                          height: 200,
+                          width: 300,
+                          height: 300,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
                           ),
@@ -149,27 +149,27 @@ class _GiftAnimationState extends State<GiftAnimation>
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
 
                         // Gift name
                         Text(
                           widget.giftName,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 24,
+                            fontSize: 32,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
 
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
 
                         // Sender name
                         Text(
                           'Sent by ${widget.senderName}',
                           style: TextStyle(
                             color: Colors.orange,
-                            fontSize: 16,
+                            fontSize: 20,
                             fontWeight: FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
@@ -203,29 +203,7 @@ class _GiftAnimationState extends State<GiftAnimation>
                           ),
                         ],
 
-                        // PK Battle indicator (general)
-                        if (widget.isPKBattleGift && widget.pkBattleSide == null) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Colors.yellow, Colors.orange],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              '🎮 PK BATTLE GIFT 🎮',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                        // PK Battle indicator (general) - disabled
 
                         // const SizedBox(height: 16),
 

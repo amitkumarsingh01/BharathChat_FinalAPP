@@ -107,10 +107,16 @@ class _HomeScreenState extends State<HomeScreen> {
           if (parts.length >= 2) {
             final streamId = int.tryParse(parts[1]);
             if (streamId != null) {
-              debugPrint('🔍 Checking for active PK battle for stream: $streamId');
-              activePKBattle = await ApiService.getActivePKBattleByStreamId(streamId);
+              debugPrint(
+                '🔍 Checking for active PK battle for stream: $streamId',
+              );
+              activePKBattle = await ApiService.getActivePKBattleByStreamId(
+                streamId,
+              );
               if (activePKBattle != null) {
-                debugPrint('🎮 Found active PK battle: ${activePKBattle['id']}');
+                debugPrint(
+                  '🎮 Found active PK battle: ${activePKBattle['id']}',
+                );
               } else {
                 debugPrint('❌ No active PK battle found for stream: $streamId');
               }
@@ -132,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 localUserID: userID,
                 isHost: isHost,
                 hostId: hostId,
-                activePKBattle: activePKBattle, // Pass PK battle info to live screen
+                activePKBattle:
+                    activePKBattle, // Pass PK battle info to live screen
               ),
         ),
       );
@@ -225,6 +232,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Add video lives from server
       for (var live in videoLives) {
+        // Parse created_at timestamp
+        DateTime? createdAt;
+        if (live['created_at'] != null) {
+          try {
+            createdAt = DateTime.parse(live['created_at']);
+          } catch (e) {
+            print('Error parsing created_at: $e');
+          }
+        }
+        
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'video_${live['id']}',
@@ -233,12 +250,23 @@ class _HomeScreenState extends State<HomeScreen> {
             host: live['host_name'] ?? 'Host',
             liveId: live['id'] ?? 0,
             userId: live['user_id'] ?? 0, // Pass userId
+            createdAt: createdAt, // Add created_at timestamp
           ),
         );
       }
 
       // Add audio lives from server
       for (var live in audioLives) {
+        // Parse created_at timestamp
+        DateTime? createdAt;
+        if (live['created_at'] != null) {
+          try {
+            createdAt = DateTime.parse(live['created_at']);
+          } catch (e) {
+            print('Error parsing created_at: $e');
+          }
+        }
+        
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'audio_${live['id']}',
@@ -247,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
             host: live['host_name'] ?? live['chat_room'] ?? 'Host',
             liveId: live['id'] ?? 0,
             userId: live['user_id'] ?? 0, // Pass userId
+            createdAt: createdAt, // Add created_at timestamp
           ),
         );
       }
@@ -470,6 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 SizedBox(width: isSmallScreen ? 6 : 10),
+
                 // Trophy/Leaderboard Icon
                 // GestureDetector(
                 //   onTap: () {
@@ -659,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     padding: EdgeInsets.symmetric(
-                      horizontal: isSmallScreen ? 6 : 10,
+                      horizontal: isSmallScreen ? 12 : 16,
                       vertical: 6,
                     ),
                     child: Text(
@@ -700,8 +730,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       snapshot.data?['profile_pic'] != null) {
                     try {
                       final profilePic = snapshot.data!['profile_pic'];
-                      final isFullUrl = profilePic.startsWith('http://') || profilePic.startsWith('https://');
-                      final url = isFullUrl ? profilePic : 'https://server.bharathchat.com/' + profilePic;
+                      final isFullUrl =
+                          profilePic.startsWith('http://') ||
+                          profilePic.startsWith('https://');
+                      final url =
+                          isFullUrl
+                              ? profilePic
+                              : 'https://server.bharathchat.com/' + profilePic;
                       return CircleAvatar(
                         radius: avatarRadius,
                         backgroundImage: NetworkImage(url),
@@ -820,7 +855,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 10),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -852,10 +887,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .toList()
                                 .reversed
                                 .toList();
+                        
+                        // Filter streams less than 5 minutes old
+                        final recentStreams = videoStreams.where((stream) {
+                          if (stream.createdAt == null) return false;
+                          final now = DateTime.now();
+                          final difference = now.difference(stream.createdAt!);
+                          return difference.inMinutes < 5; // Less than 5 minutes
+                        }).toList();
+                        
                         // Only unique hosts by userId
                         final Set<int> seenUserIds = {};
                         final uniqueHostStreams = <dynamic>[];
-                        for (final stream in videoStreams) {
+                        for (final stream in recentStreams) {
                           if (stream.userId != null &&
                               !seenUserIds.contains(stream.userId)) {
                             seenUserIds.add(stream.userId);
@@ -866,7 +910,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              'No popular hosts live right now!',
+                              'No recent hosts live right now!',
                               style: TextStyle(color: Colors.white70),
                             ),
                           );
@@ -939,7 +983,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 profilePic != null &&
                                                         profilePic.isNotEmpty
                                                     ? Image.network(
-                                                      profilePic.startsWith('http') ? profilePic : 'https://server.bharathchat.com/' + profilePic,
+                                                      profilePic.startsWith(
+                                                            'http',
+                                                          )
+                                                          ? profilePic
+                                                          : 'https://server.bharathchat.com/' +
+                                                              profilePic,
                                                       fit: BoxFit.cover,
                                                       width: 70,
                                                       height: 70,
@@ -956,28 +1005,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     ),
                                           ),
                                         ),
-                                        Positioned(
-                                          bottom: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.red,
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: const Text(
-                                              'LIVE',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -1002,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 8),
+                    // const SizedBox(height: 8),
 
                     // Live Stream List (Discord-style)
                     // Padding(
@@ -1128,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           //     fontWeight: FontWeight.w600,
                           //   ),
                           // ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
@@ -1144,10 +1172,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         );
                                       },
                                       child: Container(
+                                        width: 120,
+                                        height: 35,
                                         margin: const EdgeInsets.only(
                                           right: 12,
                                         ),
-                                        padding: const EdgeInsets.all(12),
+                                        padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           gradient:
                                               isSelected
@@ -1166,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   ? null
                                                   : Colors.grey[900],
                                           borderRadius: BorderRadius.circular(
-                                            12,
+                                            25,
                                           ),
                                           border:
                                               isSelected
@@ -1176,24 +1206,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   )
                                                   : null,
                                         ),
-                                        child: Column(
-                                          children: [
-                                            // Text(
-                                            //   category.icon,
-                                            //   style: const TextStyle(fontSize: 24),
-                                            // ),
-                                            // const SizedBox(height: 4),
-                                            Text(
-                                              category.name,
-                                              style: TextStyle(
-                                                color:
-                                                    isSelected
-                                                        ? Colors.black
-                                                        : Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
+                                        child: Text(
+                                          category.name,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color:
+                                                isSelected
+                                                    ? Colors.black
+                                                    : Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     );
@@ -1217,26 +1240,43 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .reversed
                                 .toList();
 
-                        // Filter by selected language and category
-                        final filteredVideoStreams = videoStreams.where((stream) {
-                          final user = _usersById[stream.userId];
-                          // Find the matching live data from _videoLives by live_url or id
-                          final live = _videoLives.firstWhere(
-                            (l) => (l['live_url'] == stream.channelName) || (l['id'] == stream.liveId),
-                            orElse: () => null,
-                          );
-                          final languageCode = live != null ? live['language'] : null;
-                          final category = live != null ? live['category'] : null;
-                          final matchesLanguage = languageCode == selectedLanguage.code;
-                          final matchesCategory = selectedCategory == 'All' || category == selectedCategory;
-                          return matchesLanguage && matchesCategory;
-                        }).toList();
+                        // Filter by selected language and category, and less than 5 minutes old
+                        final filteredVideoStreams =
+                            videoStreams.where((stream) {
+                              // First check if stream is less than 5 minutes old
+                              if (stream.createdAt != null) {
+                                final now = DateTime.now();
+                                final difference = now.difference(stream.createdAt!);
+                                if (difference.inMinutes >= 5) return false; // Skip if 5+ minutes old
+                              } else {
+                                return false; // Skip if no created_at timestamp
+                              }
+                              
+                              final user = _usersById[stream.userId];
+                              // Find the matching live data from _videoLives by live_url or id
+                              final live = _videoLives.firstWhere(
+                                (l) =>
+                                    (l['live_url'] == stream.channelName) ||
+                                    (l['id'] == stream.liveId),
+                                orElse: () => null,
+                              );
+                              final languageCode =
+                                  live != null ? live['language'] : null;
+                              final category =
+                                  live != null ? live['category'] : null;
+                              final matchesLanguage =
+                                  languageCode == selectedLanguage.code;
+                              final matchesCategory =
+                                  selectedCategory == 'All' ||
+                                  category == selectedCategory;
+                              return matchesLanguage && matchesCategory;
+                            }).toList();
 
                         if (filteredVideoStreams.isEmpty) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              'No live video streams. Start one or check back later!',
+                              'No recent live video streams. Start one or check back later!',
                               style: TextStyle(color: Colors.white70),
                             ),
                           );
@@ -1291,61 +1331,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   top: Radius.circular(12),
                                                 ),
                                             child:
-                                                profilePic != null && profilePic.isNotEmpty
+                                                profilePic != null &&
+                                                        profilePic.isNotEmpty
                                                     ? Image.network(
-                                                        profilePic.startsWith('http') ? profilePic : 'https://server.bharathchat.com/' + profilePic,
-                                                        fit: BoxFit.cover,
-                                                        width: double.infinity,
-                                                        height: double.infinity,
-                                                      )
+                                                      profilePic.startsWith(
+                                                            'http',
+                                                          )
+                                                          ? profilePic
+                                                          : 'https://server.bharathchat.com/' +
+                                                              profilePic,
+                                                      fit: BoxFit.cover,
+                                                      width: double.infinity,
+                                                      height: double.infinity,
+                                                    )
                                                     : Container(
-                                                        color: Colors.black,
-                                                        child: const Center(
-                                                          child: Icon(
-                                                            Icons.person,
-                                                            color: Colors.white,
-                                                            size: 60,
-                                                          ),
+                                                      color: Colors.black,
+                                                      child: const Center(
+                                                        child: Icon(
+                                                          Icons.person,
+                                                          color: Colors.white,
+                                                          size: 60,
                                                         ),
                                                       ),
-                                          ),
-                                          // LIVE badge (top-left)
-                                          Positioned(
-                                            top: 8,
-                                            left: 8,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(0),
-                                              decoration: BoxDecoration(
-                                                color: Colors.transparent,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-
-                                              // child: Image.asset('assets/live.jpg', width: 22, height: 22),
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
                                                     ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red,
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        4,
-                                                      ), // optional rounded corners
-                                                ),
-                                                child: const Text(
-                                                  'LIVE',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 10,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
                                           ),
+
                                           // Watching count (top-right)
                                           Positioned(
                                             top: 8,
@@ -1517,5 +1527,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
     );
+  }
+
+  // Helper function to format elapsed time
+  String formatElapsedTime(DateTime? createdAt) {
+    if (createdAt == null) return 'LIVE';
+    
+    final now = DateTime.now();
+    final difference = now.difference(createdAt);
+    
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    
+    if (hours > 0) {
+      return '${hours} hour${hours > 1 ? 's' : ''} ${minutes} min';
+    } else {
+      return '${minutes} min';
+    }
   }
 }

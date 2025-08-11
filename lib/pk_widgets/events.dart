@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 import 'package:finalchat/services/api_service.dart';
+import 'pk_battle_ended_service.dart';
 
 class PKEvents {
   const PKEvents({
@@ -69,32 +70,10 @@ class PKEvents {
             final rightHostName = rightUserDetails?['username'] ?? rightUsername;
             final liveId = rightZegoId; // current live stream ID
             
-            // Show PK battle request received notification with user details
-            if (onPKBattleNotification != null) {
-              onPKBattleNotification!(
-                '🎮 PK Battle Request Received! 🎮',
-                leftHostId: leftHostId,
-                rightHostId: rightHostId,
-                leftHostName: leftHostName,
-                rightHostName: rightHostName,
-                liveId: liveId,
-                pkBattleId: null,
-              );
-            }
+            // PK battle request received - no notification needed
           } catch (e) {
             debugPrint('Failed to fetch user details: $e');
-            // Fallback to Zego IDs if API fails
-            if (onPKBattleNotification != null) {
-              onPKBattleNotification!(
-                '🎮 PK Battle Request Received! 🎮',
-                leftHostId: leftZegoId,
-                rightHostId: rightZegoId,
-                leftHostName: leftUsername,
-                rightHostName: rightUsername,
-                liveId: rightZegoId,
-                pkBattleId: null,
-              );
-            }
+            // Fallback to Zego IDs if API fails - no notification needed
           }
           
           defaultAction.call();
@@ -291,34 +270,10 @@ class PKEvents {
               }
             }
             
-            // Show PK battle started notification with user details
-            if (onPKBattleNotification != null) {
-              final pkBattleIdString = _currentPKBattleId?.toString();
-              debugPrint('🎯 Sending PK battle notification with ID: $pkBattleIdString');
-              onPKBattleNotification!(
-                '🎮 PK Battle Started! 🎮',
-                leftHostId: leftHostId,
-                rightHostId: rightHostId,
-                leftHostName: leftHostName,
-                rightHostName: rightHostName,
-                liveId: liveId,
-                pkBattleId: pkBattleIdString,
-              );
-            }
+            // PK battle started - no notification needed
           } catch (e) {
             debugPrint('Failed to fetch user details: $e');
-            // Fallback to Zego IDs if API fails
-            if (onPKBattleNotification != null) {
-              onPKBattleNotification!(
-                '🎮 PK Battle Started! 🎮',
-                leftHostId: leftZegoId,
-                rightHostId: rightZegoId,
-                leftHostName: leftUsername,
-                rightHostName: rightUsername,
-                liveId: rightZegoId,
-                pkBattleId: null,
-              );
-            }
+            // Fallback to Zego IDs if API fails - no notification needed
           }
           
           defaultAction.call();
@@ -373,32 +328,40 @@ class PKEvents {
             final rightHostName = rightUserDetails?['username'] ?? rightUsername;
             final liveId = rightZegoId; // current live stream ID
             
-            // Show PK battle ended notification with user details
-            if (onPKBattleNotification != null) {
-              onPKBattleNotification!(
-                '🏁 PK Battle Ended! 🏁',
-                leftHostId: leftHostId,
-                rightHostId: rightHostId,
-                leftHostName: leftHostName,
-                rightHostName: rightHostName,
-                liveId: liveId,
-                pkBattleId: _currentPKBattleId?.toString(),
-              );
+            // Show PK battle ended popup for all users
+            if (context.mounted) {
+              // Try to get PK battle details to show scores
+              try {
+                final pkBattleDetails = await ApiService.getActivePKBattleByStreamId(int.parse(liveId));
+                if (pkBattleDetails != null) {
+                  // Determine winner based on scores
+                  final leftScore = int.tryParse(pkBattleDetails['left_score']?.toString() ?? '0') ?? 0;
+                  final rightScore = int.tryParse(pkBattleDetails['right_score']?.toString() ?? '0') ?? 0;
+                  int winnerId = 0;
+                  if (leftScore > rightScore) {
+                    winnerId = int.tryParse(leftHostId) ?? 0;
+                  } else if (rightScore > leftScore) {
+                    winnerId = int.tryParse(rightHostId) ?? 0;
+                  }
+                  
+                  PKBattleEndedService.instance.showPKBattleEndedPopup(
+                    context: context,
+                    winnerId: winnerId,
+                    leftScore: leftScore,
+                    rightScore: rightScore,
+                    leftHostName: leftHostName,
+                    rightHostName: rightHostName,
+                    leftHostId: leftHostId,
+                    rightHostId: rightHostId,
+                  );
+                }
+              } catch (e) {
+                debugPrint('Failed to fetch PK battle details: $e');
+              }
             }
           } catch (e) {
             debugPrint('Failed to fetch user details: $e');
-            // Fallback to Zego IDs if API fails
-            if (onPKBattleNotification != null) {
-              onPKBattleNotification!(
-                '🏁 PK Battle Ended! 🏁',
-                leftHostId: leftZegoId,
-                rightHostId: rightZegoId,
-                leftHostName: leftUsername,
-                rightHostName: rightUsername,
-                liveId: rightZegoId,
-                pkBattleId: _currentPKBattleId?.toString(),
-              );
-            }
+            // Fallback to Zego IDs if API fails - no notification needed
           }
           
           defaultAction.call();
@@ -539,14 +502,21 @@ class PKEvents {
                    debugPrint('✅ PK battle auto-ended successfully');
                    debugPrint('🏆 Winner ID: $winnerId');
                    
-                   // Show notification about auto-end
-                   if (onPKBattleNotification != null) {
-                     onPKBattleNotification!(
-                       '🚨 PK Battle Auto-Ended! 🚨\nUser left the stream',
+                   // Show PK battle ended popup for all users
+                   if (context.mounted) {
+                     // Convert scores to integers
+                     final leftScore = int.tryParse(pkBattleDetails['left_score']?.toString() ?? '0') ?? 0;
+                     final rightScore = int.tryParse(pkBattleDetails['right_score']?.toString() ?? '0') ?? 0;
+                     
+                     PKBattleEndedService.instance.showPKBattleEndedPopup(
+                       context: context,
+                       winnerId: winnerId,
+                       leftScore: leftScore,
+                       rightScore: rightScore,
+                       leftHostName: null, // Will be fetched if needed
+                       rightHostName: null, // Will be fetched if needed
                        leftHostId: leftHostId,
                        rightHostId: rightHostId,
-                       liveId: ZegoUIKit().getLocalUser().id,
-                       pkBattleId: _currentPKBattleId?.toString(),
                      );
                    }
                    

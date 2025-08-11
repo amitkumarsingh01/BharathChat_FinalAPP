@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../profile/enhanced_user_profile_screen.dart';
 import 'dart:convert';
 
 class SearchScreen extends StatefulWidget {
@@ -15,6 +16,8 @@ class _SearchScreenState extends State<SearchScreen> {
   String _searchQuery = '';
   Set<int> _following = {};
   Set<int> _blocked = {};
+  Map<int, int> _followersCounts = {};
+  Map<int, int> _followingCounts = {};
 
   @override
   void initState() {
@@ -31,11 +34,33 @@ class _SearchScreenState extends State<SearchScreen> {
       final currentUserId = ApiService.currentUserId;
       // Use the new /users/{user_id}/relations API
       final relations = await ApiService.getUserSimpleRelations(currentUserId);
+      
+      // Load followers and following counts for each user
+      Map<int, int> followersCounts = {};
+      Map<int, int> followingCounts = {};
+      
+      for (var user in users) {
+        if (user['id'] != currentUserId) {
+          try {
+            final followers = await ApiService.getUserFollowers(user['id']);
+            final following = await ApiService.getUserFollowing(user['id']);
+            followersCounts[user['id']] = followers.length;
+            followingCounts[user['id']] = following.length;
+          } catch (e) {
+            // If there's an error fetching counts, set to 0
+            followersCounts[user['id']] = 0;
+            followingCounts[user['id']] = 0;
+          }
+        }
+      }
+      
       // relations['following'] and relations['blocked'] are lists of user IDs
       setState(() {
         _users = users.where((u) => u['id'] != currentUserId).toList();
         _following = Set<int>.from(relations['following'] ?? []);
         _blocked = Set<int>.from(relations['blocked'] ?? []);
+        _followersCounts = followersCounts;
+        _followingCounts = followingCounts;
         _isLoading = false;
       });
     } catch (e) {
@@ -71,10 +96,7 @@ class _SearchScreenState extends State<SearchScreen> {
         errorMsg = e.toString().replaceFirst('Exception: ', '');
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMsg),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
       await _loadUsersAndRelations();
     }
@@ -98,10 +120,7 @@ class _SearchScreenState extends State<SearchScreen> {
           errorMsg = e.toString().replaceFirst('Exception: ', '');
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
         );
         await _loadUsersAndRelations();
       }
@@ -178,10 +197,7 @@ class _SearchScreenState extends State<SearchScreen> {
           errorMsg = e.toString().replaceFirst('Exception: ', '');
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
         );
         await _loadUsersAndRelations();
       }
@@ -265,53 +281,82 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                           child: Row(
                             children: [
-                              Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 28,
-                                    backgroundColor: Colors.grey[800],
-                                    backgroundImage:
-                                        (user['profile_pic'] != null && user['profile_pic'].isNotEmpty)
-                                            ? (user['profile_pic'].startsWith('http')
-                                                ? NetworkImage(user['profile_pic'])
-                                                : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
-                                            : null,
-                                    child:
-                                        (user['profile_pic'] == null ||
-                                                user['profile_pic'].isEmpty)
-                                            ? Text(
-                                              ((user['first_name'] ??
-                                                          user['username'] ??
-                                                          'U')
-                                                      as String)[0]
-                                                  .toUpperCase(),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 22,
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              EnhancedUserProfileScreen(
+                                                userId: user['id'],
+                                                userName:
+                                                    user['first_name'] ??
+                                                    user['username'] ??
+                                                    'User',
                                               ),
-                                            )
-                                            : null,
-                                  ),
-                                  if (user['is_online'] == true)
-                                    Positioned(
-                                      right: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        width: 14,
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
+                                    ),
+                                  ).then((_) {
+                                    // Refresh the search screen when returning from profile
+                                    _loadUsersAndRelations();
+                                  });
+                                },
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor: Colors.grey[800],
+                                      backgroundImage:
+                                          (user['profile_pic'] != null &&
+                                                  user['profile_pic']
+                                                      .isNotEmpty)
+                                              ? (user['profile_pic'].startsWith(
+                                                    'http',
+                                                  )
+                                                  ? NetworkImage(
+                                                    user['profile_pic'],
+                                                  )
+                                                  : NetworkImage(
+                                                    'https://server.bharathchat.com/${user['profile_pic']}',
+                                                  ))
+                                              : null,
+                                      child:
+                                          (user['profile_pic'] == null ||
+                                                  user['profile_pic'].isEmpty)
+                                              ? Text(
+                                                ((user['first_name'] ??
+                                                            user['username'] ??
+                                                            'U')
+                                                        as String)[0]
+                                                    .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 22,
+                                                ),
+                                              )
+                                              : null,
+                                    ),
+                                    if (user['is_online'] == true)
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Container(
+                                          width: 14,
+                                          height: 14,
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -346,15 +391,50 @@ class _SearchScreenState extends State<SearchScreen> {
                                               size: 18,
                                             ),
                                           ),
+                                        if (isBlocked)
+                                          const Padding(
+                                            padding: EdgeInsets.only(left: 4.0),
+                                            child: Icon(
+                                              Icons.block,
+                                              color: Colors.red,
+                                              size: 18,
+                                            ),
+                                          ),
                                       ],
                                     ),
-                                    Text(
-                                      'Diamonds: ${user['diamonds'] ?? 0}',
-                                      style: const TextStyle(
-                                        color: Colors.orange,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${_followersCounts[user['id']] ?? 0}',
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          ' followers • ',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          '${_followingCounts[user['id']] ?? 0}',
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          ' following',
+                                          style: TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     if (user['bio'] != null &&
                                         (user['bio'] as String).isNotEmpty)
@@ -381,86 +461,123 @@ class _SearchScreenState extends State<SearchScreen> {
                               const SizedBox(width: 10),
                               Column(
                                 children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      gradient:
-                                          isFollowing
-                                              ? null
-                                              : const LinearGradient(
-                                                colors: [
-                                                  Color(0xFFFF6B35),
-                                                  Color(0xFFFF8E53),
-                                                  Color(0xFFFFA726),
-                                                ],
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                              ),
-                                      color: isFollowing ? Colors.white : null,
-                                      borderRadius: BorderRadius.circular(22),
-                                    ),
-                                    child: ElevatedButton(
-                                      onPressed: () => _followUser(user['id']),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
-                                        foregroundColor:
+                                  Padding(
+                                    padding: const EdgeInsets.all(2.0),
+                                    child: Container(
+                                      width: 120,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        gradient:
                                             isFollowing
-                                                ? Colors.black
-                                                : Colors.white,
-                                        shadowColor: Colors.transparent,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            22,
+                                                ? null
+                                                : const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFFFF6B35),
+                                                    Color(0xFFFF8E53),
+                                                    Color(0xFFFFA726),
+                                                  ],
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                ),
+                                        color:
+                                            isFollowing
+                                                ? Colors.transparent
+                                                : null,
+                                        // border:
+                                        //     isFollowing
+                                        //         ? Border.all(
+                                        //           color: Colors.grey,
+                                        //           width: 1.0,
+                                        //         )
+                                        //         : null,
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            () => _followUser(user['id']),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          foregroundColor:
+                                              isFollowing
+                                                  ? Colors.white
+                                                  : Colors.white,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              15,
+                                            ),
                                           ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 4,
+                                          ),
+                                          elevation: 0,
+                                          minimumSize: const Size(70, 24),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 0,
-                                        ),
-                                        elevation: 0,
-                                        minimumSize: const Size(
-                                          110,
-                                          40,
-                                        ), // Set same size
-                                      ),
-                                      child: Text(
-                                        isFollowing ? 'Unfollow' : '+ Follow',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (!isFollowing) ...[
+                                              const Icon(
+                                                Icons.add,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 3),
+                                            ],
+                                            if (isFollowing) ...[
+                                              const Icon(
+                                                Icons.check,
+                                                size: 12,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 3),
+                                            ],
+                                            Text(
+                                              isFollowing
+                                                  ? 'Following'
+                                                  : 'Follow',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  ElevatedButton(
-                                    onPressed: () => _blockUser(user['id']),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                          isBlocked
-                                              ? Colors.red
-                                              : Colors.grey[700],
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(22),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 18,
-                                        vertical: 0,
-                                      ),
-                                      elevation: 0,
-                                      minimumSize: const Size(
-                                        110,
-                                        40,
-                                      ), // Set same size
-                                    ),
-                                    child: Text(
-                                      isBlocked ? 'Unblock' : 'Block',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ),
+                                  // const SizedBox(height: 6),
+                                  // ElevatedButton(
+                                  //   onPressed: () => _blockUser(user['id']),
+                                  //   style: ElevatedButton.styleFrom(
+                                  //     backgroundColor:
+                                  //         isBlocked
+                                  //             ? Colors.red
+                                  //             : Colors.grey[700],
+                                  //     foregroundColor: Colors.white,
+                                  //     shape: RoundedRectangleBorder(
+                                  //       borderRadius: BorderRadius.circular(22),
+                                  //     ),
+                                  //     padding: const EdgeInsets.symmetric(
+                                  //       horizontal: 18,
+                                  //       vertical: 0,
+                                  //     ),
+                                  //     elevation: 0,
+                                  //     minimumSize: const Size(
+                                  //       110,
+                                  //       40,
+                                  //     ), // Set same size
+                                  //   ),
+                                  //   child: Text(
+                                  //     isBlocked ? 'Unblock' : 'Block',
+                                  //     style: const TextStyle(
+                                  //       fontWeight: FontWeight.bold,
+                                  //       fontSize: 15,
+                                  //     ),
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                             ],

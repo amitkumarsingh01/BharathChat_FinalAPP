@@ -93,11 +93,10 @@ class _MessageScreenState extends State<MessageScreen> {
 
   ImageProvider? _getProfileImage(String? profilePic) {
     if (profilePic != null && profilePic.isNotEmpty) {
-      try {
-        return MemoryImage(base64Decode(profilePic));
-      } catch (e) {
-        print('Error decoding profile image: $e');
-        return null;
+      if (profilePic.startsWith('http')) {
+        return NetworkImage(profilePic);
+      } else {
+        return NetworkImage('https://server.bharathchat.com/${profilePic}');
       }
     }
     return null;
