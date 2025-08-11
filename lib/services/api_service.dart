@@ -531,10 +531,15 @@ class ApiService {
 
   // Gifts endpoints
   static Future<List<dynamic>> getGifts() async {
+    final url = '$baseUrl/gifts/';
+    apiLog('➡️ [GET_GIFTS] Request URL: $url');
+    apiLog('➡️ [GET_GIFTS] Headers: $_headers');
     final response = await http.get(
-      Uri.parse('$baseUrl/gifts/'),
+      Uri.parse(url),
       headers: _headers,
     );
+    apiLog('⬅️ [GET_GIFTS] Response status: ${response.statusCode}');
+    apiLog('⬅️ [GET_GIFTS] Response body: ${response.body}');
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
@@ -547,21 +552,26 @@ class ApiService {
   static Future<bool> sendGift({
     required int receiverId,
     required int giftId,
-    required int amount,
     int? liveStreamId,
     String? liveStreamType,
   }) async {
+    final url = '$baseUrl/gifts/send';
+    final body = json.encode({
+      'receiver_id': receiverId,
+      'gift_id': giftId,
+      'live_stream_id': liveStreamId ?? 0,
+      'live_stream_type': liveStreamType ?? '',
+    });
+    apiLog('➡️ [SEND_GIFT] Request URL: $url');
+    apiLog('➡️ [SEND_GIFT] Headers: $_headers');
+    apiLog('➡️ [SEND_GIFT] Request body: $body');
     final response = await http.post(
-      Uri.parse('$baseUrl/gifts/send'),
+      Uri.parse(url),
       headers: _headers,
-      body: json.encode({
-        'receiver_id': receiverId,
-        'gift_id': giftId,
-        'amount': amount,
-        'live_stream_id': liveStreamId ?? 0,
-        'live_stream_type': liveStreamType ?? '',
-      }),
+      body: body,
     );
+    apiLog('⬅️ [SEND_GIFT] Response status: ${response.statusCode}');
+    apiLog('⬅️ [SEND_GIFT] Response body: ${response.body}');
     if (response.statusCode == 200) {
       return true;
     } else {
@@ -575,20 +585,39 @@ class ApiService {
     required int liveStreamId,
     required DateTime since,
   }) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/gifts/recent?live_stream_id=$liveStreamId&since=${since.toIso8601String()}'),
-        headers: _headers,
-      );
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        print('Failed to get recent gifts: ${response.statusCode} - ${response.body}');
-        return [];
-      }
-    } catch (e) {
-      print('Error getting recent gifts: $e');
+    final url = '$baseUrl/gifts/recent?live_stream_id=$liveStreamId&since=${since.toIso8601String()}';
+    apiLog('➡️ [GET_RECENT_GIFTS] Request URL: $url');
+    apiLog('➡️ [GET_RECENT_GIFTS] Headers: $_headers');
+    final response = await http.get(
+      Uri.parse(url),
+      headers: _headers,
+    );
+    apiLog('⬅️ [GET_RECENT_GIFTS] Response status: ${response.statusCode}');
+    apiLog('⬅️ [GET_RECENT_GIFTS] Response body: ${response.body}');
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      apiLog('Failed to get recent gifts: ${response.statusCode} - ${response.body}');
       return [];
+    }
+  }
+
+  /// Get gifts received by a specific user (host) using the new endpoint
+  /// Returns the full response map containing user_info, wallet_info, and recent_gifts
+  static Future<Map<String, dynamic>?> getUserGiftsReceived({
+    required int userIdentifier,
+  }) async {
+    final url = '$baseUrl/user/gifts/received?user_identifier=$userIdentifier';
+    apiLog('➡️ [GET_USER_GIFTS_RECEIVED] Request URL: $url');
+    apiLog('➡️ [GET_USER_GIFTS_RECEIVED] Headers: $_headers');
+    final response = await http.get(Uri.parse(url), headers: _headers);
+    apiLog('⬅️ [GET_USER_GIFTS_RECEIVED] Response status: ${response.statusCode}');
+    apiLog('⬅️ [GET_USER_GIFTS_RECEIVED] Response body: ${response.body}');
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      apiLog('Failed to get user gifts received: ${response.statusCode} - ${response.body}');
+      return null;
     }
   }
 

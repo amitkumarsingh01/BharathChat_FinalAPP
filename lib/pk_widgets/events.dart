@@ -498,32 +498,36 @@ class PKEvents {
                   winnerId: winnerId,
                 );
                 
-                                 if (endResult != null) {
-                   debugPrint('✅ PK battle auto-ended successfully');
-                   debugPrint('🏆 Winner ID: $winnerId');
-                   
-                   // Show PK battle ended popup for all users
-                   if (context.mounted) {
-                     // Convert scores to integers
-                     final leftScore = int.tryParse(pkBattleDetails['left_score']?.toString() ?? '0') ?? 0;
-                     final rightScore = int.tryParse(pkBattleDetails['right_score']?.toString() ?? '0') ?? 0;
-                     
-                     PKBattleEndedService.instance.showPKBattleEndedPopup(
-                       context: context,
-                       winnerId: winnerId,
-                       leftScore: leftScore,
-                       rightScore: rightScore,
-                       leftHostName: null, // Will be fetched if needed
-                       rightHostName: null, // Will be fetched if needed
-                       leftHostId: leftHostId,
-                       rightHostId: rightHostId,
-                     );
-                   }
-                   
-                   // Call auto-ended callback
-                   if (onPKBattleAutoEnded != null) {
-                     onPKBattleAutoEnded!(winnerId, reason);
-                   }
+                if (endResult != null) {
+                  debugPrint('✅ PK battle auto-ended successfully');
+                  debugPrint('🏆 Winner ID: $winnerId');
+                  
+                  // Show PK battle ended popup for all users
+                  if (context.mounted) {
+                    // Convert scores to integers
+                    final leftScore = int.tryParse(pkBattleDetails['left_score']?.toString() ?? '0') ?? 0;
+                    final rightScore = int.tryParse(pkBattleDetails['right_score']?.toString() ?? '0') ?? 0;
+                    
+                    // Use left/right instead of Unknown for usernames
+                    final leftHostName = leftHostId != null ? 'Left Host' : 'Left Host';
+                    final rightHostName = rightHostId != null ? 'Right Host' : 'Right Host';
+                    
+                    PKBattleEndedService.instance.showPKBattleEndedPopup(
+                      context: context,
+                      winnerId: winnerId,
+                      leftScore: leftScore,
+                      rightScore: rightScore,
+                      leftHostName: leftHostName,
+                      rightHostName: rightHostName,
+                      leftHostId: leftHostId,
+                      rightHostId: rightHostId,
+                    );
+                  }
+                  
+                  // Call auto-ended callback
+                  if (onPKBattleAutoEnded != null) {
+                    onPKBattleAutoEnded!(winnerId, reason);
+                  }
                 } else {
                   debugPrint('❌ Failed to auto-end PK battle via API');
                 }

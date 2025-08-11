@@ -1,26 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:finalchat/pk_widgets/config.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
-import 'package:finalchat/common.dart';
-import 'package:finalchat/constants.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:camera/camera.dart'
+    show
+        CameraController,
+        CameraDescription,
+        CameraPreview,
+        ResolutionPreset,
+        availableCameras;
+import 'package:just_audio/just_audio.dart';
+import 'package:finalchat/pk_widgets/config.dart';
 import 'package:finalchat/pk_widgets/events.dart';
-import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
 import 'package:finalchat/pk_widgets/surface.dart';
-import 'dart:math';
-import 'dart:async';
-import 'package:finalchat/screens/main/store_screen.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:zego_uikit/zego_uikit.dart';
-import 'dart:convert';
-import 'package:finalchat/services/api_service.dart';
-import 'package:finalchat/screens/live/gift_animation.dart';
-import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
+import 'package:finalchat/pk_widgets/widgets/join_widget.dart';
+import 'package:finalchat/pk_widgets/widgets/request_widget.dart';
+import 'package:finalchat/pk_widgets/widgets/requesting_list.dart';
+import 'package:finalchat/pk_widgets/widgets/requesting_id.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_button.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_timer.dart';
 import 'package:finalchat/pk_widgets/widgets/pk_battle_progress_bar.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_progress_bar.dart';
+import 'package:finalchat/pk_widgets/widgets/quit_button.dart';
+import 'package:finalchat/pk_widgets/widgets/stop_button.dart';
+import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_ended_popup.dart';
+import 'package:finalchat/pk_widgets/widgets/pk_battle_notification.dart';
 import 'package:finalchat/pk_widgets/pk_battle_ended_service.dart';
+import 'package:finalchat/services/api_service.dart';
+import 'package:finalchat/services/live_stream_service.dart';
+import 'package:finalchat/common.dart';
+import 'package:finalchat/constants.dart';
+import 'gift_panel.dart';
+import 'gift_animation.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:zego_uikit/zego_uikit.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'package:finalchat/screens/main/store_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pk_battle_debug_screen.dart';
+import 'package:http/http.dart' as http;
 
 class LivePage extends StatefulWidget {
   final String liveID;
@@ -47,7 +68,7 @@ class LivePage extends StatefulWidget {
 }
 
 class _LivePageState extends State<LivePage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final liveStateNotifier = ValueNotifier<ZegoLiveStreamingState>(
     ZegoLiveStreamingState.idle,
   );
@@ -92,6 +113,9 @@ class _LivePageState extends State<LivePage>
   // Custom logger for capturing API logs
   static List<String> _globalApiLogs = [];
   static Function(String)? _onLogAdded;
+
+  // Audio player for gift sounds
+  final AudioPlayer _giftAudioPlayer = AudioPlayer();
 
   @override
   void initState() {
@@ -226,12 +250,20 @@ class _LivePageState extends State<LivePage>
     
     // Start gift polling for synchronization across devices
     _startGiftPolling();
+    // Start host-side user gifts polling for normal (non-PK) lives
+    _startUserGiftsPolling();
+    
+    // Start periodic check for PK battle active status
+    _startPKBattleActiveCheck();
   }
 
   // Variables for PK battle transactions polling
   Timer? _pkBattleTransactionsTimer;
   Set<String> _processedTransactionIds = {};
   int _lastTransactionPollTime = 0;
+
+  // Timer to check if stored PK battle ID is still active
+  Timer? _pkBattleActiveCheckTimer;
 
   void _startPKBattleTransactionsPolling() {
     debugPrint('🔄 Starting PK battle transactions polling...');
@@ -244,6 +276,75 @@ class _LivePageState extends State<LivePage>
     debugPrint('🛑 Stopping PK battle transactions polling...');
     _pkBattleTransactionsTimer?.cancel();
     _pkBattleTransactionsTimer = null;
+  }
+
+  // Start periodic check for PK battle active status
+  void _startPKBattleActiveCheck() {
+    _pkBattleActiveCheckTimer?.cancel();
+    _pkBattleActiveCheckTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      _checkPKBattleActiveStatus();
+    });
+    debugPrint('🔄 Starting PK battle active status check every 10 seconds');
+  }
+
+  void _stopPKBattleActiveCheck() {
+    debugPrint('🛑 Stopping PK battle active status check');
+    _pkBattleActiveCheckTimer?.cancel();
+    _pkBattleActiveCheckTimer = null;
+  }
+
+  // Check if stored PK battle ID is still active
+  Future<void> _checkPKBattleActiveStatus() async {
+    try {
+      if (PKEvents.currentPKBattleId == null) return;
+      
+      final storedPKBattleId = PKEvents.currentPKBattleId!;
+      debugPrint('🔍 Checking if PK battle $storedPKBattleId is still active...');
+      
+      final response = await http.get(
+        Uri.parse('https://server.bharathchat.com/api/pk-battle/active'),
+        headers: {
+          'accept': 'application/json',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> activeBattles = json.decode(response.body);
+        debugPrint('📡 Found ${activeBattles.length} active PK battles');
+        
+        // Check if our stored PK battle ID is in the active list
+        final isStillActive = activeBattles.any((battle) => 
+          battle['battle_id'] == storedPKBattleId
+        );
+        
+        if (!isStillActive) {
+          debugPrint('❌ PK battle $storedPKBattleId is no longer active, clearing...');
+          
+          // Clear PK battle data and return to normal mode
+          PKEvents.setCurrentPKBattleId(null);
+          setState(() {
+            _pkBattleId = null;
+            _showPKBattleTimer = false;
+            _leftHostId = null;
+            _rightHostId = null;
+            _leftHostName = null;
+            _rightHostName = null;
+          });
+          PKEvents.setCurrentPKBattleStartTime(null);
+          
+          // Stop PK battle specific polling
+          _stopPKBattleTransactionsPolling();
+          
+          debugPrint('🎯 PK battle data cleared, returned to normal single host mode');
+        } else {
+          debugPrint('✅ PK battle $storedPKBattleId is still active');
+        }
+      } else {
+        debugPrint('❌ Failed to check PK battle active status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking PK battle active status: $e');
+    }
   }
 
   Future<void> _fetchAndDisplayPKBattleTransactions() async {
@@ -455,194 +556,173 @@ class _LivePageState extends State<LivePage>
   }
 
   Future<void> _sendGiftToHost(dynamic gift, int receiverId) async {
-    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
-    debugPrint('🎁 === SENDING GIFT TO HOST [${requestId}] ===');
-    debugPrint('🎁 [${requestId}] Receiver ID: $receiverId');
-    debugPrint('🎁 [${requestId}] Gift Details: ${gift['name']} (${gift['id']}) - ${gift['diamond_amount']} diamonds');
-    debugPrint('🎁 [${requestId}] Sender: ${_currentUser?['id']} - ${_currentUser?['first_name']}');
-    debugPrint('🎁 [${requestId}] Sender Diamonds Before: ${_currentUser?['diamonds']}');
-    debugPrint('🎁 [${requestId}] Current Live State: ${liveStateNotifier.value}');
-    debugPrint('🎁 [${requestId}] PK Battle ID: ${PKEvents.currentPKBattleId}');
-    
-    setState(() {
-      _currentUser!['diamonds'] -= gift['diamond_amount'];
-    });
-    
-    debugPrint('🎁 Sender Diamonds After: ${_currentUser?['diamonds']}');
-    
     try {
-      bool success = false;
+      final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+      debugPrint('🎁 [$requestId] Starting gift send to host $receiverId');
       
-      // Check if we're in PK battle mode
-      // FIXED: Use PK Battle ID presence instead of live state
-      final isPKBattle = PKEvents.currentPKBattleId != null;
-      debugPrint('🎁 [${requestId}] Is PK Battle: $isPKBattle');
-      debugPrint('🎁 [${requestId}] PK Battle ID: ${PKEvents.currentPKBattleId}');
-      debugPrint('🎁 [${requestId}] Live State: ${liveStateNotifier.value}');
-      debugPrint('🎁 [${requestId}] Expected PK State: ${ZegoLiveStreamingState.inPKBattle}');
+      // Check if we have enough diamonds
+      final currentDiamonds = await ApiService.getCurrentUserDiamonds();
+      final giftCost = gift['diamond_amount'] as int? ?? 0;
       
-      if (isPKBattle) {
-        debugPrint('🎁 [${requestId}] Using PK Battle Gift API');
-        // Send gift for PK battle
-        final senderId = _currentUser?['id'];
-        debugPrint('🎁 [${requestId}] Sender ID: $senderId');
-        
-        if (senderId != null) {
-          debugPrint('🎁 [${requestId}] PK Battle Gift API Parameters:');
-          debugPrint('🎁 [${requestId}]   - PK Battle ID: ${PKEvents.currentPKBattleId}');
-          debugPrint('🎁 [${requestId}]   - Sender ID: $senderId');
-          debugPrint('🎁 [${requestId}]   - Receiver ID: $receiverId');
-          debugPrint('🎁 [${requestId}]   - Gift ID: ${gift['id']}');
-          debugPrint('🎁 [${requestId}]   - Amount: ${gift['diamond_amount']}');
-          debugPrint('🎁 [${requestId}] Calling ApiService.sendPKBattleGift...');
-          
-          success = await ApiService.sendPKBattleGift(
-            pkBattleId: PKEvents.currentPKBattleId!,
-            senderId: senderId,
-            receiverId: receiverId,
-            giftId: gift['id'],
-            amount: gift['diamond_amount'],
-          );
-          
-          debugPrint('🎁 [${requestId}] PK Battle Gift API Result: $success');
-        } else {
-          debugPrint('❌ [${requestId}] Sender ID is null, cannot send PK battle gift');
-        }
-      } else {
-        debugPrint('🎁 [${requestId}] Using Normal Gift API');
-        debugPrint('🎁 [${requestId}] Normal Gift API Parameters:');
-        debugPrint('🎁 [${requestId}]   - Receiver ID: $receiverId');
-        debugPrint('🎁 [${requestId}]   - Gift ID: ${gift['id']}');
-        debugPrint('🎁 [${requestId}]   - Amount: ${gift['diamond_amount']}');
-        debugPrint('🎁 [${requestId}]   - Live Stream ID: ${int.tryParse(widget.liveID) ?? 0}');
-        debugPrint('🎁 [${requestId}]   - Live Stream Type: ${widget.isHost ? 'host' : 'audience'}');
-        debugPrint('🎁 [${requestId}] Calling ApiService.sendGift...');
-        
-        // Normal gift sending
-        success = await ApiService.sendGift(
-          receiverId: receiverId,
-          giftId: gift['id'],
-          amount: gift['diamond_amount'],
-          liveStreamId: int.tryParse(widget.liveID) ?? 0,
-          liveStreamType: widget.isHost ? 'host' : 'audience',
-        );
-        
-        debugPrint('🎁 [${requestId}] Normal Gift API Result: $success');
+      if (currentDiamonds < giftCost) {
+        debugPrint('❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost');
+        _showInsufficientDiamondsDialog();
+        return;
       }
       
-      if (success) {
-        debugPrint('✅ [${requestId}] Gift sent successfully!');
-        
-        // Send ZEGOCLOUD in-room command for gift notification
-        final message = jsonEncode({
-          "type": "gift",
-          "sender_id": _currentUser?['id'],
-          "sender_name": _currentUser?['first_name'] ?? 'User',
-          "gift_id": gift['id'],
-          "gift_name": gift['name'],
-          "gift_amount": gift['diamond_amount'],
-          "gif_filename": gift['gif_filename'],
-          "receiver_id": receiverId,
-          "timestamp": DateTime.now().millisecondsSinceEpoch,
-        });
-        
-        // Note: ZEGOCLOUD command sending is disabled due to API limitations
-        // Gift animations will be synchronized through server-side polling
-        debugPrint('🎁 ZEGOCLOUD command sending disabled - using server polling for sync');
-        
-        debugPrint('🎁 Gift sent successfully via API!');
-        debugPrint('🎁 Creating gift animation for sender and receiver...');
-        
-        // If this is a PK battle gift, trigger immediate score update
-        if (isPKBattle) {
-          debugPrint('🎁 PK Battle gift sent! Triggering immediate score update...');
-          debugPrint('🎁   - PK Battle ID: ${PKEvents.currentPKBattleId}');
-          debugPrint('🎁   - Receiver ID: $receiverId');
-          debugPrint('🎁   - Gift Amount: ${gift['diamond_amount']}');
-          
-          // Trigger score update after a short delay to allow backend to process
-          Future.delayed(Duration(milliseconds: 500), () {
-            debugPrint('🎁 Triggering PK battle score update...');
-            _triggerPKBattleScoreUpdate();
-          });
-        }
+      debugPrint('✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost');
+      
+      // Show confirmation dialog
+      await _showGiftConfirmationDialog(
+        gift,
+        giftCost,
+        requestId,
+        () async {
+          try {
+            debugPrint('🎁 [$requestId] User confirmed, sending gift...');
+            
+            bool success = false;
+            
+            // Check if PK battle is active
+            if (PKEvents.currentPKBattleId != null) {
+              debugPrint('🎁 [$requestId] PK Battle active, using PK battle gift API');
+              
+              // Use PK battle gift API
+              success = await ApiService.sendPKBattleGift(
+                pkBattleId: PKEvents.currentPKBattleId!,
+                senderId: _currentUser?['id'] as int? ?? 0,
+                receiverId: receiverId,
+                giftId: gift['id'],
+                amount: giftCost,
+              );
+            } else {
+              debugPrint('🎁 [$requestId] No PK battle, using regular gift API');
+              
+              // Send gift via regular API (ensure numeric stream id)
+              int liveStreamId = 0;
+              final dynamic streamIdRaw = _debugInfo['stream_id'];
+              if (streamIdRaw is int) {
+                liveStreamId = streamIdRaw;
+              } else if (streamIdRaw is String) {
+                liveStreamId = int.tryParse(streamIdRaw) ?? 0;
+              }
 
-        // Show success message
-        if (mounted) {
-          final successMessage = isPKBattle
-            ? '${gift['name']} sent to PK Battle! (+${gift['diamond_amount']} points)'
-            : '${gift['name']} sent successfully!';
-          
-          debugPrint('🎁 Showing success message: $successMessage');
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(successMessage),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-        
-        // Create gift animation using the reusable method
-        final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
-        final senderName = _currentUser?['first_name'] ?? 'User';
-        
-        // Determine PK battle side for animation positioning
-        String? pkBattleSide;
-        if (isPKBattle && !widget.isHost) {
-          // For audience, determine which side based on selected host
-          if (receiverId == int.tryParse(_leftHostId ?? '0')) {
-            pkBattleSide = 'left';
-          } else if (receiverId == int.tryParse(_rightHostId ?? '0')) {
-            pkBattleSide = 'right';
-          }
-        } else if (isPKBattle && widget.isHost) {
-          // For host, determine which side based on their position
-          if (receiverId == widget.receiverId) {
-            // This host received the gift, determine their side
-            if (widget.receiverId == int.tryParse(_leftHostId ?? '0')) {
-              pkBattleSide = 'left';
-            } else if (widget.receiverId == int.tryParse(_rightHostId ?? '0')) {
-              pkBattleSide = 'right';
+              success = await ApiService.sendGift(
+                receiverId: receiverId,
+                giftId: gift['id'],
+                liveStreamId: liveStreamId,
+                liveStreamType: 'video',
+              );
+            }
+            
+            if (success) {
+              debugPrint('✅ [$requestId] Gift sent successfully via API');
+              
+              // Play gift audio if available (with 2-second delay)
+              final dynamic audioFilenameRaw = gift['audio_filename'];
+              final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+              if (audioFilename != null && audioFilename.isNotEmpty) {
+                try {
+                  final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+                  debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
+                  // Use the new 2-second delay method
+                  _playGiftAudioWithDelay(audioUrl);
+                } catch (e) {
+                  debugPrint('🎁 [$requestId] Error playing gift audio: $e');
+                }
+              }
+              
+              // Immediately show animation for the sender
+              try {
+                String? gifUrl;
+                final dynamic gifUrlRaw = gift['gif_url'];
+                if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
+                  gifUrl = gifUrlRaw.startsWith('http')
+                      ? gifUrlRaw
+                      : 'https://server.bharathchat.com$gifUrlRaw';
+                } else {
+                  final dynamic gifFilenameRaw = gift['gif_filename'];
+                  final String gifFilename = (gifFilenameRaw is String)
+                      ? gifFilenameRaw
+                      : (gifFilenameRaw?.toString() ?? '');
+                  gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+                }
+                final String senderName = _currentUser?['username'] ?? _currentUser?['first_name'] ?? 'You';
+                final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
+                String? pkBattleSide;
+                if (PKEvents.currentPKBattleId != null) {
+                  if (receiverId == int.tryParse(_leftHostId ?? '0')) {
+                    pkBattleSide = 'left';
+                  } else if (receiverId == int.tryParse(_rightHostId ?? '0')) {
+                    pkBattleSide = 'right';
+                  }
+                }
+                if (gifUrl != null) {
+                  _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+                }
+              } catch (e) {
+                debugPrint('🎁 [$requestId] Error creating immediate gift animation: $e');
+              }
+
+              // Send in-room command for synchronization
+              final message = jsonEncode({
+                'type': 'gift',
+                'gift_id': gift['id'],
+                'gift_name': gift['name'],
+                'gif_filename': gift['gif_filename'],
+                'audio_filename': gift['audio_filename'],
+                'diamond_amount': giftCost,
+                'sender_id': _currentUser?['id'],
+                'sender_name': _currentUser?['username'] ?? _currentUser?['first_name'] ?? 'User',
+                'receiver_id': receiverId,
+                'timestamp': DateTime.now().toIso8601String(),
+              });
+              
+              debugPrint('🎁 [$requestId] In-room command prepared: $message');
+              // Note: ZEGOCLOUD command sending is disabled due to API limitations
+              // Gift animations will be synchronized through server-side polling
+              debugPrint('🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync');
+              
+              // Show success message
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🎁 Gift sent successfully!'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+            } else {
+              debugPrint('❌ [$requestId] Failed to send gift via API');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('❌ Failed to send gift. Please try again.'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('❌ [$requestId] Error sending gift: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('❌ Error sending gift: $e'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
             }
           }
-        }
-        
-        debugPrint('🎁 Creating gift animation for sender:');
-        debugPrint('🎁   - Gift Name: ${gift['name']}');
-        debugPrint('🎁   - GIF URL: $gifUrl');
-        debugPrint('🎁   - Sender: $senderName');
-        debugPrint('🎁   - PK Battle Side: $pkBattleSide');
-        debugPrint('🎁   - Receiver ID: $receiverId');
-        
-        // Create gift animation for sender
-        _createGiftAnimation(gift['name'], gifUrl, senderName, pkBattleSide);
-        
-        debugPrint('✅ Gift sending process completed successfully');
-        // Optionally: refresh user data
-        setState(() {});
-      } else {
-        debugPrint('❌ Gift send failed - API returned false');
-        throw Exception('Gift send failed');
-      }
-    } catch (e) {
-      debugPrint('❌ [${requestId}] === GIFT SENDING ERROR ===');
-      debugPrint('❌ [${requestId}] Error: $e');
-      debugPrint('❌ [${requestId}] Error type: ${e.runtimeType}');
-      debugPrint('❌ [${requestId}] Stack trace: ${StackTrace.current}');
+        },
+      );
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error sending gift: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      debugPrint('🎁 Gift sending process finished');
+      debugPrint('✅ [$requestId] Gift confirmation dialog completed');
+    } catch (e) {
+      debugPrint('❌ Error in _sendGiftToHost: $e');
     }
   }
 
@@ -805,15 +885,16 @@ class _LivePageState extends State<LivePage>
 
   Future<void> _showGiftConfirmationDialog(
     dynamic gift,
+    int giftCost,
+    String requestId,
     VoidCallback onConfirm,
   ) async {
-    final requestId = DateTime.now().millisecondsSinceEpoch.toString();
     debugPrint('🎁 [${requestId}] === GIFT CONFIRMATION DIALOG ===');
     debugPrint('🎁 [${requestId}] Gift: ${gift['name']} (${gift['id']})');
-    debugPrint('🎁 [${requestId}] Diamond Amount: ${gift['diamond_amount']}');
+    debugPrint('🎁 [${requestId}] Diamond Amount: $giftCost');
     debugPrint('🎁 [${requestId}] Current User: ${_currentUser?['id']} - ${_currentUser?['first_name']}');
     debugPrint('🎁 [${requestId}] User Diamonds: ${_currentUser?['diamonds']}');
-    debugPrint('🎁 [${requestId}] Can Afford: ${(_currentUser?['diamonds'] ?? 0) >= (gift['diamond_amount'] ?? 0)}');
+    debugPrint('🎁 [${requestId}] Can Afford: ${(_currentUser?['diamonds'] ?? 0) >= giftCost}');
     
     await showDialog(
       context: context,
@@ -878,6 +959,9 @@ class _LivePageState extends State<LivePage>
     _likeController.dispose();
     _stopPKBattleTransactionsPolling();
     _stopGiftPolling();
+    _stopUserGiftsPolling();
+    _stopPKBattleActiveCheck();
+    _giftAudioPlayer.dispose();
     super.dispose();
   }
 
@@ -1137,20 +1221,63 @@ class _LivePageState extends State<LivePage>
 
   void _handlePKBattleAutoEnded(int winnerId, String reason) {
     debugPrint('🚨 PK BATTLE AUTO-ENDED ===');
-    debugPrint('Winner ID: $winnerId');
-    debugPrint('Reason: $reason');
+    debugPrint('🚨 Winner ID: $winnerId');
+    debugPrint('🚨 Reason: $reason');
+    debugPrint('🚨 PK Battle ID: ${PKEvents.currentPKBattleId}');
+    debugPrint('🚨 Left Host: $_leftHostName (ID: $_leftHostId)');
+    debugPrint('🚨 Right Host: $_rightHostName (ID: $_rightHostId)');
     
-    // Clear PK battle data and hide timer
-    setState(() {
-      _showPKBattleTimer = false;
-      _pkBattleId = null;
-    });
+    // Call PK battle end API on all devices (both host and audience)
+    if (PKEvents.currentPKBattleId != null) {
+      try {
+        // Get current scores from the progress bar or use default values
+        final leftScore = 0; // Will be updated by the API call
+        final rightScore = 0; // Will be updated by the API call
+        
+        ApiService.endPKBattle(
+          pkBattleId: PKEvents.currentPKBattleId!,
+          leftScore: leftScore,
+          rightScore: rightScore,
+          winnerId: winnerId,
+        ).then((result) {
+          debugPrint('✅ PK battle auto-ended via API: $result');
+        }).catchError((e) {
+          debugPrint('❌ Error auto-ending PK battle via API: $e');
+        });
+      } catch (e) {
+        debugPrint('❌ Error in auto-end PK battle API call: $e');
+      }
+    }
     
-    // Clear PKEvents data
+    // Clear PK battle ID and return to normal mode
     PKEvents.setCurrentPKBattleId(null);
-    PKEvents.setCurrentPKBattleStartTime(null);
+    setState(() {
+      _pkBattleId = null;
+      _showPKBattleTimer = false;
+      _leftHostId = null;
+      _rightHostId = null;
+      _leftHostName = null;
+      _rightHostName = null;
+    });
+    debugPrint('🎯 PK battle ID cleared after auto-end, returning to normal single host mode');
     
-    debugPrint('🎯 PK battle data cleared due to auto-end');
+    // Show PK battle ended popup for all users
+    if (mounted) {
+      // Use left/right instead of Unknown for usernames
+      final leftHostName = _leftHostName ?? 'Left Host';
+      final rightHostName = _rightHostName ?? 'Right Host';
+      
+      PKBattleEndedService.instance.showPKBattleEndedPopup(
+        context: context,
+        winnerId: winnerId,
+        leftScore: 0, // Will be updated by the API
+        rightScore: 0, // Will be updated by the API
+        leftHostName: leftHostName,
+        rightHostName: rightHostName,
+        leftHostId: _leftHostId,
+        rightHostId: _rightHostId,
+      );
+    }
   }
 
   void _triggerPKBattleScoreUpdate() {
@@ -1239,10 +1366,24 @@ class _LivePageState extends State<LivePage>
   Timer? _giftPollingTimer;
   DateTime _lastGiftCheck = DateTime.now();
   
+  // Host-side polling for user-received gifts (non-PK normal live)
+  Timer? _userGiftsPollingTimer;
+  final Set<String> _processedUserGiftTxnIds = {};
+  DateTime _lastUserGiftsCheck = DateTime.now();
+  
   void _startGiftPolling() {
     _giftPollingTimer?.cancel();
     _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _pollForRecentGifts();
+      // Check if PK battle is active
+      if (PKEvents.currentPKBattleId != null) {
+        // PK battle active - poll for PK battle gifts
+        debugPrint('🎁 PK Battle active, polling for PK battle gifts');
+        _pollForPKBattleGifts();
+      } else {
+        // Single host normal live - use the original working logic
+        debugPrint('🎁 Single host normal live, using original gift polling');
+        _pollForRecentGifts();
+      }
     });
   }
   
@@ -1251,14 +1392,42 @@ class _LivePageState extends State<LivePage>
     _giftPollingTimer = null;
   }
   
+  // Start polling user gifts for host in normal (single host) live
+  void _startUserGiftsPolling() {
+    _userGiftsPollingTimer?.cancel();
+    _lastUserGiftsCheck = DateTime.now();
+    _userGiftsPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      // Only for single host normal live (no PK battle)
+      if (PKEvents.currentPKBattleId == null) {
+        final int targetUserId = widget.isHost
+            ? ((_currentUser?['id'] as int?) ?? widget.receiverId)
+            : widget.receiverId;
+        _pollUserGiftsReceived(targetUserId);
+      }
+    });
+  }
+  
+  void _stopUserGiftsPolling() {
+    _userGiftsPollingTimer?.cancel();
+    _userGiftsPollingTimer = null;
+  }
+  
   Future<void> _pollForRecentGifts() async {
     try {
       final streamId = _debugInfo['stream_id'];
       if (streamId == null) return;
+      int liveStreamId;
+      if (streamId is int) {
+        liveStreamId = streamId;
+      } else if (streamId is String) {
+        liveStreamId = int.tryParse(streamId) ?? 0;
+      } else {
+        return;
+      }
       
       // Get recent gifts from the last 5 seconds
       final recentGifts = await ApiService.getRecentGifts(
-        liveStreamId: int.tryParse(streamId) ?? 0,
+        liveStreamId: liveStreamId,
         since: _lastGiftCheck,
       );
       
@@ -1271,7 +1440,23 @@ class _LivePageState extends State<LivePage>
           if (!_processedGifts.contains(giftKey)) {
             _processedGifts.add(giftKey);
             
-            final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
+            // Play gift audio if available (with 2-second delay)
+            final dynamic audioFilenameRaw = gift['audio_filename'];
+            final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+            if (audioFilename != null && audioFilename.isNotEmpty) {
+              try {
+                final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+                debugPrint('🎁 Playing received gift audio: $audioUrl');
+                // Use the new 2-second delay method
+                _playGiftAudioWithDelay(audioUrl);
+              } catch (e) {
+                debugPrint('🎁 Error playing received gift audio: $e');
+              }
+            }
+            
+            final dynamic gifFilenameRaw = gift['gif_filename'];
+            final String gifFilename = (gifFilenameRaw is String) ? gifFilenameRaw : (gifFilenameRaw?.toString() ?? '');
+            final gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
             final senderName = gift['sender_name'] ?? 'User';
             final giftName = gift['gift_name'] ?? 'Gift';
             
@@ -1298,6 +1483,126 @@ class _LivePageState extends State<LivePage>
       debugPrint('❌ Error polling for recent gifts: $e');
     }
   }
+
+  // Poll for PK battle gifts and display
+  Future<void> _pollForPKBattleGifts() async {
+    try {
+      if (PKEvents.currentPKBattleId == null) return;
+      
+      final pkBattleId = PKEvents.currentPKBattleId!;
+      debugPrint('🎁 Polling for PK battle gifts, battle ID: $pkBattleId');
+      
+      // For PK battles, we need to poll both hosts' gifts received
+      final leftHostId = _leftHostId != null ? int.tryParse(_leftHostId!) : null;
+      final rightHostId = _rightHostId != null ? int.tryParse(_rightHostId!) : null;
+      
+      if (leftHostId != null && leftHostId > 0) {
+        await _pollUserGiftsReceived(leftHostId);
+      }
+      
+      if (rightHostId != null && rightHostId > 0) {
+        await _pollUserGiftsReceived(rightHostId);
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error polling for PK battle gifts: $e');
+    }
+  }
+
+  // Poll gifts received by specific user and display
+  Future<void> _pollUserGiftsReceived(int targetUserId) async {
+    try {
+      final data = await ApiService.getUserGiftsReceived(userIdentifier: targetUserId);
+      if (data == null) return;
+      final List<dynamic>? recentGifts = data['recent_gifts'] as List<dynamic>?;
+      if (recentGifts == null || recentGifts.isEmpty) return;
+
+      for (final dynamic g in recentGifts) {
+        final Map<String, dynamic> gift = g as Map<String, dynamic>;
+        // Time-based filtering to avoid replaying old gifts too frequently
+        final String? receivedAtStr = gift['received_at'] as String?;
+        if (receivedAtStr != null) {
+          try {
+            final receivedAt = DateTime.parse(receivedAtStr);
+            if (!receivedAt.isAfter(_lastUserGiftsCheck)) {
+              continue;
+            }
+          } catch (_) {}
+        }
+
+        // Deduplication by transaction_id
+        final int? txnId = (gift['transaction_id'] is int)
+            ? gift['transaction_id'] as int
+            : int.tryParse('${gift['transaction_id']}');
+        if (txnId == null) continue;
+        final giftKey = 'user_${targetUserId.toString()}_txn_$txnId';
+        if (_processedUserGiftTxnIds.contains(giftKey)) continue;
+        _processedUserGiftTxnIds.add(giftKey);
+
+        // Play audio (2s delay)
+        final dynamic audioFilenameRaw = gift['audio_filename'];
+        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        if (audioFilename != null && audioFilename.isNotEmpty) {
+          try {
+            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint('🎁 (User $targetUserId) Playing received gift audio: $audioUrl');
+            // Use the existing 2-second delay method
+            _playGiftAudioWithDelay(audioUrl);
+          } catch (e) {
+            debugPrint('🎁 (User $targetUserId) Error playing received gift audio: $e');
+          }
+        }
+
+        // Animation
+        String gifUrl;
+        final dynamic gifUrlRaw = gift['gif_url'];
+        if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
+          gifUrl = gifUrlRaw.startsWith('http')
+              ? gifUrlRaw
+              : 'https://server.bharathchat.com$gifUrlRaw';
+        } else {
+          final dynamic gifFilenameRaw = gift['gif_filename'];
+          final String gifFilename = (gifFilenameRaw is String) ? gifFilenameRaw : (gifFilenameRaw?.toString() ?? '');
+          gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+        }
+        final Map<String, dynamic>? sender = gift['sender'] as Map<String, dynamic>?;
+        final String senderName = sender?['username'] as String? ?? sender?['first_name'] as String? ?? 'User';
+        final String giftName = gift['gift_name'] as String? ?? 'Gift';
+        
+        // Determine PK battle side if applicable
+        String? pkBattleSide;
+        if (PKEvents.currentPKBattleId != null) {
+          final leftHostIdInt = int.tryParse(_leftHostId ?? '0');
+          final rightHostIdInt = int.tryParse(_rightHostId ?? '0');
+          if (targetUserId == leftHostIdInt) {
+            pkBattleSide = 'left';
+          } else if (targetUserId == rightHostIdInt) {
+            pkBattleSide = 'right';
+          }
+        }
+        
+        _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+      }
+
+      _lastUserGiftsCheck = DateTime.now();
+    } catch (e) {
+      debugPrint('❌ Error polling user gifts received: $e');
+    }
+  }
+
+  // Helper method to play gift audio with 2-second delay
+  Future<void> _playGiftAudioWithDelay(String audioUrl) async {
+    try {
+      // Wait 2 seconds before playing audio
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        await _giftAudioPlayer.setUrl(audioUrl);
+        await _giftAudioPlayer.play();
+      }
+    } catch (e) {
+      debugPrint('🎁 Error playing gift audio with delay: $e');
+    }
+  }
   
   // Set to track processed gifts to avoid duplicates
   final Set<String> _processedGifts = {};
@@ -1309,7 +1614,23 @@ class _LivePageState extends State<LivePage>
       if (data['type'] == 'gift') {
         debugPrint('🎁 Processing gift command: $data');
         
-        final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + data['gif_filename'];
+        // Play gift audio if available (with 2-second delay)
+        final dynamic audioFilenameRaw = data['audio_filename'];
+        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        if (audioFilename != null && audioFilename.isNotEmpty) {
+          try {
+            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint('🎁 Playing gift audio from command: $audioUrl');
+            // Use the new 2-second delay method
+            _playGiftAudioWithDelay(audioUrl);
+          } catch (e) {
+            debugPrint('🎁 Error setting up gift audio from command: $e');
+          }
+        }
+        
+        final dynamic gifFilenameRaw = data['gif_filename'];
+        final String gifFilename = (gifFilenameRaw is String) ? gifFilenameRaw : (gifFilenameRaw?.toString() ?? '');
+        final gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
         final senderName = data['sender_name'] ?? 'User';
         final giftName = data['gift_name'] ?? 'Gift';
         
@@ -1361,6 +1682,9 @@ class _LivePageState extends State<LivePage>
         ),
       );
     });
+    
+    // Play gift audio if available (with 2-second delay)
+    // Note: Audio is now handled by the calling methods using _playGiftAudioWithDelay
   }
 
   void _onLiveStateChanged() {
@@ -1387,23 +1711,18 @@ class _LivePageState extends State<LivePage>
       }
     } else {
       debugPrint('🏁 Exiting PK battle state...');
-      // Don't hide timer or clear PK battle data - keep them persistent for audience
-      if (widget.isHost) {
-        // Only clear for hosts, not for audience
-        setState(() {
-          _showPKBattleTimer = false;
-        });
-        
-        // Clear PK battle data when exiting (only for hosts)
-        PKEvents.setCurrentPKBattleId(null);
-        setState(() {
-          _pkBattleId = null;
-        });
-        PKEvents.setCurrentPKBattleStartTime(null);
-      } else {
-        // For audience, keep the timer and PK battle data persistent
-        debugPrint('🎯 Keeping PK battle timer and data persistent for audience');
-      }
+      // Clear PK battle data when exiting (for both hosts and audience)
+      PKEvents.setCurrentPKBattleId(null);
+      setState(() {
+        _showPKBattleTimer = false;
+        _pkBattleId = null;
+        _leftHostId = null;
+        _rightHostId = null;
+        _leftHostName = null;
+        _rightHostName = null;
+      });
+      PKEvents.setCurrentPKBattleStartTime(null);
+      debugPrint('🎯 PK battle data cleared, returning to normal single host mode');
     }
   }
   
@@ -1524,25 +1843,47 @@ class _LivePageState extends State<LivePage>
       winnerId = 0; // Draw
     }
 
-    final endResult = await ApiService.endPKBattle(
-      pkBattleId: pkBattleId,
-      leftScore: leftScore,
-      rightScore: rightScore,
-      winnerId: winnerId,
-    );
+    // Call PK battle end API on all devices (both host and audience)
+    try {
+      final endResult = await ApiService.endPKBattle(
+        pkBattleId: pkBattleId,
+        leftScore: leftScore,
+        rightScore: rightScore,
+        winnerId: winnerId,
+      );
+      debugPrint('✅ PK battle ended via API: $endResult');
+    } catch (e) {
+      debugPrint('❌ Error ending PK battle via API: $e');
+    }
 
     // Stop polling for transactions when PK battle ends
     _stopPKBattleTransactionsPolling();
 
-    // Show improved popup using the service
+    // Clear PK battle ID and return to normal mode
+    PKEvents.setCurrentPKBattleId(null);
+    setState(() {
+      _pkBattleId = null;
+      _showPKBattleTimer = false;
+      _leftHostId = null;
+      _rightHostId = null;
+      _leftHostName = null;
+      _rightHostName = null;
+    });
+    debugPrint('🎯 PK battle ID cleared, returning to normal single host mode');
+
+    // Show improved popup using the service for all users
     if (mounted) {
+      // Use left/right instead of Unknown for usernames
+      final leftHostName = _leftHostName ?? 'Left Host';
+      final rightHostName = _rightHostName ?? 'Right Host';
+      
       PKBattleEndedService.instance.showPKBattleEndedPopup(
         context: context,
         winnerId: winnerId,
         leftScore: leftScore,
         rightScore: rightScore,
-        leftHostName: _leftHostName,
-        rightHostName: _rightHostName,
+        leftHostName: leftHostName,
+        rightHostName: rightHostName,
         leftHostId: _leftHostId,
         rightHostId: _rightHostId,
       );
@@ -1995,6 +2336,8 @@ class _LivePageState extends State<LivePage>
                                     debugPrint('🎁 Can afford: $canAfford, Sending: $_sendingGift');
                                     _showGiftConfirmationDialog(
                                       gift,
+                                      gift['diamond_amount'],
+                                      DateTime.now().millisecondsSinceEpoch.toString(),
                                       () => _sendGiftFromList(gift),
                                     );
                                   }
@@ -2743,6 +3086,36 @@ class _LivePageState extends State<LivePage>
             ? hostWidgets
             : []),
       ],
+    );
+  }
+
+  // Show insufficient diamonds dialog
+  void _showInsufficientDiamondsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Insufficient Diamonds',
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'You don\'t have enough diamonds to send this gift.',
+          style: TextStyle(color: Colors.white),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'OK',
+              style: TextStyle(color: Colors.orange),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

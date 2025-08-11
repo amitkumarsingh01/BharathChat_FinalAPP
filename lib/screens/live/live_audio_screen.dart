@@ -121,7 +121,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   void _startGiftPolling() {
     _giftPollingTimer?.cancel();
     _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _pollForRecentGifts();
+      // For audio screen (non-PK), use user gifts received endpoint
+      final int targetUserId = widget.isHost
+          ? (currentUser?['id'] as int? ?? widget.hostId)
+          : widget.hostId;
+      _pollUserGiftsReceived(targetUserId);
     });
   }
   
@@ -130,66 +134,102 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     _giftPollingTimer = null;
   }
   
-  Future<void> _pollForRecentGifts() async {
+  // Poll gifts received by specific user and display
+  Future<void> _pollUserGiftsReceived(int targetUserId) async {
     try {
-      // For audio screen, we'll use the liveID to get the stream ID
-      final liveId = widget.liveID;
-      int? streamId;
-      
-      if (liveId.startsWith('live_')) {
-        final parts = liveId.split('_');
-        if (parts.length >= 2) {
-          streamId = int.tryParse(parts[1]);
+      final data = await ApiService.getUserGiftsReceived(userIdentifier: targetUserId);
+      if (data == null) return;
+      final List<dynamic>? recentGifts = data['recent_gifts'] as List<dynamic>?;
+      if (recentGifts == null || recentGifts.isEmpty) return;
+
+      for (final dynamic g in recentGifts) {
+        final Map<String, dynamic> gift = g as Map<String, dynamic>;
+        // Time-based filtering to avoid replaying old gifts too frequently
+        final String? receivedAtStr = gift['received_at'] as String?;
+        if (receivedAtStr != null) {
+          try {
+            final receivedAt = DateTime.parse(receivedAtStr);
+            if (!receivedAt.isAfter(_lastGiftCheck)) {
+              continue;
+            }
+          } catch (_) {}
         }
-      }
-      
-      if (streamId == null) return;
-      
-      // Get recent gifts from the last 5 seconds
-      final recentGifts = await ApiService.getRecentGifts(
-        liveStreamId: streamId,
-        since: _lastGiftCheck,
-      );
-      
-      if (recentGifts.isNotEmpty) {
-        print('🎁 Found ${recentGifts.length} recent gifts to sync in audio screen');
-        
-        for (final gift in recentGifts) {
-          // Check if we already processed this gift
-          final giftKey = '${gift['sender_id']}_${gift['gift_id']}_${gift['timestamp']}';
-          if (!_processedGifts.contains(giftKey)) {
-            _processedGifts.add(giftKey);
-            
-            final gifUrl = 'https://server.bharathchat.com/uploads/gifts/' + gift['gif_filename'];
-            final senderName = gift['sender_name'] ?? 'User';
-            final giftName = gift['gift_name'] ?? 'Gift';
-            
-            // Create gift animation
-            setState(() {
-              _activeGiftAnimations.add(
-                GiftAnimation(
-                  key: ValueKey('gift_anim_${_giftAnimKey++}'),
-                  giftName: giftName,
-                  gifUrl: gifUrl,
-                  senderName: senderName,
-                  onAnimationComplete: () {
-                    setState(() {
-                      _activeGiftAnimations.removeWhere(
-                        (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
-                      );
-                    });
-                  },
-                ),
-              );
-            });
+
+        // Deduplication by transaction_id
+        final int? txnId = (gift['transaction_id'] is int)
+            ? gift['transaction_id'] as int
+            : int.tryParse('${gift['transaction_id']}');
+        if (txnId == null) continue;
+        final giftKey = 'user_${targetUserId}_txn_$txnId';
+        if (_processedGifts.contains(giftKey)) continue;
+        _processedGifts.add(giftKey);
+
+        // Play audio (2s delay)
+        final dynamic audioFilenameRaw = gift['audio_filename'];
+        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        if (audioFilename != null && audioFilename.isNotEmpty) {
+          try {
+            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint('🎁 (User $targetUserId) Playing received gift audio: $audioUrl');
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              await _audioPlayer.setUrl(audioUrl);
+              await _audioPlayer.play();
+            }
+          } catch (e) {
+            debugPrint('🎁 (User $targetUserId) Error playing received gift audio: $e');
           }
         }
+
+        // Animation
+        String gifUrl;
+        final dynamic gifUrlRaw = gift['gif_url'];
+        if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
+          gifUrl = gifUrlRaw.startsWith('http')
+              ? gifUrlRaw
+              : 'https://server.bharathchat.com$gifUrlRaw';
+        } else {
+          final dynamic gifFilenameRaw = gift['gif_filename'];
+          final String gifFilename = (gifFilenameRaw is String) ? gifFilenameRaw : (gifFilenameRaw?.toString() ?? '');
+          gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+        }
+        final Map<String, dynamic>? sender = gift['sender'] as Map<String, dynamic>?;
+        final String senderName = sender?['username'] as String? ?? sender?['first_name'] as String? ?? 'User';
+        final String giftName = gift['gift_name'] as String? ?? 'Gift';
+        _createGiftAnimation(giftName, gifUrl, senderName);
       }
-      
+
       _lastGiftCheck = DateTime.now();
     } catch (e) {
-      print('❌ Error polling for recent gifts in audio screen: $e');
+      debugPrint('❌ Error polling user gifts received: $e');
     }
+  }
+  
+  // Create gift animation (reusable method)
+  void _createGiftAnimation(String giftName, String gifUrl, String senderName) {
+    debugPrint('🎁 Creating gift animation:');
+    debugPrint('🎁   - Gift Name: $giftName');
+    debugPrint('🎁   - GIF URL: $gifUrl');
+    debugPrint('🎁   - Sender: $senderName');
+    
+    setState(() {
+      _activeGiftAnimations.add(
+        GiftAnimation(
+          key: ValueKey('gift_anim_${_giftAnimKey++}'),
+          giftName: giftName,
+          gifUrl: gifUrl,
+          senderName: senderName,
+          onAnimationComplete: () {
+            debugPrint('🎁 Gift animation completed, removing from list');
+            setState(() {
+              _activeGiftAnimations.removeWhere(
+                (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
+              );
+            });
+          },
+        ),
+      );
+    });
   }
 
   Future<void> _fetchGiftsAndUser() async {
@@ -303,97 +343,147 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   }
 
   Future<void> _sendGiftFromList(dynamic gift) async {
-    if (_sendingGift) return;
-    if (currentUser == null) return;
-    if (currentUser!['diamonds'] < gift['diamond_amount']) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Not enough diamonds!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _sendingGift = true;
-      currentUser!['diamonds'] -= gift['diamond_amount'];
-    });
     try {
+      final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+      debugPrint('🎁 [$requestId] Starting gift send from list...');
+      
+      // Check if we have enough diamonds
+      final currentDiamonds = await ApiService.getCurrentUserDiamonds();
+      final giftCost = gift['diamond_amount'] as int? ?? 0;
+      
+      if (currentDiamonds < giftCost) {
+        debugPrint('❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Insufficient diamonds to send this gift'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+      
+      debugPrint('✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost');
+      
+      // Derive numeric live stream id from widget.liveID (e.g., "live_17775689" or just "17775689")
+      int liveStreamId = 0;
+      final liveIdStr = widget.liveID;
+      if (liveIdStr.startsWith('live_')) {
+        final parts = liveIdStr.split('_');
+        if (parts.length >= 2) {
+          liveStreamId = int.tryParse(parts[1]) ?? 0;
+        }
+      } else {
+        liveStreamId = int.tryParse(liveIdStr) ?? 0;
+      }
+
+      // Send gift via API
       final success = await ApiService.sendGift(
         receiverId: widget.hostId,
         giftId: gift['id'],
-        amount: gift['diamond_amount'],
-        liveStreamId: int.tryParse(widget.liveID) ?? 0,
-        liveStreamType: widget.isHost ? 'host' : 'audience',
+        liveStreamId: liveStreamId,
+        liveStreamType: 'audio',
       );
+      
       if (success) {
-        // Send ZEGOCLOUD in-room command for gift notification
+        debugPrint('✅ [$requestId] Gift sent successfully via API');
+        
+        // Play gift audio if available (with 2-second delay)
+        final dynamic audioFilenameRaw = gift['audio_filename'];
+        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        if (audioFilename != null && audioFilename.isNotEmpty) {
+          try {
+            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
+            // Wait 2 seconds before playing audio
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              await _audioPlayer.setUrl(audioUrl);
+              await _audioPlayer.play();
+            }
+          } catch (e) {
+            debugPrint('🎁 [$requestId] Error playing gift audio: $e');
+          }
+        }
+        
+        // Immediately show animation for the sender
+        try {
+          String? gifUrl;
+          final dynamic gifUrlRaw = gift['gif_url'];
+          if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
+            gifUrl = gifUrlRaw.startsWith('http')
+                ? gifUrlRaw
+                : 'https://server.bharathchat.com$gifUrlRaw';
+          } else {
+            final dynamic gifFilenameRaw = gift['gif_filename'];
+            final String gifFilename = (gifFilenameRaw is String)
+                ? gifFilenameRaw
+                : (gifFilenameRaw?.toString() ?? '');
+            gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+          }
+          final String senderName = currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
+          final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
+          if (gifUrl != null) {
+            _createGiftAnimation(giftName, gifUrl, senderName);
+          }
+        } catch (e) {
+          debugPrint('🎁 [$requestId] Error creating immediate gift animation: $e');
+        }
+
+        // Send ZEGOCLOUD in-room command for synchronization
         final message = jsonEncode({
-          "type": "gift",
-          "sender_id": currentUser?['id'],
-          "sender_name": currentUser?['first_name'] ?? 'User',
-          "gift_id": gift['id'],
-          "gift_name": gift['name'],
-          "gift_amount": gift['diamond_amount'],
-          "gif_filename": gift['gif_filename'],
-          "timestamp": DateTime.now().millisecondsSinceEpoch,
+          'type': 'gift',
+          'gift_id': gift['id'],
+          'gift_name': gift['name'],
+          'gif_filename': gift['gif_filename'],
+          'audio_filename': gift['audio_filename'],
+          'diamond_amount': giftCost,
+          'sender_id': currentUser?['id'],
+          'sender_name': currentUser?['username'] ?? currentUser?['first_name'] ?? 'User',
+          'receiver_id': widget.hostId,
+          'timestamp': DateTime.now().toIso8601String(),
         });
-        // Note: ZEGOCLOUD in-room command is disabled due to API issues
-        // Gift is still sent successfully via API
+        
+        debugPrint('🎁 [$requestId] Sending in-room command: $message');
+        // Note: ZEGOCLOUD command sending is disabled due to API limitations
+        // Gift animations will be synchronized through server-side polling
+        debugPrint('🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync');
+        
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${gift['name']} sent successfully!'),
+              content: Text('🎁 Gift sent successfully!'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
           );
         }
-        // Trigger gift animation
-        final gifUrl =
-            'https://server.bharathchat.com/uploads/gifts/' +
-            gift['gif_filename'];
-        final senderName = currentUser?['first_name'] ?? 'User';
-        
-        // Note: For live_audio_screen, PK battle side will be determined by the parent component
-        // This is a simplified version - in a real PK battle, you'd need to determine the side
-        setState(() {
-          _activeGiftAnimations.add(
-            GiftAnimation(
-              key: ValueKey('gift_anim_${_giftAnimKey++}'),
-              giftName: gift['name'],
-              gifUrl: gifUrl,
-              senderName: senderName,
-              onAnimationComplete: () {
-                setState(() {
-                  _activeGiftAnimations.removeWhere(
-                    (w) =>
-                        (w.key as ValueKey).value ==
-                        'gift_anim_${_giftAnimKey - 1}',
-                  );
-                });
-              },
+      } else {
+        debugPrint('❌ [$requestId] Failed to send gift via API');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Failed to send gift. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
             ),
           );
-        });
-      } else {
-        throw Exception('Gift send failed');
+        }
       }
     } catch (e) {
+      debugPrint('❌ Error sending gift: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error sending gift: $e'),
+            content: Text('❌ Error sending gift: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
         );
       }
-    } finally {
-      setState(() {
-        _sendingGift = false;
-      });
     }
   }
 
@@ -815,7 +905,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
           ),
 
           // Overlay active gift animations
-          // ..._activeGiftAnimations,
+          ..._activeGiftAnimations,
 
           // Gift Animations
           ...giftAnimations.map(

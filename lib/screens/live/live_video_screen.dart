@@ -118,6 +118,19 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
                     heightFactor: 0.5,
                     child: GiftPanel(
                       receiverId: widget.hostId,
+                      // derive numeric stream id from liveID (e.g., "live_17775689" or "17775689")
+                      liveStreamId: () {
+                        int id = 0;
+                        final idStr = widget.liveID;
+                        if (idStr.startsWith('live_')) {
+                          final parts = idStr.split('_');
+                          if (parts.length >= 2) id = int.tryParse(parts[1]) ?? 0;
+                        } else {
+                          id = int.tryParse(idStr) ?? 0;
+                        }
+                        return id;
+                      }(),
+                      liveStreamType: 'video',
                       roomId: widget.liveID,
                       onGiftSent: _hideGiftPanel,
                       onGiftAnimation: _showGiftAnimation,
