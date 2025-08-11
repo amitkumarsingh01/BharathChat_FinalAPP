@@ -24,7 +24,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  final _usernameController = TextEditingController();
   File? _profileImage;
   bool _isLoading = false;
   String? _selectedLanguage;
@@ -49,20 +48,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   Future<void> _checkProfileStatus() async {
     try {
+      print('Checking profile status...'); // Debug log
       final userData = await ApiService.getCurrentUser();
+      print('Profile status check - user data: $userData'); // Debug log
+      
       if (userData['first_name'] != null &&
           userData['last_name'] != null &&
-          userData['username'] != null) {
+          userData['username'] != null &&
+          userData['first_name'].toString().isNotEmpty &&
+          userData['last_name'].toString().isNotEmpty &&
+          userData['username'].toString().isNotEmpty) {
+        print('Profile is already complete, navigating to MainScreen'); // Debug log
         // User already has a complete profile, navigate to main screen
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
           (route) => false,
         );
+      } else {
+        print('Profile is incomplete, staying on registration screen'); // Debug log
       }
     } catch (e) {
       // If there's an error, stay on the registration screen
-      print('Error checking profile status: $e');
+      print('Error checking profile status: $e'); // Debug log
     }
   }
 
@@ -90,35 +98,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     });
 
     try {
-      final response = await ApiService.createUser(
-        firstName: _firstNameController.text,
-        lastName: _lastNameController.text,
-        username: _usernameController.text,
-        phoneNumber: widget.phoneNumber,
-        profileImage: _profileImage,
-        language: _selectedLanguage,
+      // Use updateUser instead of createUser since user already exists
+      final response = await ApiService.updateUser({
+        'first_name': _firstNameController.text,
+        'last_name': _lastNameController.text,
+        'username': _generateUsername(),
+        'language': _selectedLanguage,
+        if (_profileImage != null) 'profile_pic': _profileImage,
+      });
+
+      print('Profile update response: $response'); // Debug log
+
+      // Mark profile as complete
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_profile_complete', true);
+
+      // Navigate to main screen
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+        (route) => false,
       );
-
-      if (response['user_id'] != null) {
-        // Mark profile as complete
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_profile_complete', true);
-
-        // Navigate to main screen
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-          (route) => false,
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create user. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } catch (e) {
+      print('Profile update error: $e'); // Debug log
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
@@ -127,6 +129,32 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  // Generate username from first name and last name
+  String _generateUsername() {
+    String firstName = _firstNameController.text.trim();
+    String lastName = _lastNameController.text.trim();
+    
+    // If either field is empty, return a placeholder
+    if (firstName.isEmpty || lastName.isEmpty) {
+      return 'username';
+    }
+    
+    // Combine first name and last name, replace spaces with underscores
+    String username = '${firstName}_$lastName'.replaceAll(' ', '_');
+    
+    // Remove any special characters and convert to lowercase
+    username = username.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '').toLowerCase();
+    
+    // Ensure username is not empty and has reasonable length
+    if (username.isEmpty) {
+      username = 'user_${DateTime.now().millisecondsSinceEpoch % 1000}';
+    } else if (username.length > 20) {
+      username = username.substring(0, 20);
+    }
+    
+    return username;
   }
 
   @override
@@ -197,7 +225,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 66),
 
                 // First Name
                 TextFormField(
@@ -225,13 +253,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     fillColor: Colors.grey[900],
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Please enter your first name';
+                    }
+                    if (value.trim().length < 2) {
+                      return 'First name must be at least 2 characters';
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 26),
 
                 // Last Name
                 TextFormField(
@@ -259,46 +290,58 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     fillColor: Colors.grey[900],
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.trim().isEmpty) {
                       return 'Please enter your last name';
                     }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Username
-                TextFormField(
-                  controller: _usernameController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Username',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[700]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.orange),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.alternate_email,
-                      color: Colors.orange,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[900],
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a username';
+                    if (value.trim().length < 2) {
+                      return 'Last name must be at least 2 characters';
                     }
                     return null;
                   },
                 ),
+                const SizedBox(height: 26),
+
+                // Username Preview
+                // Container(
+                //   padding: const EdgeInsets.all(16),
+                //   decoration: BoxDecoration(
+                //     color: Colors.grey[900],
+                //     borderRadius: BorderRadius.circular(12),
+                //     border: Border.all(color: Colors.grey[700]!),
+                //   ),
+                //   child: Row(
+                //     children: [
+                //       const Icon(
+                //         Icons.alternate_email,
+                //         color: Colors.orange,
+                //       ),
+                //       const SizedBox(width: 12),
+                //       Expanded(
+                //         child: Column(
+                //           crossAxisAlignment: CrossAxisAlignment.start,
+                //           children: [
+                //             const Text(
+                //               'Your Username',
+                //               style: TextStyle(
+                //                 color: Colors.white70,
+                //                 fontSize: 12,
+                //               ),
+                //             ),
+                //             const SizedBox(height: 4),
+                //             Text(
+                //               _generateUsername(),
+                //               style: const TextStyle(
+                //                 color: Colors.white,
+                //                 fontSize: 16,
+                //                 fontWeight: FontWeight.bold,
+                //               ),
+                //             ),
+                //           ],
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
                 const SizedBox(height: 24),
                 // Language selection
                 const Text(
@@ -316,7 +359,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 36),
                 GridView.count(
                   crossAxisCount: 2,
                   shrinkWrap: true,
@@ -490,7 +533,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _usernameController.dispose();
     super.dispose();
   }
 }
