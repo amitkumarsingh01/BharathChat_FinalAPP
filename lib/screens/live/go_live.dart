@@ -103,7 +103,6 @@ class _HomePageState extends State<HomePage> {
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
                     ..audioVideoView.showMicrophoneStateOnView = true,
-                    
             ),
       ),
     );
@@ -863,10 +862,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   height: 0,
                   child: const Text(
                     'iamlive',
-                    style: TextStyle(
-                      fontSize: 0,
-                      color: Colors.transparent,
-                    ),
+                    style: TextStyle(fontSize: 0, color: Colors.transparent),
                   ),
                 ),
 
@@ -1594,22 +1590,24 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 : (nameController.text.isNotEmpty
                     ? nameController.text
                     : 'Host');
-        
+
         // Get user profile picture
         String? userAvatarUrl;
         if (userData != null && userData['profile_pic'] != null) {
           final profilePic = userData['profile_pic'].toString();
           if (profilePic.isNotEmpty) {
-            userAvatarUrl = profilePic.startsWith('http') 
-                ? profilePic 
-                : 'https://server.bharathchat.com/$profilePic';
+            userAvatarUrl =
+                profilePic.startsWith('http')
+                    ? profilePic
+                    : 'https://server.bharathchat.com/$profilePic';
           }
         }
-        
+
         // Create userName with avatar info for Zego
-        final userNameWithAvatar = userAvatarUrl != null 
-            ? '${userName}|avatar:$userAvatarUrl'
-            : userName;
+        final userNameWithAvatar =
+            userAvatarUrl != null
+                ? '${userName}|avatar:$userAvatarUrl'
+                : userName;
 
         // Create the appropriate configuration
         late final ZegoUIKitPrebuiltLiveStreamingConfig config;
@@ -1651,7 +1649,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..audioVideoView.showAvatarInAudioMode = true
                 ..audioVideoView.showSoundWavesInAudioMode = true
                 ..audioVideoView.showMicrophoneStateOnView = true;
-
         }
 
         // Navigate to the appropriate screen based on mode

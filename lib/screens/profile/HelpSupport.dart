@@ -20,7 +20,9 @@ class _HelpSupportState extends State<HelpSupport> {
   }
 
   Future<void> _fetchHelpSupport() async {
-    setState(() { _isLoading = true; });
+    setState(() {
+      _isLoading = true;
+    });
     try {
       final response = await http.get(
         Uri.parse('https://server.bharathchat.com/helpsupportapi'),
@@ -29,14 +31,19 @@ class _HelpSupportState extends State<HelpSupport> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
-          _messages = data.map<String>((item) => item['content'] as String).toList();
+          _messages =
+              data.map<String>((item) => item['content'] as String).toList();
           _isLoading = false;
         });
       } else {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -48,13 +55,13 @@ class _HelpSupportState extends State<HelpSupport> {
         backgroundColor: Colors.black,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Color(0xFFFFA500)),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Help & Support',
           style: TextStyle(
-            color: Color(0xFFFFA500),
+            color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 22,
             letterSpacing: 1.2,
@@ -62,58 +69,70 @@ class _HelpSupportState extends State<HelpSupport> {
         ),
         centerTitle: false,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFFFA500)))
-          : ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Image.asset(
-                      'assets/help.png',
-                      width: 250,
-                      height: 250,
-                      fit: BoxFit.contain,
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: Color(0xFFFFA500)),
+              )
+              : ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Image.asset(
+                        'assets/help.png',
+                        width: 250,
+                        height: 250,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
-                ),
-                ...List.generate(_messages.length, (index) {
-                  final msg = _messages[index];
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: index == _messages.length - 1 ? 0 : 18),
-                    child: Card(
-                      color: Colors.black,
-                      elevation: 12,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                  ...List.generate(_messages.length, (index) {
+                    final msg = _messages[index];
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index == _messages.length - 1 ? 0 : 18,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.support_agent, color: Color(0xFFFFA500), size: 32),
-                            const SizedBox(width: 18),
-                            Expanded(
-                              child: Text(
-                                msg,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
+                      child: Card(
+                        color: Colors.black,
+                        elevation: 12,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 22,
+                            horizontal: 20,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.support_agent,
+                                color: Color(0xFFFFA500),
+                                size: 32,
+                              ),
+                              const SizedBox(width: 18),
+                              Expanded(
+                                child: Text(
+                                  msg,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.4,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+                    );
+                  }),
+                ],
+              ),
     );
   }
 }

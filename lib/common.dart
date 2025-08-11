@@ -22,16 +22,16 @@ class Language {
 
 const List<Language> languages = [
   Language(
-    name: 'Kannada',
-    nativeName: 'ಕನ್ನಡ',
-    code: 'kn',
-    backgroundColor: Color(0xFF4B0082), // Purple
-  ),
-  Language(
     name: 'Hindi',
     nativeName: 'हिंदी',
     code: 'hi',
     backgroundColor: Color(0xFF8B4513), // Brown
+  ),
+  Language(
+    name: 'Kannada',
+    nativeName: 'ಕನ್ನಡ',
+    code: 'kn',
+    backgroundColor: Color(0xFF4B0082), // Purple
   ),
   Language(
     name: 'Telugu',
@@ -102,19 +102,12 @@ Widget customAvatarBuilder(
       // fallback to simple avatar
     }
   }
-  
+
   // Return a simple avatar without any username or user information
   return Container(
     width: size.width,
     height: size.height,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Colors.grey[300],
-    ),
-    child: Icon(
-      Icons.person,
-      size: size.width * 0.5,
-      color: Colors.grey[600],
-    ),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.grey[300]),
+    child: Icon(Icons.person, size: size.width * 0.5, color: Colors.grey[600]),
   );
 }
