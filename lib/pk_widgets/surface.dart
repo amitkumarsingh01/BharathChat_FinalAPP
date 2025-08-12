@@ -434,74 +434,74 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
               children: [
                 // PK Progress Bar (only visible during PK battle)
                 // if (_isPKBattleActive)
-                  // Positioned(
-                  //   bottom:
-                  //       baseYPos +
-                  //       3.5 * 30 +
-                  //       3.5 * 5, // Position above PK buttons
-                  //   left: 0,
-                  //   right: 0,
-                  //   child: PKProgressBar(
-                  //     leftHostId: _leftHostId,
-                  //     rightHostId: _rightHostId,
-                  //     leftHostName: _leftHostName,
-                  //     rightHostName: _rightHostName,
-                  //     leftDiamonds: _leftHostDiamonds,
-                  //     rightDiamonds: _rightHostDiamonds,
-                  //     totalDiamonds: _leftHostDiamonds + _rightHostDiamonds,
-                  //   ),
-                  // ),
-                  // Positioned(
-                  //   left: 1,
-                  //   // bottom: baseYPos + 150 + 60,
-                  //   // bottom: baseYPos + 3.5 * 30 + 3.5 * 5,
-                  //   bottom: baseYPos + 2.3 * 30 + 2 * 5,
-                  //   child: Column(
-                  //     crossAxisAlignment: CrossAxisAlignment.start,
-                  //     children: [
-                  //       GestureDetector(
-                  //         onTap: () {
-                  //           setState(() {
-                  //             _showPKRequestList = !_showPKRequestList;
-                  //           });
-                  //         },
-                  //         child: Container(
-                  //           padding: const EdgeInsets.symmetric(
-                  //             horizontal: 20,
-                  //             vertical: 12,
-                  //           ),
-                  //           decoration: BoxDecoration(
-                  //             gradient: LinearGradient(
-                  //               colors: [
-                  //                 Color(0xFFffa030),
-                  //                 Color(0xFFfe9b00),
-                  //                 Color(0xFFf67d00),
-                  //               ],
-                  //               begin: Alignment.topLeft,
-                  //               end: Alignment.bottomRight,
-                  //             ),
-                  //             borderRadius: BorderRadius.circular(20),
-                  //           ),
-                  //           child: const Text(
-                  //             'PK Request',
-                  //             style: TextStyle(
-                  //               color: Colors.white,
-                  //               fontWeight: FontWeight.bold,
-                  //               fontSize: 15,
-                  //               letterSpacing: 1.1,
-                  //             ),
-                  //           ),
-                  //         ),
-                  //       ),
-                  //       const SizedBox(height: 8),
-                  //       if (_showPKRequestList)
-                  //         PKRequestingList(
-                  //           requestingHostsMapRequestIDNotifier:
-                  //               widget.requestingHostsMapRequestIDNotifier,
-                  //         ),
-                  //     ],
-                  //   ),
-                  // ),
+                // Positioned(
+                //   bottom:
+                //       baseYPos +
+                //       3.5 * 30 +
+                //       3.5 * 5, // Position above PK buttons
+                //   left: 0,
+                //   right: 0,
+                //   child: PKProgressBar(
+                //     leftHostId: _leftHostId,
+                //     rightHostId: _rightHostId,
+                //     leftHostName: _leftHostName,
+                //     rightHostName: _rightHostName,
+                //     leftDiamonds: _leftHostDiamonds,
+                //     rightDiamonds: _rightHostDiamonds,
+                //     totalDiamonds: _leftHostDiamonds + _rightHostDiamonds,
+                //   ),
+                // ),
+                // Positioned(
+                //   left: 1,
+                //   // bottom: baseYPos + 150 + 60,
+                //   // bottom: baseYPos + 3.5 * 30 + 3.5 * 5,
+                //   bottom: baseYPos + 2.3 * 30 + 2 * 5,
+                //   child: Column(
+                //     crossAxisAlignment: CrossAxisAlignment.start,
+                //     children: [
+                //       GestureDetector(
+                //         onTap: () {
+                //           setState(() {
+                //             _showPKRequestList = !_showPKRequestList;
+                //           });
+                //         },
+                //         child: Container(
+                //           padding: const EdgeInsets.symmetric(
+                //             horizontal: 20,
+                //             vertical: 12,
+                //           ),
+                //           decoration: BoxDecoration(
+                //             gradient: LinearGradient(
+                //               colors: [
+                //                 Color(0xFFffa030),
+                //                 Color(0xFFfe9b00),
+                //                 Color(0xFFf67d00),
+                //               ],
+                //               begin: Alignment.topLeft,
+                //               end: Alignment.bottomRight,
+                //             ),
+                //             borderRadius: BorderRadius.circular(20),
+                //           ),
+                //           child: const Text(
+                //             'PK Request',
+                //             style: TextStyle(
+                //               color: Colors.white,
+                //               fontWeight: FontWeight.bold,
+                //               fontSize: 15,
+                //               letterSpacing: 1.1,
+                //             ),
+                //           ),
+                //         ),
+                //       ),
+                //       const SizedBox(height: 8),
+                //       if (_showPKRequestList)
+                //         PKRequestingList(
+                //           requestingHostsMapRequestIDNotifier:
+                //               widget.requestingHostsMapRequestIDNotifier,
+                //         ),
+                //     ],
+                //   ),
+                // ),
                 // Positioned(
                 //   bottom: baseYPos + 3.5 * 30 + 3.5 * 5,
                 //   right: 1,
@@ -526,30 +526,33 @@ class _PKV2SurfaceState extends State<PKV2Surface> {
                 //   ),
                 // ),
                 // if (!_isPKBattleActive)
-                  Positioned(
-                    // bottom: baseYPos + 60 + 5,
-                    bottom: baseYPos + 30 + 5,
-                    left: 15,
-                    child: PKBattleButton(
-                      onPressed: () {
-                        // TODO: Implement PK battle logic
-                      },
-                      onInvite: (String username) {
-                        _hostIDController.text = username;
-                      },
-                    ),
+                Positioned(
+                  // bottom: baseYPos + 60 + 5,
+                  bottom: baseYPos + 90 + 5, // Move higher to avoid overlap
+                  right: 1, // Position to the right side
+                  child: PKBattleButton(
+                    onPressed: () {
+                      // TODO: Implement PK battle logic
+                    },
+                    onInvite: (String username) {
+                      _hostIDController.text = username;
+                    },
                   ),
+                ),
                 // if (!_isPKBattleActive)
-                  Positioned(
-                    bottom: baseYPos + 30 + 5,
-                    right: 1,
-                    child: PKRequestWidget(
-                      requestIDNotifier: widget.requestIDNotifier,
-                      requestingHostsMapRequestIDNotifier:
-                          widget.requestingHostsMapRequestIDNotifier,
-                      hostIDTextController: _hostIDController,
-                    ),
+                Positioned(
+                  bottom:
+                      baseYPos +
+                      30 +
+                      5, // Keep Host ID container at original position
+                  right: 1,
+                  child: PKRequestWidget(
+                    requestIDNotifier: widget.requestIDNotifier,
+                    requestingHostsMapRequestIDNotifier:
+                        widget.requestingHostsMapRequestIDNotifier,
+                    hostIDTextController: _hostIDController,
                   ),
+                ),
                 // Positioned(
                 //   bottom: baseYPos,
                 //   right: 1,

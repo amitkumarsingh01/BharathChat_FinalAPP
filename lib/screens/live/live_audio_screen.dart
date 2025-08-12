@@ -671,10 +671,21 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..bottomMenuBar
                   .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
                 // Microphone button icons with enhanced colors
-                toggleMicrophoneOnButtonIcon: const Icon(
-                  Icons.mic,
-                  color: Colors.white,
-                  size: 24,
+                toggleMicrophoneOnButtonIcon: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      // colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                      colors: [Color(0xFFFF9A9E), Color(0xFFFECFEF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.mic,
+                    color: Color(0xFF7A4E4E),
+                    size: 24,
+                  ),
                 ),
                 toggleMicrophoneOffButtonIcon: const Icon(
                   Icons.mic_off,
@@ -683,10 +694,22 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ),
 
                 // Chat button icons with enhanced colors
-                chatEnabledButtonIcon: const Icon(
-                  Icons.chat_bubble,
-                  color: Colors.white,
-                  size: 24,
+                chatEnabledButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // gradient: LinearGradient(
+                    //   colors: [Color(0xFFa18cd1), Color(0xFFfbc2eb)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Color(0xFF2193b0),
+                    size: 24,
+                  ),
                 ),
                 chatDisabledButtonIcon: const Icon(
                   Icons.chat_bubble_outline,
@@ -695,27 +718,75 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ),
 
                 // Audio output button icons with enhanced colors
-                switchAudioOutputToSpeakerButtonIcon: const Icon(
-                  Icons.volume_up,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToSpeakerButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // gradient: LinearGradient(
+                    //   colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                  ),
+                  child: const Icon(
+                    Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                switchAudioOutputToHeadphoneButtonIcon: const Icon(
-                  Icons.headphones,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToHeadphoneButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // gradient: LinearGradient(
+                    //   colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                  ),
+                  child: const Icon(
+                    Icons.headphones,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
                 ),
-                switchAudioOutputToBluetoothButtonIcon: const Icon(
-                  Icons.bluetooth,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToBluetoothButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // gradient: LinearGradient(
+                    //   colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                  ),
+                  child: const Icon(
+                    Icons.bluetooth,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
                 ),
 
                 // Leave button icon with enhanced color
-                leaveButtonIcon: const Icon(
-                  Icons.call_end,
-                  color: Colors.red,
-                  size: 24,
+                leaveButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    // gradient: LinearGradient(
+                    //   colors: [Color(0xFFffa030), Color(0xFFfe9b00)],
+                    //   begin: Alignment.topLeft,
+                    //   end: Alignment.bottomRight,
+                    // ),
+                  ),
+                  child: const Icon(
+                    Icons.call_end,
+                    color: Colors.red,
+                    size: 24,
+                  ),
                 ),
 
                 // Beauty effect button icon
@@ -767,10 +838,22 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..bottomMenuBar
                   .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
                 // Chat button icons with enhanced colors
-                chatEnabledButtonIcon: const Icon(
-                  Icons.chat_bubble,
-                  color: Colors.white,
-                  size: 24,
+                chatEnabledButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFa18cd1), Color(0xFFfbc2eb)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 chatDisabledButtonIcon: const Icon(
                   Icons.chat_bubble_outline,
@@ -779,20 +862,56 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ),
 
                 // Audio output button icons with enhanced colors
-                switchAudioOutputToSpeakerButtonIcon: const Icon(
-                  Icons.volume_up,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToSpeakerButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                switchAudioOutputToHeadphoneButtonIcon: const Icon(
-                  Icons.headphones,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToHeadphoneButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.headphones,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                switchAudioOutputToBluetoothButtonIcon: const Icon(
-                  Icons.bluetooth,
-                  color: Colors.white,
-                  size: 24,
+                switchAudioOutputToBluetoothButtonIcon: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.bluetooth,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
 
                 // Leave button icon with enhanced color

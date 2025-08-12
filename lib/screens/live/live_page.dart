@@ -2140,13 +2140,13 @@ class _LivePageState extends State<LivePage>
         .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
       // Camera button icons with enhanced colors
       toggleCameraOnButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-
           gradient: LinearGradient(
             // colors: [Color(0xFFFF512F), Color(0xFFF09819)],
             colors: [Color(0xFFD4FC79), Color(0xFF96E6A1)],
-
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -2166,13 +2166,13 @@ class _LivePageState extends State<LivePage>
 
       // Microphone button icons with enhanced colors
       toggleMicrophoneOnButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-
           gradient: LinearGradient(
             // colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
             colors: [Color(0xFFFF9A9E), Color(0xFFFECFEF)],
-
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -2191,6 +2191,8 @@ class _LivePageState extends State<LivePage>
 
       // Chat button icons with enhanced colors
       chatEnabledButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
@@ -2199,13 +2201,10 @@ class _LivePageState extends State<LivePage>
             end: Alignment.bottomRight,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(1.0),
-          child: const Icon(
-            Icons.chat_bubble_outline,
-            color: Colors.white,
-            size: 21,
-          ),
+        child: const Icon(
+          Icons.chat_bubble_outline,
+          color: Colors.white,
+          size: 24,
         ),
       ),
       chatDisabledButtonIcon: const Icon(
@@ -2215,37 +2214,86 @@ class _LivePageState extends State<LivePage>
       ),
 
       // Audio output button icons with enhanced colors
-      switchAudioOutputToSpeakerButtonIcon: const Icon(
-        Icons.volume_up_outlined,
-        color: Colors.white,
-        size: 24,
+      switchAudioOutputToSpeakerButtonIcon: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Icon(
+          Icons.volume_up_outlined,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
-      switchAudioOutputToHeadphoneButtonIcon: const Icon(
-        Icons.headphones_outlined,
-        color: Colors.white,
-        size: 24,
+      switchAudioOutputToHeadphoneButtonIcon: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Icon(
+          Icons.headphones_outlined,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
-      switchAudioOutputToBluetoothButtonIcon: const Icon(
-        Icons.bluetooth_outlined,
-        color: Colors.white,
-        size: 24,
+      switchAudioOutputToBluetoothButtonIcon: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF2193b0), Color(0xFF6dd5ed)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Icon(
+          Icons.bluetooth_outlined,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
 
       // Leave button icon with enhanced color
-      leaveButtonIcon: const Icon(
-        Icons.call_end_outlined,
-        color: Colors.red,
-        size: 24,
+      leaveButtonIcon: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFFffa030), Color(0xFFfe9b00)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Icon(
+          Icons.call_end_outlined,
+          color: Colors.white,
+          size: 24,
+        ),
       ),
 
       // Beauty effect button icon
       beautyEffectButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
             // colors: [Color(0xFFf00000), Color(0xFFff9966)],
             colors: [Color(0xFFFFDEE9), Color(0xFFB5FFFC)],
-
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -2259,6 +2307,8 @@ class _LivePageState extends State<LivePage>
 
       // Sound effect button icon
       soundEffectButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
@@ -2276,12 +2326,13 @@ class _LivePageState extends State<LivePage>
         ),
       ),
       switchCameraButtonIcon: Container(
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: LinearGradient(
             // colors: [Color(0xFF00b09b), Color(0xFF96c93d)],
             colors: [Color(0xFFa1c4fd), Color(0xFFc2e9fb)],
-
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

@@ -202,7 +202,16 @@ class _HomePageState extends State<HomePage> {
 
                           // Switch camera button icon with enhanced colors
                           switchCameraButtonIcon: Container(
-                            decoration: BoxDecoration(color: Colors.orange),
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [Color(0xFFa1c4fd), Color(0xFFc2e9fb)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
                             child: const Icon(
                               Icons.flip_camera_ios,
                               color: Colors.white,
@@ -1892,7 +1901,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
 
                   // Chat button icons with enhanced colors
                   chatEnabledButtonIcon: const Icon(
-                    Icons.chat_bubble,
+                    Icons.chat_bubble_outline,
                     color: Colors.white,
                     size: 24,
                   ),
