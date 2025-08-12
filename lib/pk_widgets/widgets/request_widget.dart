@@ -49,7 +49,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
       margin: EdgeInsets.only(top: 32), // Increased space above the request row
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
+        // color: Colors.black.withOpacity(0.7),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -97,8 +97,6 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
           //   ),
           // ),
           Container(
-            width: 200,
-            height: 50,
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -115,7 +113,7 @@ class _PKRequestWidgetState extends State<PKRequestWidget> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 100,
+                  width: 60,
                   height: 30,
                   child: TextFormField(
                     controller: _hostIDController,

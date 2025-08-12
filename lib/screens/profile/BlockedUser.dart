@@ -145,11 +145,14 @@ class _BlockedUserState extends State<BlockedUser> {
                               radius: 28,
                               backgroundColor: Colors.grey[900],
                               backgroundImage:
-                                  user['profile_pic'] != null && user['profile_pic'].isNotEmpty
-    ? (user['profile_pic'].startsWith('http')
-        ? NetworkImage(user['profile_pic'])
-        : NetworkImage('https://server.bharathchat.com${user['profile_pic']}'))
-    : null,
+                                  user['profile_pic'] != null &&
+                                          user['profile_pic'].isNotEmpty
+                                      ? (user['profile_pic'].startsWith('http')
+                                          ? NetworkImage(user['profile_pic'])
+                                          : NetworkImage(
+                                            'https://server.bharathchat.com${user['profile_pic']}',
+                                          ))
+                                      : null,
                               child:
                                   (user['profile_pic'] == null ||
                                           user['profile_pic'].isEmpty)
@@ -216,6 +219,8 @@ class _BlockedUserState extends State<BlockedUser> {
                           ),
                           const SizedBox(width: 10),
                           Container(
+                            width: 80,
+                            height: 30,
                             decoration: BoxDecoration(
                               // color: Colors.red,
                               gradient: const LinearGradient(
@@ -248,7 +253,7 @@ class _BlockedUserState extends State<BlockedUser> {
                                 'Unblock',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                                  fontSize: 10,
                                   color: Colors.white,
                                 ),
                               ),
