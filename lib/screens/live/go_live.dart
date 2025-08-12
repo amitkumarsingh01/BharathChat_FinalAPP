@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
               appID: widget.appID,
               appSign: widget.appSign,
               userID: userID,
-              userName: "User_$userID",
+              userName: userID,
               liveID: liveID,
               config:
                   ZegoUIKitPrebuiltLiveStreamingConfig.host()
@@ -98,12 +98,31 @@ class _HomePageState extends State<HomePage> {
                       ZegoLiveStreamingMenuBarButtonName
                           .switchAudioOutputButton,
                       ZegoLiveStreamingMenuBarButtonName.chatButton,
+                      ZegoLiveStreamingMenuBarButtonName.switchCameraButton,
+
+                      // ZegoLiveStreamingMenuBarButtonName.beautyEffectButton,
+                      // ZegoLiveStreamingMenuBarButtonName.soundEffectButton,
                     ]
                     // Audio video view config
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
                     ..audioVideoView.showMicrophoneStateOnView = true
                     ..audioVideoView.showUserNameOnView = false
+                    ..avatarBuilder = (
+                      BuildContext context,
+                      Size size,
+                      ZegoUIKitUser? user,
+                      Map<String, dynamic> extraInfo,
+                    ) {
+                      return customAvatarBuilder(
+                        context,
+                        size,
+                        user,
+                        extraInfo,
+                        profilePic:
+                            null, // For this simple test, we don't have user data
+                      );
+                    }
                     // Custom button styles for enhanced UI
                     ..bottomMenuBar.buttonStyle =
                         ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -180,6 +199,18 @@ class _HomePageState extends State<HomePage> {
                             color: Colors.white,
                             size: 24,
                           ),
+
+                          // Switch camera button icon with enhanced colors
+                          switchCameraButtonIcon: Container(
+                            decoration: BoxDecoration(color: Colors.orange),
+                            child: const Icon(
+                              Icons.flip_camera_ios,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+
+                          // Background button icon
                         ),
             ),
       ),
@@ -1705,11 +1736,27 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   ZegoLiveStreamingMenuBarButtonName.leaveButton,
                   ZegoLiveStreamingMenuBarButtonName.switchAudioOutputButton,
                   ZegoLiveStreamingMenuBarButtonName.chatButton,
+                  ZegoLiveStreamingMenuBarButtonName.switchCameraButton,
                 ]
                 ..audioVideoView.showAvatarInAudioMode = true
                 ..audioVideoView.showSoundWavesInAudioMode = true
                 ..audioVideoView.showMicrophoneStateOnView = true
                 ..audioVideoView.showUserNameOnView = false
+                ..avatarBuilder = (
+                  BuildContext context,
+                  Size size,
+                  ZegoUIKitUser? user,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  return customAvatarBuilder(
+                    context,
+                    size,
+                    user,
+                    extraInfo,
+                    profilePic:
+                        userData != null ? userData['profile_pic'] : null,
+                  );
+                }
                 // Custom button styles for enhanced UI
                 ..bottomMenuBar
                     .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -1786,6 +1833,13 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     color: Colors.white,
                     size: 24,
                   ),
+
+                  // Switch camera button icon with enhanced colors
+                  switchCameraButtonIcon: const Icon(
+                    Icons.flip_camera_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 );
         } else {
           config =
@@ -1806,6 +1860,21 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..audioVideoView.showSoundWavesInAudioMode = true
                 ..audioVideoView.showMicrophoneStateOnView = true
                 ..audioVideoView.showUserNameOnView = false
+                ..avatarBuilder = (
+                  BuildContext context,
+                  Size size,
+                  ZegoUIKitUser? user,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  return customAvatarBuilder(
+                    context,
+                    size,
+                    user,
+                    extraInfo,
+                    profilePic:
+                        userData != null ? userData['profile_pic'] : null,
+                  );
+                }
                 // Custom button styles for enhanced UI
                 ..bottomMenuBar
                     .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -1870,6 +1939,13 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     color: Colors.white,
                     size: 24,
                   ),
+
+                  // Switch camera button icon with enhanced colors
+                  switchCameraButtonIcon: const Icon(
+                    Icons.flip_camera_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 );
         }
 
@@ -1899,6 +1975,8 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     hostId: userData != null ? userData['id'] ?? 0 : 0,
                     backgroundImage: selectedBackgroundImage,
                     backgroundMusic: selectedMusic,
+                    profilePic:
+                        userData != null ? userData['profile_pic'] : null,
                   ),
             ),
           );

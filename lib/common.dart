@@ -1,6 +1,7 @@
 // Flutter imports:
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Package imports:
 import 'package:cached_network_image/cached_network_image.dart';
@@ -84,23 +85,52 @@ Widget customAvatarBuilder(
   Map<String, dynamic> extraInfo, {
   String? profilePic,
 }) {
-  // Always return a simple avatar without username display
+  // If we have a profile picture URL, use it
   if (profilePic != null && profilePic.isNotEmpty) {
-    try {
-      return Container(
+    // Handle both full URLs and relative paths
+    String imageUrl;
+    if (profilePic.startsWith('http')) {
+      imageUrl = profilePic;
+    } else {
+      imageUrl = 'https://server.bharathchat.com/$profilePic';
+    }
+
+    return ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
         width: size.width,
         height: size.height,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          image: DecorationImage(
-            image: MemoryImage(base64Decode(profilePic)),
-            fit: BoxFit.cover,
-          ),
-        ),
-      );
-    } catch (e) {
-      // fallback to simple avatar
-    }
+        fit: BoxFit.cover,
+        placeholder:
+            (context, url) => Container(
+              width: size.width,
+              height: size.height,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: Icon(
+                Icons.person,
+                size: size.width * 0.5,
+                color: Colors.grey[600],
+              ),
+            ),
+        errorWidget:
+            (context, url, error) => Container(
+              width: size.width,
+              height: size.height,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: Icon(
+                Icons.person,
+                size: size.width * 0.5,
+                color: Colors.grey[600],
+              ),
+            ),
+      ),
+    );
   }
 
   // Return a simple avatar without any username or user information

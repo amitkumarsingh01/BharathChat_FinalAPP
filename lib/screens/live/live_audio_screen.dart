@@ -27,6 +27,7 @@ class LiveAudioScreen extends StatefulWidget {
   final int hostId;
   final String? backgroundImage;
   final String? backgroundMusic;
+  final String? profilePic;
 
   const LiveAudioScreen({
     Key? key,
@@ -36,6 +37,7 @@ class LiveAudioScreen extends StatefulWidget {
     this.isHost = false,
     this.backgroundImage,
     this.backgroundMusic,
+    this.profilePic,
   }) : super(key: key);
 
   @override
@@ -651,6 +653,20 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ]
               // Audio video view config
               ..audioVideoView.showUserNameOnView = false
+              ..avatarBuilder = (
+                BuildContext context,
+                Size size,
+                ZegoUIKitUser? user,
+                Map<String, dynamic> extraInfo,
+              ) {
+                return customAvatarBuilder(
+                  context,
+                  size,
+                  user,
+                  extraInfo,
+                  profilePic: widget.profilePic,
+                );
+              }
               // Custom button styles for enhanced UI
               ..bottomMenuBar
                   .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -733,6 +749,20 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ]
               // Audio video view config
               ..audioVideoView.showUserNameOnView = true
+              ..avatarBuilder = (
+                BuildContext context,
+                Size size,
+                ZegoUIKitUser? user,
+                Map<String, dynamic> extraInfo,
+              ) {
+                return customAvatarBuilder(
+                  context,
+                  size,
+                  user,
+                  extraInfo,
+                  profilePic: widget.profilePic,
+                );
+              }
               // Custom button styles for enhanced UI
               ..bottomMenuBar
                   .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -918,10 +948,10 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             userID: widget.localUserID,
             userName:
                 currentUser != null
-                    ? (currentUser!['username'] ??
-                        currentUser!['first_name'] ??
-                        'User_${widget.localUserID}')
-                    : 'User_${widget.localUserID}',
+                    ? (currentUser!['first_name'] ??
+                        currentUser!['username'] ??
+                        widget.localUserID)
+                    : widget.localUserID,
             liveID: widget.liveID,
             config: config,
             events: ZegoUIKitPrebuiltLiveStreamingEvents(

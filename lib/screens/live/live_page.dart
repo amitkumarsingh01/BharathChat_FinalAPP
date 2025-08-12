@@ -2275,6 +2275,23 @@ class _LivePageState extends State<LivePage>
           size: 24,
         ),
       ),
+      switchCameraButtonIcon: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            // colors: [Color(0xFF00b09b), Color(0xFF96c93d)],
+            colors: [Color(0xFFa1c4fd), Color(0xFFc2e9fb)],
+
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: const Icon(
+          Icons.flip_camera_ios,
+          color: Color(0xFF425C78),
+          size: 24,
+        ),
+      ),
     );
 
     // If pkBattle is not a valid property, comment or remove the next line
@@ -2392,7 +2409,7 @@ class _LivePageState extends State<LivePage>
               appSign:
                   '12e07321bd8231dda371ea9235e274178403bd97a7ccabcb09e22474c42da3a4',
               userID: widget.localUserID,
-              userName: 'user_${widget.localUserID}',
+              userName: widget.localUserID,
               liveID: widget.liveID,
               config: config,
               events: ZegoUIKitPrebuiltLiveStreamingEvents(
