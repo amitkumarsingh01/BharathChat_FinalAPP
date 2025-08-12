@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/api_service.dart';
-import 'package:zego_uikit/zego_uikit.dart';
+// import 'package:zego_uikit/zego_uikit.dart';
 import 'dart:convert';
+import 'package:just_audio/just_audio.dart';
 
 class GiftPanel extends StatefulWidget {
   final int receiverId;
@@ -33,12 +34,19 @@ class _GiftPanelState extends State<GiftPanel> {
   List<dynamic> gifts = [];
   bool isLoading = true;
   Map<String, dynamic>? currentUser;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
     _loadGifts();
     _loadCurrentUser();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   Future<void> _loadGifts() async {
@@ -69,71 +77,132 @@ class _GiftPanelState extends State<GiftPanel> {
 
   Future<void> _sendGift(dynamic gift) async {
     try {
-      if (currentUser != null) {
-        setState(() {
-          currentUser!['diamonds'] -= gift['diamond_amount'];
-        });
+      final requestId = DateTime.now().millisecondsSinceEpoch.toString();
+      debugPrint('🎁 [$requestId] Starting gift send...');
+      
+      // Check if we have enough diamonds
+      final currentDiamonds = await ApiService.getCurrentUserDiamonds();
+      final giftCost = gift['diamond_amount'] as int? ?? 0;
+      
+      if (currentDiamonds < giftCost) {
+        debugPrint('❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Insufficient diamonds to send this gift'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
       }
-      print(
-        '[GiftPanel] Sending gift API call: receiverId=${widget.receiverId}, giftId=${gift['id']}, amount=${gift['diamond_amount']}, liveStreamId=${widget.liveStreamId}, liveStreamType=${widget.liveStreamType}',
-      );
+      
+      debugPrint('✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost');
+      
+      // Send gift via API
       final success = await ApiService.sendGift(
         receiverId: widget.receiverId,
         giftId: gift['id'],
-        amount: gift['diamond_amount'],
         liveStreamId: widget.liveStreamId ?? 0,
-        liveStreamType: widget.liveStreamType ?? '',
+        liveStreamType: widget.liveStreamType ?? 'audio',
       );
-      print('[GiftPanel] API call result: $success');
-
+      
       if (success) {
-        // Send ZEGOCLOUD in-room command for gift notification
+        debugPrint('✅ [$requestId] Gift sent successfully via API');
+        
+        // Play gift audio if available (with 2-second delay)
+        final dynamic audioFilenameRaw = gift['audio_filename'];
+        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        if (audioFilename != null && audioFilename.isNotEmpty) {
+          try {
+            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
+            // Wait 2 seconds before playing audio
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              await _audioPlayer.setUrl(audioUrl);
+              await _audioPlayer.play();
+            }
+          } catch (e) {
+            debugPrint('🎁 [$requestId] Error playing gift audio: $e');
+          }
+        }
+        
+        // Immediately show animation for the sender (ensure URL correctness)
+        try {
+          String? gifUrl;
+          final dynamic gifUrlRaw = gift['gif_url'];
+          if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
+            gifUrl = gifUrlRaw.startsWith('http')
+                ? gifUrlRaw
+                : 'https://server.bharathchat.com$gifUrlRaw';
+          } else {
+            final dynamic gifFilenameRaw = gift['gif_filename'];
+            final String gifFilename = (gifFilenameRaw is String)
+                ? gifFilenameRaw
+                : (gifFilenameRaw?.toString() ?? '');
+            gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+          }
+          final String senderName = currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
+          final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
+          if (gifUrl != null) {
+            widget.onGiftAnimation?.call(giftName, gifUrl, senderName);
+          }
+        } catch (e) {
+          debugPrint('🎁 [$requestId] Error creating immediate gift animation: $e');
+        }
+
+        // Send ZEGOCLOUD in-room command for synchronization
         final message = jsonEncode({
           "type": "gift",
           "sender_id": currentUser?['id'],
           "sender_name": currentUser?['first_name'] ?? 'User',
           "gift_id": gift['id'],
           "gift_name": gift['name'],
-          "gift_amount": gift['diamond_amount'],
+          "gift_amount": giftCost,
           "gif_filename": gift['gif_filename'],
+          "audio_filename": gift['audio_filename'],
+          "receiver_id": widget.receiverId,
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
-        print(
-          '[GiftPanel] Gift sent successfully via API!',
-        );
-        print('[GiftPanel] Note: ZEGOCLOUD in-room command is disabled due to API issues');
-
+        
+        debugPrint('🎁 [$requestId] Sending in-room command: $message');
+        // Note: ZEGOCLOUD command sending is disabled due to API limitations
+        // Gift animations will be synchronized through server-side polling
+        debugPrint('🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync');
+        
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${gift['name']} sent successfully!'),
+              content: Text('🎁 Gift sent successfully!'),
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 2),
             ),
           );
         }
-        // Trigger gift animation
-        final gifUrl =
-            'https://server.bharathchat.com/uploads/gifts/' +
-            gift['gif_filename'];
-        final senderName = currentUser?['first_name'] ?? 'User';
         
-        // Determine PK battle side based on receiver ID
-        String? pkBattleSide;
-        // This will be determined by the parent component based on the actual PK battle context
-        widget.onGiftAnimation?.call(gift['name'], gifUrl, senderName, pkBattleSide: pkBattleSide);
-        // Call callback
-        widget.onGiftSent?.call();
+        // Close the gift panel
+        Navigator.of(context).pop();
       } else {
-        throw Exception('Gift send failed');
+        debugPrint('❌ [$requestId] Failed to send gift via API');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Failed to send gift. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } catch (e) {
-      print('[GiftPanel] Error sending gift: $e');
+      debugPrint('❌ Error sending gift: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error sending gift: $e'),
+            content: Text('❌ Error sending gift: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

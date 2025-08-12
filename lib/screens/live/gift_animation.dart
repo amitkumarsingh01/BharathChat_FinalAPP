@@ -65,9 +65,8 @@ class _GiftAnimationState extends State<GiftAnimation>
       ),
     );
 
-    // Initialize audio player and play gift sound
+    // Initialize audio player (no default sound)
     _audioPlayer = AudioPlayer();
-    _playGiftSound();
 
     _controller.forward().then((_) {
       Future.delayed(const Duration(seconds: 2), () {
@@ -87,11 +86,16 @@ class _GiftAnimationState extends State<GiftAnimation>
     super.dispose();
   }
 
-  Future<void> _playGiftSound() async {
+  // Method to play custom audio with 2-second delay
+  Future<void> playCustomAudio(String audioUrl) async {
     try {
-      await _audioPlayer.play(AssetSource('gift_sound.mp3'));
+      // Wait 2 seconds before playing audio
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        await _audioPlayer.play(UrlSource(audioUrl));
+      }
     } catch (e) {
-      print('Error playing gift sound: $e');
+      print('Error playing custom audio: $e');
     }
   }
 
