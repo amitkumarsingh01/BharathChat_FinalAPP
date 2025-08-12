@@ -102,7 +102,85 @@ class _HomePageState extends State<HomePage> {
                     // Audio video view config
                     ..audioVideoView.showAvatarInAudioMode = true
                     ..audioVideoView.showSoundWavesInAudioMode = true
-                    ..audioVideoView.showMicrophoneStateOnView = true,
+                    ..audioVideoView.showMicrophoneStateOnView = true
+                    ..audioVideoView.showUserNameOnView = false
+                    // Custom button styles for enhanced UI
+                    ..bottomMenuBar.buttonStyle =
+                        ZegoLiveStreamingBottomMenuBarButtonStyle(
+                          // Camera button icons with enhanced colors
+                          toggleCameraOnButtonIcon: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          toggleCameraOffButtonIcon: const Icon(
+                            Icons.camera_alt_outlined,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+
+                          // Microphone button icons with enhanced colors
+                          toggleMicrophoneOnButtonIcon: const Icon(
+                            Icons.mic,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          toggleMicrophoneOffButtonIcon: const Icon(
+                            Icons.mic_off,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+
+                          // Chat button icons with enhanced colors
+                          chatEnabledButtonIcon: const Icon(
+                            Icons.chat_bubble,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          chatDisabledButtonIcon: const Icon(
+                            Icons.chat_bubble_outline,
+                            color: Colors.grey,
+                            size: 24,
+                          ),
+
+                          // Audio output button icons with enhanced colors
+                          switchAudioOutputToSpeakerButtonIcon: const Icon(
+                            Icons.volume_up,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                            Icons.headphones,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          switchAudioOutputToBluetoothButtonIcon: const Icon(
+                            Icons.bluetooth,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+
+                          // Leave button icon with enhanced color
+                          leaveButtonIcon: const Icon(
+                            Icons.call_end,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+
+                          // Beauty effect button icon
+                          beautyEffectButtonIcon: const Icon(
+                            Icons.face,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+
+                          // Sound effect button icon
+                          soundEffectButtonIcon: const Icon(
+                            Icons.graphic_eq,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
             ),
       ),
     );
@@ -1630,7 +1708,85 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ]
                 ..audioVideoView.showAvatarInAudioMode = true
                 ..audioVideoView.showSoundWavesInAudioMode = true
-                ..audioVideoView.showMicrophoneStateOnView = true;
+                ..audioVideoView.showMicrophoneStateOnView = true
+                ..audioVideoView.showUserNameOnView = false
+                // Custom button styles for enhanced UI
+                ..bottomMenuBar
+                    .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
+                  // Camera button icons with enhanced colors
+                  toggleCameraOnButtonIcon: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  toggleCameraOffButtonIcon: const Icon(
+                    Icons.camera_alt_outlined,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+
+                  // Microphone button icons with enhanced colors
+                  toggleMicrophoneOnButtonIcon: const Icon(
+                    Icons.mic,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  toggleMicrophoneOffButtonIcon: const Icon(
+                    Icons.mic_off,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+
+                  // Chat button icons with enhanced colors
+                  chatEnabledButtonIcon: const Icon(
+                    Icons.chat_bubble,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  chatDisabledButtonIcon: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
+
+                  // Audio output button icons with enhanced colors
+                  switchAudioOutputToSpeakerButtonIcon: const Icon(
+                    Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                    Icons.headphones,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  switchAudioOutputToBluetoothButtonIcon: const Icon(
+                    Icons.bluetooth,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+
+                  // Leave button icon with enhanced color
+                  leaveButtonIcon: const Icon(
+                    Icons.call_end,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+
+                  // Beauty effect button icon
+                  beautyEffectButtonIcon: const Icon(
+                    Icons.face,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+
+                  // Sound effect button icon
+                  soundEffectButtonIcon: const Icon(
+                    Icons.graphic_eq,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                );
         } else {
           config =
               ZegoUIKitPrebuiltLiveStreamingConfig.host()
@@ -1648,7 +1804,73 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ]
                 ..audioVideoView.showAvatarInAudioMode = true
                 ..audioVideoView.showSoundWavesInAudioMode = true
-                ..audioVideoView.showMicrophoneStateOnView = true;
+                ..audioVideoView.showMicrophoneStateOnView = true
+                ..audioVideoView.showUserNameOnView = false
+                // Custom button styles for enhanced UI
+                ..bottomMenuBar
+                    .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
+                  // Microphone button icons with enhanced colors
+                  toggleMicrophoneOnButtonIcon: const Icon(
+                    Icons.mic,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  toggleMicrophoneOffButtonIcon: const Icon(
+                    Icons.mic_off,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+
+                  // Chat button icons with enhanced colors
+                  chatEnabledButtonIcon: const Icon(
+                    Icons.chat_bubble,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  chatDisabledButtonIcon: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
+
+                  // Audio output button icons with enhanced colors
+                  switchAudioOutputToSpeakerButtonIcon: const Icon(
+                    Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                    Icons.headphones,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  switchAudioOutputToBluetoothButtonIcon: const Icon(
+                    Icons.bluetooth,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+
+                  // Leave button icon with enhanced color
+                  leaveButtonIcon: const Icon(
+                    Icons.call_end,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+
+                  // Beauty effect button icon
+                  beautyEffectButtonIcon: const Icon(
+                    Icons.face,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+
+                  // Sound effect button icon
+                  soundEffectButtonIcon: const Icon(
+                    Icons.graphic_eq,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                );
         }
 
         // Navigate to the appropriate screen based on mode

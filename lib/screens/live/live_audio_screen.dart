@@ -72,7 +72,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   bool _sendingGift = false;
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
-  
+
   // Gift polling for synchronization
   Timer? _giftPollingTimer;
   DateTime _lastGiftCheck = DateTime.now();
@@ -112,32 +112,35 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     });
 
     _fetchGiftsAndUser();
-    
+
     // Start gift polling for synchronization across devices
     _startGiftPolling();
   }
-  
+
   // Gift polling methods for synchronization
   void _startGiftPolling() {
     _giftPollingTimer?.cancel();
     _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       // For audio screen (non-PK), use user gifts received endpoint
-      final int targetUserId = widget.isHost
-          ? (currentUser?['id'] as int? ?? widget.hostId)
-          : widget.hostId;
+      final int targetUserId =
+          widget.isHost
+              ? (currentUser?['id'] as int? ?? widget.hostId)
+              : widget.hostId;
       _pollUserGiftsReceived(targetUserId);
     });
   }
-  
+
   void _stopGiftPolling() {
     _giftPollingTimer?.cancel();
     _giftPollingTimer = null;
   }
-  
+
   // Poll gifts received by specific user and display
   Future<void> _pollUserGiftsReceived(int targetUserId) async {
     try {
-      final data = await ApiService.getUserGiftsReceived(userIdentifier: targetUserId);
+      final data = await ApiService.getUserGiftsReceived(
+        userIdentifier: targetUserId,
+      );
       if (data == null) return;
       final List<dynamic>? recentGifts = data['recent_gifts'] as List<dynamic>?;
       if (recentGifts == null || recentGifts.isEmpty) return;
@@ -156,9 +159,10 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         }
 
         // Deduplication by transaction_id
-        final int? txnId = (gift['transaction_id'] is int)
-            ? gift['transaction_id'] as int
-            : int.tryParse('${gift['transaction_id']}');
+        final int? txnId =
+            (gift['transaction_id'] is int)
+                ? gift['transaction_id'] as int
+                : int.tryParse('${gift['transaction_id']}');
         if (txnId == null) continue;
         final giftKey = 'user_${targetUserId}_txn_$txnId';
         if (_processedGifts.contains(giftKey)) continue;
@@ -166,18 +170,26 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
 
         // Play audio (2s delay)
         final dynamic audioFilenameRaw = gift['audio_filename'];
-        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        final String? audioFilename =
+            (audioFilenameRaw is String)
+                ? audioFilenameRaw
+                : (audioFilenameRaw?.toString());
         if (audioFilename != null && audioFilename.isNotEmpty) {
           try {
-            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
-            debugPrint('🎁 (User $targetUserId) Playing received gift audio: $audioUrl');
+            final audioUrl =
+                'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            debugPrint(
+              '🎁 (User $targetUserId) Playing received gift audio: $audioUrl',
+            );
             await Future.delayed(const Duration(seconds: 2));
             if (mounted) {
               await _audioPlayer.setUrl(audioUrl);
               await _audioPlayer.play();
             }
           } catch (e) {
-            debugPrint('🎁 (User $targetUserId) Error playing received gift audio: $e');
+            debugPrint(
+              '🎁 (User $targetUserId) Error playing received gift audio: $e',
+            );
           }
         }
 
@@ -185,16 +197,24 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         String gifUrl;
         final dynamic gifUrlRaw = gift['gif_url'];
         if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
-          gifUrl = gifUrlRaw.startsWith('http')
-              ? gifUrlRaw
-              : 'https://server.bharathchat.com$gifUrlRaw';
+          gifUrl =
+              gifUrlRaw.startsWith('http')
+                  ? gifUrlRaw
+                  : 'https://server.bharathchat.com$gifUrlRaw';
         } else {
           final dynamic gifFilenameRaw = gift['gif_filename'];
-          final String gifFilename = (gifFilenameRaw is String) ? gifFilenameRaw : (gifFilenameRaw?.toString() ?? '');
+          final String gifFilename =
+              (gifFilenameRaw is String)
+                  ? gifFilenameRaw
+                  : (gifFilenameRaw?.toString() ?? '');
           gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
         }
-        final Map<String, dynamic>? sender = gift['sender'] as Map<String, dynamic>?;
-        final String senderName = sender?['username'] as String? ?? sender?['first_name'] as String? ?? 'User';
+        final Map<String, dynamic>? sender =
+            gift['sender'] as Map<String, dynamic>?;
+        final String senderName =
+            sender?['username'] as String? ??
+            sender?['first_name'] as String? ??
+            'User';
         final String giftName = gift['gift_name'] as String? ?? 'Gift';
         _createGiftAnimation(giftName, gifUrl, senderName);
       }
@@ -204,14 +224,14 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
       debugPrint('❌ Error polling user gifts received: $e');
     }
   }
-  
+
   // Create gift animation (reusable method)
   void _createGiftAnimation(String giftName, String gifUrl, String senderName) {
     debugPrint('🎁 Creating gift animation:');
     debugPrint('🎁   - Gift Name: $giftName');
     debugPrint('🎁   - GIF URL: $gifUrl');
     debugPrint('🎁   - Sender: $senderName');
-    
+
     setState(() {
       _activeGiftAnimations.add(
         GiftAnimation(
@@ -223,7 +243,9 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             debugPrint('🎁 Gift animation completed, removing from list');
             setState(() {
               _activeGiftAnimations.removeWhere(
-                (w) => (w.key as ValueKey).value == 'gift_anim_${_giftAnimKey - 1}',
+                (w) =>
+                    (w.key as ValueKey).value ==
+                    'gift_anim_${_giftAnimKey - 1}',
               );
             });
           },
@@ -306,7 +328,12 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     }
   }
 
-  void _showGiftAnimation(String giftName, String gifUrl, String senderName, {String? pkBattleSide}) {
+  void _showGiftAnimation(
+    String giftName,
+    String gifUrl,
+    String senderName, {
+    String? pkBattleSide,
+  }) {
     setState(() {
       giftAnimations.add({
         'giftName': giftName,
@@ -346,13 +373,15 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     try {
       final requestId = DateTime.now().millisecondsSinceEpoch.toString();
       debugPrint('🎁 [$requestId] Starting gift send from list...');
-      
+
       // Check if we have enough diamonds
       final currentDiamonds = await ApiService.getCurrentUserDiamonds();
       final giftCost = gift['diamond_amount'] as int? ?? 0;
-      
+
       if (currentDiamonds < giftCost) {
-        debugPrint('❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost');
+        debugPrint(
+          '❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -364,9 +393,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         }
         return;
       }
-      
-      debugPrint('✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost');
-      
+
+      debugPrint(
+        '✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost',
+      );
+
       // Derive numeric live stream id from widget.liveID (e.g., "live_17775689" or just "17775689")
       int liveStreamId = 0;
       final liveIdStr = widget.liveID;
@@ -386,16 +417,20 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         liveStreamId: liveStreamId,
         liveStreamType: 'audio',
       );
-      
+
       if (success) {
         debugPrint('✅ [$requestId] Gift sent successfully via API');
-        
+
         // Play gift audio if available (with 2-second delay)
         final dynamic audioFilenameRaw = gift['audio_filename'];
-        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        final String? audioFilename =
+            (audioFilenameRaw is String)
+                ? audioFilenameRaw
+                : (audioFilenameRaw?.toString());
         if (audioFilename != null && audioFilename.isNotEmpty) {
           try {
-            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            final audioUrl =
+                'https://server.bharathchat.com/uploads/audio/$audioFilename';
             debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
             // Wait 2 seconds before playing audio
             await Future.delayed(const Duration(seconds: 2));
@@ -407,29 +442,35 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             debugPrint('🎁 [$requestId] Error playing gift audio: $e');
           }
         }
-        
+
         // Immediately show animation for the sender
         try {
           String? gifUrl;
           final dynamic gifUrlRaw = gift['gif_url'];
           if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
-            gifUrl = gifUrlRaw.startsWith('http')
-                ? gifUrlRaw
-                : 'https://server.bharathchat.com$gifUrlRaw';
+            gifUrl =
+                gifUrlRaw.startsWith('http')
+                    ? gifUrlRaw
+                    : 'https://server.bharathchat.com$gifUrlRaw';
           } else {
             final dynamic gifFilenameRaw = gift['gif_filename'];
-            final String gifFilename = (gifFilenameRaw is String)
-                ? gifFilenameRaw
-                : (gifFilenameRaw?.toString() ?? '');
-            gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+            final String gifFilename =
+                (gifFilenameRaw is String)
+                    ? gifFilenameRaw
+                    : (gifFilenameRaw?.toString() ?? '');
+            gifUrl =
+                'https://server.bharathchat.com/uploads/gifts/$gifFilename';
           }
-          final String senderName = currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
+          final String senderName =
+              currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
           final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
           if (gifUrl != null) {
             _createGiftAnimation(giftName, gifUrl, senderName);
           }
         } catch (e) {
-          debugPrint('🎁 [$requestId] Error creating immediate gift animation: $e');
+          debugPrint(
+            '🎁 [$requestId] Error creating immediate gift animation: $e',
+          );
         }
 
         // Send ZEGOCLOUD in-room command for synchronization
@@ -441,16 +482,19 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
           'audio_filename': gift['audio_filename'],
           'diamond_amount': giftCost,
           'sender_id': currentUser?['id'],
-          'sender_name': currentUser?['username'] ?? currentUser?['first_name'] ?? 'User',
+          'sender_name':
+              currentUser?['username'] ?? currentUser?['first_name'] ?? 'User',
           'receiver_id': widget.hostId,
           'timestamp': DateTime.now().toIso8601String(),
         });
-        
+
         debugPrint('🎁 [$requestId] Sending in-room command: $message');
         // Note: ZEGOCLOUD command sending is disabled due to API limitations
         // Gift animations will be synchronized through server-side polling
-        debugPrint('🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync');
-        
+        debugPrint(
+          '🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync',
+        );
+
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -604,7 +648,74 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoLiveStreamingMenuBarButtonName.leaveButton,
                 ZegoLiveStreamingMenuBarButtonName.switchAudioOutputButton,
                 ZegoLiveStreamingMenuBarButtonName.chatButton,
-              ])
+              ]
+              // Audio video view config
+              ..audioVideoView.showUserNameOnView = false
+              // Custom button styles for enhanced UI
+              ..bottomMenuBar
+                  .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
+                // Microphone button icons with enhanced colors
+                toggleMicrophoneOnButtonIcon: const Icon(
+                  Icons.mic,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                toggleMicrophoneOffButtonIcon: const Icon(
+                  Icons.mic_off,
+                  color: Colors.red,
+                  size: 24,
+                ),
+
+                // Chat button icons with enhanced colors
+                chatEnabledButtonIcon: const Icon(
+                  Icons.chat_bubble,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                chatDisabledButtonIcon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Colors.grey,
+                  size: 24,
+                ),
+
+                // Audio output button icons with enhanced colors
+                switchAudioOutputToSpeakerButtonIcon: const Icon(
+                  Icons.volume_up,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                  Icons.headphones,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                switchAudioOutputToBluetoothButtonIcon: const Icon(
+                  Icons.bluetooth,
+                  color: Colors.white,
+                  size: 24,
+                ),
+
+                // Leave button icon with enhanced color
+                leaveButtonIcon: const Icon(
+                  Icons.call_end,
+                  color: Colors.red,
+                  size: 24,
+                ),
+
+                // Beauty effect button icon
+                beautyEffectButtonIcon: const Icon(
+                  Icons.face,
+                  color: Colors.white,
+                  size: 24,
+                ),
+
+                // Sound effect button icon
+                soundEffectButtonIcon: const Icon(
+                  Icons.graphic_eq,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ))
             : (ZegoUIKitPrebuiltLiveStreamingConfig.audience()
               ..turnOnCameraWhenJoining =
                   false // No camera for audience
@@ -619,7 +730,62 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoLiveStreamingMenuBarButtonName.leaveButton,
                 ZegoLiveStreamingMenuBarButtonName.switchAudioOutputButton,
                 ZegoLiveStreamingMenuBarButtonName.chatButton,
-              ]);
+              ]
+              // Audio video view config
+              ..audioVideoView.showUserNameOnView = true
+              // Custom button styles for enhanced UI
+              ..bottomMenuBar
+                  .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
+                // Chat button icons with enhanced colors
+                chatEnabledButtonIcon: const Icon(
+                  Icons.chat_bubble,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                chatDisabledButtonIcon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Colors.grey,
+                  size: 24,
+                ),
+
+                // Audio output button icons with enhanced colors
+                switchAudioOutputToSpeakerButtonIcon: const Icon(
+                  Icons.volume_up,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                  Icons.headphones,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                switchAudioOutputToBluetoothButtonIcon: const Icon(
+                  Icons.bluetooth,
+                  color: Colors.white,
+                  size: 24,
+                ),
+
+                // Leave button icon with enhanced color
+                leaveButtonIcon: const Icon(
+                  Icons.call_end,
+                  color: Colors.red,
+                  size: 24,
+                ),
+
+                // Beauty effect button icon
+                beautyEffectButtonIcon: const Icon(
+                  Icons.face,
+                  color: Colors.white,
+                  size: 24,
+                ),
+
+                // Sound effect button icon
+                soundEffectButtonIcon: const Icon(
+                  Icons.graphic_eq,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ));
 
     // Add virtual gift, like, and diamond buttons for both host and audience
     final double buttonSize = 38;
