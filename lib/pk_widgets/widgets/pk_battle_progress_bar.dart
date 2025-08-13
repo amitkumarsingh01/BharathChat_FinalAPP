@@ -27,8 +27,10 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
   Timer? _timer;
   late AnimationController _animationController;
   late AnimationController _scoreAnimationController;
+  late AnimationController _diamondMoveController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _scoreAnimation;
+  late Animation<double> _diamondMoveAnimation;
   Animation<double>? _glowAnimation;
 
   @override
@@ -36,8 +38,11 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     super.initState();
     _fetchScore();
     // Update more frequently during PK battles to show gift scores immediately
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _fetchScore());
-    
+    _timer = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) => _fetchScore(),
+    );
+
     // Setup pulse animation for the central gem
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
@@ -54,7 +59,19 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
       vsync: this,
     );
     _scoreAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scoreAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _scoreAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    // Setup diamond movement animation
+    _diamondMoveController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _diamondMoveAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _diamondMoveController, curve: Curves.easeInOut),
     );
 
     // Setup glow animation - must be after _animationController is initialized
@@ -68,32 +85,45 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     if (result != null && mounted) {
       final newLeftScore = result['left_score'] ?? 0;
       final newRightScore = result['right_score'] ?? 0;
-      
+
       // Check if scores changed
       if (newLeftScore != leftScore || newRightScore != rightScore) {
         debugPrint('🎯 === PK BATTLE SCORE UPDATE ===');
         debugPrint('🎯 PK Battle ID: ${widget.pkBattleId}');
-        debugPrint('🎯 Left Host: ${widget.leftHostName} - Score: $leftScore → $newLeftScore');
-        debugPrint('🎯 Right Host: ${widget.rightHostName} - Score: $rightScore → $newRightScore');
-        debugPrint('🎯 Total Score: ${leftScore + rightScore} → ${newLeftScore + newRightScore}');
-        
+        debugPrint(
+          '🎯 Left Host: ${widget.leftHostName} - Score: $leftScore → $newLeftScore',
+        );
+        debugPrint(
+          '🎯 Right Host: ${widget.rightHostName} - Score: $rightScore → $newRightScore',
+        );
+        debugPrint(
+          '🎯 Total Score: ${leftScore + rightScore} → ${newLeftScore + newRightScore}',
+        );
+
         setState(() {
           leftScore = newLeftScore;
           rightScore = newRightScore;
         });
-        
+
         // Trigger score animation
         _scoreAnimationController.forward(from: 0.0);
-        
+
+        // Trigger diamond movement animation
+        _diamondMoveController.forward(from: 0.0);
+
         // Notify parent about score update
         if (widget.onScoreUpdate != null) {
           widget.onScoreUpdate!();
         }
-        
-        debugPrint('🎯 PK Battle Scores Updated - Left: $leftScore, Right: $rightScore');
+
+        debugPrint(
+          '🎯 PK Battle Scores Updated - Left: $leftScore, Right: $rightScore',
+        );
       }
     } else {
-      debugPrint('❌ Failed to fetch PK battle scores for ID: ${widget.pkBattleId}');
+      debugPrint(
+        '❌ Failed to fetch PK battle scores for ID: ${widget.pkBattleId}',
+      );
     }
   }
 
@@ -102,6 +132,7 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     _timer?.cancel();
     _animationController.dispose();
     _scoreAnimationController.dispose();
+    _diamondMoveController.dispose();
     super.dispose();
   }
 
@@ -114,10 +145,10 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 0),
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
-                    decoration: BoxDecoration(
-         color: Colors.transparent,
-         borderRadius: BorderRadius.circular(0),
-       ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(0),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -126,14 +157,15 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
             height: 48,
             child: Stack(
               children: [
-                                 // Background bar with enhanced styling
-                 Container(
-                   height: 48,
-                   decoration: BoxDecoration(
-                     borderRadius: BorderRadius.circular(0),
-                     color: Colors.transparent,
-                   ),
-                 ),
+                // Background bar with enhanced styling
+                Container(
+                  // height: 48,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(0),
+                    color: Colors.transparent,
+                  ),
+                ),
                 // Progress bars with enhanced gradients
                 Row(
                   children: [
@@ -149,22 +181,19 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                           ),
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF00d4ff),
-                              const Color(0xFF00b4d8),
-                              const Color(0xFF0096c7),
-                              const Color(0xFF0077b6),
-                              const Color(0xFF005f8a),
+                              const Color(0xFFFF3131), // Red
+                              const Color(0xFFFF914D), // Orange
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                                                     boxShadow: [
-                             BoxShadow(
-                               color: const Color(0xFF00b4d8).withOpacity(0.2),
-                               blurRadius: 4,
-                               spreadRadius: 1,
-                             ),
-                           ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF3131).withOpacity(0.3),
+                              blurRadius: 6,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         child: Container(
                           decoration: BoxDecoration(
@@ -198,22 +227,19 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                           ),
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFFff8fab),
-                              const Color(0xFFff69b4),
-                              const Color(0xFFff1493),
-                              const Color(0xFFc71585),
-                              const Color(0xFFa01585),
+                              const Color(0xFF5de0e6), // Cyan
+                              const Color(0xFF004aad), // Blue
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                                                     boxShadow: [
-                             BoxShadow(
-                               color: const Color(0xFFff69b4).withOpacity(0.2),
-                               blurRadius: 4,
-                               spreadRadius: 1,
-                             ),
-                           ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF5de0e6).withOpacity(0.3),
+                              blurRadius: 6,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
                         child: Container(
                           decoration: BoxDecoration(
@@ -237,204 +263,442 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                     ),
                   ],
                 ),
-                // Central gem with enhanced effects
+                // Central gem with enhanced effects and movement
+                AnimatedBuilder(
+                  animation: _diamondMoveAnimation,
+                  builder: (context, child) {
+                    // Calculate diamond position based on scores
+                    final total = leftScore + rightScore;
+                    final leftPercent = total == 0 ? 0.5 : leftScore / total;
+
+                    // Calculate the target position (0.0 = far left, 1.0 = far right)
+                    final targetPosition = leftPercent;
+
+                    // Use animation to smoothly move to target position with easing
+                    final currentPosition = targetPosition;
+
+                    // Calculate horizontal offset with constrained range to stay within sword bounds
+                    // Limit movement to prevent diamond from going beyond sword images
+                    final horizontalOffset = (currentPosition - 0.5) * 200;
+
+                    // Add a subtle bounce effect when scores change
+                    final bounceEffect =
+                        _diamondMoveAnimation.value < 0.5
+                            ? Curves.elasticOut.transform(
+                              _diamondMoveAnimation.value * 2,
+                            )
+                            : 1.0;
+
+                    // Calculate dynamic glow intensity based on movement
+                    final glowIntensity =
+                        0.3 + (_diamondMoveAnimation.value * 0.4);
+
+                    return Positioned(
+                      left: 0,
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Transform.translate(
+                        offset: Offset(horizontalOffset, 0),
+                        child: Center(
+                          child: AnimatedBuilder(
+                            animation: _pulseAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _pulseAnimation.value * bounceEffect,
+                                child: Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF9d4edd,
+                                        ).withOpacity(0.3),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                      // Add dynamic glow based on position with enhanced intensity
+                                      BoxShadow(
+                                        color:
+                                            currentPosition < 0.5
+                                                ? const Color(
+                                                  0xFFFF3131,
+                                                ).withOpacity(glowIntensity)
+                                                : const Color(
+                                                  0xFF5de0e6,
+                                                ).withOpacity(glowIntensity),
+                                        blurRadius:
+                                            15 +
+                                            (_diamondMoveAnimation.value * 10),
+                                        spreadRadius:
+                                            2 +
+                                            (_diamondMoveAnimation.value * 3),
+                                      ),
+                                      // Add trailing effect during movement
+                                      if (_diamondMoveAnimation.value < 0.8)
+                                        BoxShadow(
+                                          color:
+                                              currentPosition < 0.5
+                                                  ? const Color(
+                                                    0xFFFF3131,
+                                                  ).withOpacity(0.2)
+                                                  : const Color(
+                                                    0xFF5de0e6,
+                                                  ).withOpacity(0.2),
+                                          blurRadius: 20,
+                                          spreadRadius: 1,
+                                          offset: Offset(
+                                            -horizontalOffset * 0.1,
+                                            0,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/diamond.png',
+                                      width: 64,
+                                      height: 64,
+                                      //  fit: BoxFit.cover,
+                                      fit: BoxFit.fill,
+                                      errorBuilder: (
+                                        context,
+                                        error,
+                                        stackTrace,
+                                      ) {
+                                        debugPrint(
+                                          '❌ Diamond image failed to load: $error',
+                                        );
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                const Color(0xFFffd700),
+                                                const Color(0xFF9d4edd),
+                                                const Color(0xFF7b2cbf),
+                                                const Color(0xFF5a189a),
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.diamond,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        );
+                                      },
+                                      frameBuilder: (
+                                        context,
+                                        child,
+                                        frame,
+                                        wasSynchronouslyLoaded,
+                                      ) {
+                                        if (wasSynchronouslyLoaded) {
+                                          debugPrint(
+                                            '✅ Diamond image loaded successfully',
+                                          );
+                                        }
+                                        return child;
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                // Enhanced sword icons
                 Positioned(
+                  // left: 10,
                   left: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child:
+                        _glowAnimation != null
+                            ? AnimatedBuilder(
+                              animation: _glowAnimation!,
+                              builder: (context, child) {
+                                return Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(0xFFdc2626), // Darker Red
+                                        const Color(
+                                          0xFFea580c,
+                                        ), // Darker Orange
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFdc2626,
+                                        ).withOpacity(
+                                          _glowAnimation!.value * 0.4,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            const Color(
+                                              0xFFdc2626,
+                                            ).withOpacity(0.7), // Darker Red
+                                            const Color(
+                                              0xFFea580c,
+                                            ).withOpacity(0.7), // Darker Orange
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        // 'assets/sword1.jpeg',
+                                        'assets/sword.png',
+                                        // 'assets/download.jpeg',
+                                        width: 48,
+                                        height: 48,
+                                        // fit: BoxFit.cover,
+                                        fit: BoxFit.fill,
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          return const Icon(
+                                            Icons.pentagon_sharp,
+                                            color: Colors.white,
+                                            // color: Colors.blue,
+                                            size: 24,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                            : Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFFdc2626), // Darker Red
+                                    const Color(0xFFea580c), // Darker Orange
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFdc2626,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(
+                                          0xFFdc2626,
+                                        ).withOpacity(0.7), // Darker Red
+                                        const Color(
+                                          0xFFea580c,
+                                        ).withOpacity(0.7), // Darker Orange
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: Image.asset(
+                                    // 'assets/sword1.jpeg',
+                                    'assets/sword.png',
+                                    // 'assets/download.jpeg',
+                                    width: 48,
+                                    height: 48,
+                                    // fit: BoxFit.cover,
+                                    fit: BoxFit.fill,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.pentagon_sharp,
+                                        // color: Colors.blue,
+                                        color: Colors.white,
+                                        size: 24,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                  ),
+                ),
+                Positioned(
+                  // right: 10,
                   right: 0,
                   top: 0,
                   bottom: 0,
                   child: Center(
-                    child: AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _pulseAnimation.value,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                                                           boxShadow: [
-                               BoxShadow(
-                                 color: const Color(0xFF9d4edd).withOpacity(0.3),
-                                 blurRadius: 8,
-                                 spreadRadius: 1,
-                               ),
-                             ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/diamond.png',
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          const Color(0xFFffd700),
-                                          const Color(0xFF9d4edd),
-                                          const Color(0xFF7b2cbf),
-                                          const Color(0xFF5a189a),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                    child:
+                        _glowAnimation != null
+                            ? AnimatedBuilder(
+                              animation: _glowAnimation!,
+                              builder: (context, child) {
+                                return Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(0xFF0891b2), // Darker Cyan
+                                        const Color(0xFF1e40af), // Darker Blue
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF0891b2,
+                                        ).withOpacity(
+                                          _glowAnimation!.value * 0.4,
+                                        ),
+                                        blurRadius: 8,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            const Color(
+                                              0xFF0891b2,
+                                            ).withOpacity(0.7), // Darker Cyan
+                                            const Color(
+                                              0xFF1e40af,
+                                            ).withOpacity(0.7), // Darker Blue
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        //'assets/sword2.jpeg',
+                                        'assets/2.png',
+                                        width: 48,
+                                        height: 48,
+                                        //   fit: BoxFit.cover,
+                                        fit: BoxFit.fill,
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          return const Icon(
+                                            Icons.pentagon_sharp,
+                                            color: Colors.white,
+                                            size: 24,
+                                          );
+                                        },
                                       ),
                                     ),
-                                    child: const Icon(
-                                      Icons.diamond,
-                                      color: Colors.white,
-                                      size: 24,
+                                  ),
+                                );
+                              },
+                            )
+                            : Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF0891b2), // Darker Cyan
+                                    const Color(0xFF1e40af), // Darker Blue
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF0891b2,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        const Color(
+                                          0xFF0891b2,
+                                        ).withOpacity(0.7), // Darker Cyan
+                                        const Color(
+                                          0xFF1e40af,
+                                        ).withOpacity(0.7), // Darker Blue
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                // Enhanced sword icons
-                Positioned(
-                  left: 10,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: _glowAnimation != null
-                        ? AnimatedBuilder(
-                            animation: _glowAnimation!,
-                            builder: (context, child) {
-                              return Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFF00d4ff),
-                                      const Color(0xFF00b4d8),
-                                      const Color(0xFF0096c7),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
                                   ),
-                                                                     boxShadow: [
-                                     BoxShadow(
-                                       color: const Color(0xFF00b4d8).withOpacity(_glowAnimation!.value * 0.3),
-                                       blurRadius: 6,
-                                       spreadRadius: 1,
-                                     ),
-                                   ],
-                                ),
-                                child: const Icon(
-                                  Icons.pentagon_sharp,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFF00d4ff),
-                                  const Color(0xFF00b4d8),
-                                  const Color(0xFF0096c7),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                                                               boxShadow: [
-                                   BoxShadow(
-                                     color: const Color(0xFF00b4d8).withOpacity(0.2),
-                                     blurRadius: 6,
-                                     spreadRadius: 1,
-                                   ),
-                                 ],
-                            ),
-                            child: const Icon(
-                              Icons.pentagon_sharp,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                  ),
-                ),
-                Positioned(
-                  right: 10,
-                  top: 0,
-                  bottom: 0,
-                  child: Center(
-                    child: _glowAnimation != null
-                        ? AnimatedBuilder(
-                            animation: _glowAnimation!,
-                            builder: (context, child) {
-                              return Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      const Color(0xFFff8fab),
-                                      const Color(0xFFff69b4),
-                                      const Color(0xFFff1493),
-                                    ],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                  child: Image.asset(
+                                    // 'assets/sword2.jpeg',
+                                    'assets/2.png',
+                                    width: 48,
+                                    height: 48,
+                                    // fit: BoxFit.cover,
+                                    fit: BoxFit.fill,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.pentagon_sharp,
+                                        color: Colors.white,
+                                        size: 24,
+                                      );
+                                    },
                                   ),
-                                                                     boxShadow: [
-                                     BoxShadow(
-                                       color: const Color(0xFFff69b4).withOpacity(_glowAnimation!.value * 0.3),
-                                       blurRadius: 6,
-                                       spreadRadius: 1,
-                                     ),
-                                   ],
                                 ),
-                                child: const Icon(
-                                  Icons.pentagon_sharp,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              );
-                            },
-                          )
-                        : Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xFFff8fab),
-                                  const Color(0xFFff69b4),
-                                  const Color(0xFFff1493),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
                               ),
-                                                               boxShadow: [
-                                   BoxShadow(
-                                     color: const Color(0xFFff69b4).withOpacity(0.2),
-                                     blurRadius: 6,
-                                     spreadRadius: 1,
-                                   ),
-                                 ],
                             ),
-                            child: const Icon(
-                              Icons.pentagon_sharp,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
                   ),
                 ),
                 // Enhanced score text overlay with animation
@@ -461,8 +725,10 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                                         offset: const Offset(1, 1),
                                       ),
                                       Shadow(
-                                        color: const Color(0xFF00b4d8).withOpacity(0.6),
-                                        blurRadius: 8,
+                                        color: const Color(
+                                          0xFFFF3131,
+                                        ).withOpacity(0.7),
+                                        blurRadius: 10,
                                       ),
                                     ],
                                   ),
@@ -484,8 +750,10 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                                         offset: const Offset(1, 1),
                                       ),
                                       Shadow(
-                                        color: const Color(0xFFff69b4).withOpacity(0.6),
-                                        blurRadius: 8,
+                                        color: const Color(
+                                          0xFF5de0e6,
+                                        ).withOpacity(0.7),
+                                        blurRadius: 10,
                                       ),
                                     ],
                                   ),
@@ -505,4 +773,4 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
       ),
     );
   }
-} 
+}

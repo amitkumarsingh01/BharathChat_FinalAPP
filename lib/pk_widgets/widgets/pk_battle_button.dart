@@ -10,10 +10,10 @@
 //   final VoidCallback? onPressed;
 //   final ValueNotifier<String>? requestIDNotifier;
 //   final ValueNotifier<Map<String, List<String>>>? requestingHostsMapRequestIDNotifier;
-  
+
 //   const PKBattleButton({
-//     Key? key, 
-//     this.onPressed, 
+//     Key? key,
+//     this.onPressed,
 //     this.requestIDNotifier,
 //     this.requestingHostsMapRequestIDNotifier,
 //   }) : super(key: key);
@@ -67,9 +67,9 @@
 // class PKBattleModal extends StatefulWidget {
 //   final ValueNotifier<String>? requestIDNotifier;
 //   final ValueNotifier<Map<String, List<String>>>? requestingHostsMapRequestIDNotifier;
-  
+
 //   const PKBattleModal({
-//     Key? key, 
+//     Key? key,
 //     this.requestIDNotifier,
 //     this.requestingHostsMapRequestIDNotifier,
 //   }) : super(key: key);
@@ -119,7 +119,7 @@
 //     try {
 //       final streams = await ApiService.getLiveVideoStreams();
 //       final now = DateTime.now();
-      
+
 //       // Filter for streams that are live within 3 minutes of created_at
 //       final liveStreams = streams.where((stream) {
 //         final createdAt = DateTime.parse(stream['created_at']);
@@ -199,11 +199,11 @@
 //   }
 
 //   Widget _buildProfileInitial() {
-//     final displayName = _currentUserData != null 
+//     final displayName = _currentUserData != null
 //         ? ((_currentUserData!['first_name'] ?? '') + ' ' + (_currentUserData!['last_name'] ?? '')).trim()
 //         : 'U';
 //     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
-    
+
 //     return Container(
 //       decoration: BoxDecoration(
 //         color: Colors.grey[800],
@@ -227,16 +227,14 @@
 //     _countRefreshTimer = null;
 //   }
 
-
-
 //   Future<void> _refreshCountsOnly() async {
 //     try {
 //       final currentUserId = ApiService.currentUserId;
-      
+
 //       // Load followers and following counts for each user
 //       Map<int, int> followersCounts = {};
 //       Map<int, int> followingCounts = {};
-      
+
 //       for (var user in _users) {
 //         if (user['id'] != currentUserId) {
 //           try {
@@ -251,7 +249,7 @@
 //           }
 //         }
 //       }
-      
+
 //       if (mounted) {
 //         setState(() {
 //           _followersCounts = followersCounts;
@@ -267,11 +265,11 @@
 //     try {
 //       final currentUserId = ApiService.currentUserId;
 //       final relations = await ApiService.getUserSimpleRelations(currentUserId);
-      
+
 //       // Load followers and following counts for each user
 //       Map<int, int> followersCounts = {};
 //       Map<int, int> followingCounts = {};
-      
+
 //       for (var user in _users) {
 //         if (user['id'] != currentUserId) {
 //           try {
@@ -286,7 +284,7 @@
 //           }
 //         }
 //       }
-      
+
 //       setState(() {
 //         _following = Set<int>.from(relations['following'] ?? []);
 //         _blocked = Set<int>.from(relations['blocked'] ?? []);
@@ -332,7 +330,7 @@
 
 //   Future<void> _sendPKBattleRequest(String userID, String username) async {
 //     if (_isSendingRequest) return;
-    
+
 //     setState(() {
 //       _isSendingRequest = true;
 //     });
@@ -485,19 +483,19 @@
 //     if (shouldBlock == true) {
 //       try {
 //         await ApiService.blockUser(userId);
-        
+
 //         // Immediately update the blocked set and trigger UI refresh
 //         setState(() {
 //           _blocked.add(userId);
 //         });
-        
+
 //         ScaffoldMessenger.of(context).showSnackBar(
 //           const SnackBar(
 //             content: Text('User blocked successfully'),
 //             backgroundColor: Colors.green,
 //           ),
 //         );
-        
+
 //         // Don't reload all relations - just keep the current counts
 //       } catch (e) {
 //         String errorMsg = 'Failed to block user';
@@ -522,11 +520,11 @@
 //   List<Map<String, dynamic>> get _filteredUsers {
 //     // Get user IDs of currently live users
 //     final liveUserIds = _liveStreams.map((stream) => stream['user_id'] as int).toSet();
-    
+
 //     // First filter for only live users, then filter out blocked users
 //     final liveUsers = _users.where((user) => liveUserIds.contains(user['id'])).toList();
 //     final nonBlockedLiveUsers = liveUsers.where((user) => !_blocked.contains(user['id'])).toList();
-    
+
 //     // Then apply search filter
 //     if (_searchQuery.isEmpty) return nonBlockedLiveUsers;
 //     return nonBlockedLiveUsers.where((user) {
@@ -941,8 +939,8 @@
 //                                                 borderRadius: BorderRadius.circular(6),
 //                                               ),
 //                                               child: TextButton(
-//                                                 onPressed: _isSendingRequest 
-//                                                     ? null 
+//                                                 onPressed: _isSendingRequest
+//                                                     ? null
 //                                                     : () => _sendPKBattleRequest('user_${user['id']}', user['username'] ?? 'User'),
 //                                                 style: TextButton.styleFrom(
 //                                                   padding: const EdgeInsets.symmetric(
@@ -1179,11 +1177,11 @@ class _PKBattleModalState extends State<PKBattleModal>
       final users = await ApiService.getAllUsers();
       final currentUserId = ApiService.currentUserId;
       final relations = await ApiService.getUserSimpleRelations(currentUserId);
-      
+
       // Load followers and following counts for each user
       Map<int, int> followersCounts = {};
       Map<int, int> followingCounts = {};
-      
+
       for (var user in users) {
         if (user['id'] != currentUserId) {
           try {
@@ -1198,9 +1196,13 @@ class _PKBattleModalState extends State<PKBattleModal>
           }
         }
       }
-      
+
       setState(() {
-        _users = users.where((u) => u['id'] != currentUserId).map((u) => u as Map<String, dynamic>).toList();
+        _users =
+            users
+                .where((u) => u['id'] != currentUserId)
+                .map((u) => u as Map<String, dynamic>)
+                .toList();
         _following = Set<int>.from(relations['following'] ?? []);
         _blocked = Set<int>.from(relations['blocked'] ?? []);
         _followersCounts = followersCounts;
@@ -1223,27 +1225,30 @@ class _PKBattleModalState extends State<PKBattleModal>
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         final now = DateTime.now();
-        
+
         // Filter for streams that are live within 3 minutes of created_at
-        final liveStreams = data.where((stream) {
-          final createdAt = DateTime.parse(stream['created_at']);
-          final timeDifference = now.difference(createdAt).inMinutes;
-          return timeDifference <= 3; // Show streams created within last 3 minutes
-        }).toList();
+        final liveStreams =
+            data.where((stream) {
+              final createdAt = DateTime.parse(stream['created_at']);
+              final timeDifference = now.difference(createdAt).inMinutes;
+              return timeDifference <=
+                  3; // Show streams created within last 3 minutes
+            }).toList();
 
         // Reverse order so latest appears first
         final reversedStreams = liveStreams.reversed.toList();
 
         setState(() {
-          _liveStreams = reversedStreams.map((stream) => stream as Map<String, dynamic>).toList();
+          _liveStreams =
+              reversedStreams
+                  .map((stream) => stream as Map<String, dynamic>)
+                  .toList();
         });
       }
     } catch (e) {
       print('Error fetching live streams: $e');
     }
   }
-
-
 
   Future<void> _loadCurrentUserData() async {
     try {
@@ -1257,11 +1262,15 @@ class _PKBattleModalState extends State<PKBattleModal>
   }
 
   Widget _buildProfileInitial() {
-    final displayName = _currentUserData != null 
-        ? ((_currentUserData!['first_name'] ?? '') + ' ' + (_currentUserData!['last_name'] ?? '')).trim()
-        : 'U';
+    final displayName =
+        _currentUserData != null
+            ? ((_currentUserData!['first_name'] ?? '') +
+                    ' ' +
+                    (_currentUserData!['last_name'] ?? ''))
+                .trim()
+            : 'U';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey[800],
@@ -1364,12 +1373,12 @@ class _PKBattleModalState extends State<PKBattleModal>
     if (shouldBlock == true) {
       try {
         await ApiService.blockUser(userId);
-        
+
         // Immediately update the blocked set and trigger UI refresh
         setState(() {
           _blocked.add(userId);
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('User blocked successfully'),
@@ -1397,12 +1406,15 @@ class _PKBattleModalState extends State<PKBattleModal>
 
   List<Map<String, dynamic>> get _filteredUsers {
     // Get user IDs of currently live users
-    final liveUserIds = _liveStreams.map((stream) => stream['user_id'] as int).toSet();
-    
+    final liveUserIds =
+        _liveStreams.map((stream) => stream['user_id'] as int).toSet();
+
     // First filter for only live users, then filter out blocked users
-    final liveUsers = _users.where((user) => liveUserIds.contains(user['id'])).toList();
-    final nonBlockedLiveUsers = liveUsers.where((user) => !_blocked.contains(user['id'])).toList();
-    
+    final liveUsers =
+        _users.where((user) => liveUserIds.contains(user['id'])).toList();
+    final nonBlockedLiveUsers =
+        liveUsers.where((user) => !_blocked.contains(user['id'])).toList();
+
     // Then apply search filter
     if (_searchQuery.isEmpty) return nonBlockedLiveUsers;
     return nonBlockedLiveUsers.where((user) {
@@ -1449,25 +1461,29 @@ class _PKBattleModalState extends State<PKBattleModal>
                 margin: const EdgeInsets.only(right: 12),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Color(0xFFffa030),
-                    width: 2,
-                  ),
+                  border: Border.all(color: Color(0xFFffa030), width: 2),
                 ),
                 child: ClipOval(
-                  child: _currentUserData != null && _currentUserData!['profile_pic'] != null && _currentUserData!['profile_pic'].isNotEmpty
-                      ? (_currentUserData!['profile_pic'].startsWith('http')
-                          ? Image.network(
-                              _currentUserData!['profile_pic'],
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => _buildProfileInitial(),
-                            )
-                          : Image.network(
-                              'https://server.bharathchat.com/${_currentUserData!['profile_pic']}',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => _buildProfileInitial(),
-                            ))
-                      : _buildProfileInitial(),
+                  child:
+                      _currentUserData != null &&
+                              _currentUserData!['profile_pic'] != null &&
+                              _currentUserData!['profile_pic'].isNotEmpty
+                          ? (_currentUserData!['profile_pic'].startsWith('http')
+                              ? Image.network(
+                                _currentUserData!['profile_pic'],
+                                fit: BoxFit.cover,
+                                errorBuilder:
+                                    (context, error, stackTrace) =>
+                                        _buildProfileInitial(),
+                              )
+                              : Image.network(
+                                'https://server.bharathchat.com/${_currentUserData!['profile_pic']}',
+                                fit: BoxFit.cover,
+                                errorBuilder:
+                                    (context, error, stackTrace) =>
+                                        _buildProfileInitial(),
+                              ))
+                          : _buildProfileInitial(),
                 ),
               ),
               // Title
@@ -1567,18 +1583,20 @@ class _PKBattleModalState extends State<PKBattleModal>
                                     (_, __) => const SizedBox(height: 10),
                                 itemBuilder: (context, index) {
                                   final user = _filteredUsers[index];
-                                  final isBlocked = _blocked.contains(user['id']);
+                                  final isBlocked = _blocked.contains(
+                                    user['id'],
+                                  );
                                   final displayName =
                                       ((user['first_name'] ?? '') +
-                                              ' ' +
-                                              (user['last_name'] ?? ''))
-                                          .trim()
-                                          .isNotEmpty
-                                      ? ((user['first_name'] ?? '') +
-                                              ' ' +
-                                              (user['last_name'] ?? ''))
-                                          .trim()
-                                      : (user['username'] ?? 'User');
+                                                  ' ' +
+                                                  (user['last_name'] ?? ''))
+                                              .trim()
+                                              .isNotEmpty
+                                          ? ((user['first_name'] ?? '') +
+                                                  ' ' +
+                                                  (user['last_name'] ?? ''))
+                                              .trim()
+                                          : (user['username'] ?? 'User');
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 10,
@@ -1597,12 +1615,14 @@ class _PKBattleModalState extends State<PKBattleModal>
                                               radius: 24,
                                               backgroundColor: Colors.grey[800],
                                               backgroundImage:
-                                                  (user['profile_pic'] != null &&
+                                                  (user['profile_pic'] !=
+                                                              null &&
                                                           user['profile_pic']
                                                               .isNotEmpty)
-                                                      ? (user['profile_pic'].startsWith(
-                                                            'http',
-                                                          )
+                                                      ? (user['profile_pic']
+                                                              .startsWith(
+                                                                'http',
+                                                              )
                                                           ? NetworkImage(
                                                             user['profile_pic'],
                                                           )
@@ -1611,14 +1631,17 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                           ))
                                                       : null,
                                               child:
-                                                  (user['profile_pic'] == null ||
-                                                          user['profile_pic'].isEmpty)
+                                                  (user['profile_pic'] ==
+                                                              null ||
+                                                          user['profile_pic']
+                                                              .isEmpty)
                                                       ? Text(
                                                         displayName[0]
                                                             .toUpperCase(),
                                                         style: const TextStyle(
                                                           color: Colors.white,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                           fontSize: 18,
                                                         ),
                                                       )
@@ -1655,12 +1678,15 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                     displayName,
                                                     style: const TextStyle(
                                                       color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                   if (user['verified'] == true)
                                                     const Padding(
-                                                      padding: EdgeInsets.only(left: 4.0),
+                                                      padding: EdgeInsets.only(
+                                                        left: 4.0,
+                                                      ),
                                                       child: Icon(
                                                         Icons.verified,
                                                         color: Colors.blue,
@@ -1669,7 +1695,9 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                     ),
                                                   if (isBlocked)
                                                     const Padding(
-                                                      padding: EdgeInsets.only(left: 4.0),
+                                                      padding: EdgeInsets.only(
+                                                        left: 4.0,
+                                                      ),
                                                       child: Icon(
                                                         Icons.block,
                                                         color: Colors.red,
@@ -1693,7 +1721,8 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                     style: const TextStyle(
                                                       color: Colors.orange,
                                                       fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                   const Text(
@@ -1708,7 +1737,8 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                     style: const TextStyle(
                                                       color: Colors.orange,
                                                       fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                   const Text(
@@ -1728,11 +1758,12 @@ class _PKBattleModalState extends State<PKBattleModal>
                                           children: [
                                             // Invite Button
                                             Container(
+                                              width: 65,
+                                              height: 33,
                                               decoration: BoxDecoration(
                                                 color: Colors.grey[900],
-                                                borderRadius: BorderRadius.circular(
-                                                  8,
-                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color: Colors.grey[700]!,
                                                 ),
@@ -1753,28 +1784,37 @@ class _PKBattleModalState extends State<PKBattleModal>
                                                   'Invite',
                                                   style: TextStyle(
                                                     color: Colors.white,
+                                                    fontSize: 11,
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 8), // Horizontal spacing between buttons
+                                            const SizedBox(
+                                              width: 4,
+                                            ), // Horizontal spacing between buttons
                                             // Block Button
                                             Container(
-                                              width: 60, // Reduced width for icon button
+                                              width: 65,
+                                              height: 33,
+                                              // Reduced width for icon button
                                               decoration: BoxDecoration(
                                                 color: Colors.red[600],
-                                                borderRadius: BorderRadius.circular(6),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
                                                   color: Colors.red[700]!,
                                                 ),
                                               ),
                                               child: TextButton(
-                                                onPressed: () => _blockUser(user['id']),
+                                                onPressed:
+                                                    () =>
+                                                        _blockUser(user['id']),
                                                 style: TextButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 4,
-                                                    vertical: 6,
-                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                        vertical: 6,
+                                                      ),
                                                 ),
                                                 child: const Icon(
                                                   Icons.block,

@@ -38,40 +38,28 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _confettiController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _slideAnimation = Tween<double>(
-      begin: 50.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutBack,
-    ));
+    _slideAnimation = Tween<double>(begin: 50.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
 
     _animationController.forward();
     _confettiController.repeat();
@@ -101,16 +89,16 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
 
   String _getWinnerName() {
     if (widget.winnerId == 0) return 'Draw';
-    
+
     final isLeftWinner = widget.winnerId.toString() == widget.leftHostId;
-    return isLeftWinner 
+    return isLeftWinner
         ? (widget.leftHostName ?? widget.leftHostId ?? 'Left Host')
         : (widget.rightHostName ?? widget.rightHostId ?? 'Right Host');
   }
 
   Color _getWinnerColor() {
     if (widget.winnerId == 0) return Colors.grey;
-    
+
     final isLeftWinner = widget.winnerId.toString() == widget.leftHostId;
     return isLeftWinner ? const Color(0xFF00d4ff) : const Color(0xFFff69b4);
   }
@@ -191,8 +179,8 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                   return Transform.rotate(
                                     angle: _confettiController.value * 0.1,
                                     child: Icon(
-                                      widget.winnerId == 0 
-                                          ? Icons.emoji_events 
+                                      widget.winnerId == 0
+                                          ? Icons.emoji_events
                                           : Icons.emoji_events,
                                       size: 48,
                                       color: _getWinnerColor(),
@@ -218,7 +206,7 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                             ],
                           ),
                         ),
-                        
+
                         // Content
                         Padding(
                           padding: const EdgeInsets.all(24),
@@ -242,31 +230,34 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                     color: _getWinnerColor().withOpacity(0.5),
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      widget.winnerId == 0 
-                                          ? Icons.handshake 
-                                          : Icons.star,
-                                      color: _getWinnerColor(),
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      'Winner: ${_getWinnerName()}',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        widget.winnerId == 0
+                                            ? Icons.handshake
+                                            : Icons.star,
+                                        color: _getWinnerColor(),
+                                        size: 24,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Winner: ${_getWinnerName()}',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                              
+
                               const SizedBox(height: 24),
-                              
+
                               // Final scores
                               Container(
                                 padding: const EdgeInsets.all(20),
@@ -289,14 +280,17 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                     ),
                                     const SizedBox(height: 16),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceEvenly,
                                       children: [
                                         // Left host score
                                         Column(
                                           children: [
                                             CircleAvatar(
                                               radius: 30,
-                                              backgroundColor: const Color(0xFF00d4ff).withOpacity(0.2),
+                                              backgroundColor: const Color(
+                                                0xFF00d4ff,
+                                              ).withOpacity(0.2),
                                               child: Text(
                                                 '${widget.leftScore}',
                                                 style: const TextStyle(
@@ -308,7 +302,9 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
-                                              widget.leftHostName ?? widget.leftHostId ?? 'Left',
+                                              widget.leftHostName ??
+                                                  widget.leftHostId ??
+                                                  'Left',
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Colors.white70,
@@ -316,7 +312,7 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                             ),
                                           ],
                                         ),
-                                        
+
                                         // VS indicator
                                         Column(
                                           children: [
@@ -332,11 +328,11 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                                   ],
                                                 ),
                                               ),
-                                                                                             child: const Icon(
-                                                 Icons.sports_martial_arts,
-                                                 color: Colors.white,
-                                                 size: 20,
-                                               ),
+                                              child: const Icon(
+                                                Icons.sports_martial_arts,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
                                             ),
                                             const SizedBox(height: 8),
                                             const Text(
@@ -349,13 +345,15 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                             ),
                                           ],
                                         ),
-                                        
+
                                         // Right host score
                                         Column(
                                           children: [
                                             CircleAvatar(
                                               radius: 30,
-                                              backgroundColor: const Color(0xFFff69b4).withOpacity(0.2),
+                                              backgroundColor: const Color(
+                                                0xFFff69b4,
+                                              ).withOpacity(0.2),
                                               child: Text(
                                                 '${widget.rightScore}',
                                                 style: const TextStyle(
@@ -367,7 +365,9 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
-                                              widget.rightHostName ?? widget.rightHostId ?? 'Right',
+                                              widget.rightHostName ??
+                                                  widget.rightHostId ??
+                                                  'Right',
                                               style: const TextStyle(
                                                 fontSize: 12,
                                                 color: Colors.white70,
@@ -383,7 +383,7 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                             ],
                           ),
                         ),
-                        
+
                         // Action buttons
                         Container(
                           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -395,12 +395,16 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: _getWinnerColor(),
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 8,
-                                    shadowColor: _getWinnerColor().withOpacity(0.3),
+                                    shadowColor: _getWinnerColor().withOpacity(
+                                      0.3,
+                                    ),
                                   ),
                                   child: const Text(
                                     'Continue',
