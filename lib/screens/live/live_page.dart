@@ -2533,13 +2533,50 @@ class _LivePageState extends State<LivePage>
                 },
               ),
             ),
+            // VS Image overlay - positioned between progress bar and timer
+            if (_showPKBattleTimer)
+              Positioned(
+                top:
+                    MediaQuery.of(context).size.height * 0.55 +
+                    60, // Between progress bar and timer
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Image.asset(
+                    'assets/vs.png',
+                    height: 40,
+                    width: 40,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'VS',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             // PK Battle notification overlay - disabled
             // PK Battle timer overlay - positioned below progress bar
             if (_showPKBattleTimer)
               Positioned(
                 top:
                     MediaQuery.of(context).size.height * 0.55 +
-                    80, // Just below the progress bar
+                    100, // Just below the VS image
                 left: 0,
                 right: 0,
                 child: Center(
