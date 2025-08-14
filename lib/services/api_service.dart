@@ -223,16 +223,18 @@ class ApiService {
       print('🔐 [VERIFY_OTP] Starting OTP verification...'); // Debug log
       print('🔐 [VERIFY_OTP] Phone: $phoneNumber, OTP: $otp'); // Debug log
       print('🔐 [VERIFY_OTP] Headers: $_headers'); // Debug log
-      
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/verify-otp'),
         headers: _headers,
         body: json.encode({'phone_number': phoneNumber, 'otp': otp}),
       );
-      
-      print('🔐 [VERIFY_OTP] Response status: ${response.statusCode}'); // Debug log
+
+      print(
+        '🔐 [VERIFY_OTP] Response status: ${response.statusCode}',
+      ); // Debug log
       print('🔐 [VERIFY_OTP] Response body: ${response.body}'); // Debug log
-      
+
       final result = json.decode(response.body);
       print('✅ [VERIFY_OTP] Success: $result'); // Debug log
       return result;
@@ -248,23 +250,31 @@ class ApiService {
       print('👤 [GET_CURRENT_USER] Starting...'); // Debug log
       print('👤 [GET_CURRENT_USER] Token: $_token'); // Debug log
       print('👤 [GET_CURRENT_USER] Headers: $_headers'); // Debug log
-      
+
       final response = await http.get(
         Uri.parse('$baseUrl/users/me'),
         headers: _headers,
       );
-      
-      print('👤 [GET_CURRENT_USER] Response status: ${response.statusCode}'); // Debug log
-      print('👤 [GET_CURRENT_USER] Response body: ${response.body}'); // Debug log
-      
+
+      print(
+        '👤 [GET_CURRENT_USER] Response status: ${response.statusCode}',
+      ); // Debug log
+      print(
+        '👤 [GET_CURRENT_USER] Response body: ${response.body}',
+      ); // Debug log
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         _currentUserData = data;
         print('✅ [GET_CURRENT_USER] Success: $data'); // Debug log
         return data;
       } else {
-        print('❌ [GET_CURRENT_USER] Failed: ${response.statusCode} - ${response.body}'); // Debug log
-        throw Exception('Failed to get current user: ${response.statusCode} - ${response.body}');
+        print(
+          '❌ [GET_CURRENT_USER] Failed: ${response.statusCode} - ${response.body}',
+        ); // Debug log
+        throw Exception(
+          'Failed to get current user: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       print('❌ [GET_CURRENT_USER] Error: $e'); // Debug log
@@ -324,7 +334,7 @@ class ApiService {
       print('🔄 [UPDATE_USER] Starting user update...'); // Debug log
       print('🔄 [UPDATE_USER] User data: $userData'); // Debug log
       print('🔄 [UPDATE_USER] Token: $_token'); // Debug log
-      
+
       final uri = Uri.parse('$baseUrl/users/me');
       final request = http.MultipartRequest('PUT', uri);
       if (_token != null) {
@@ -333,7 +343,7 @@ class ApiService {
       } else {
         print('❌ [UPDATE_USER] No token available'); // Debug log
       }
-      
+
       // Add fields
       userData.forEach((key, value) {
         if (value != null && key != 'profile_pic') {
@@ -341,7 +351,7 @@ class ApiService {
           print('🔄 [UPDATE_USER] Added field: $key = $value'); // Debug log
         }
       });
-      
+
       // Add profile_pic if it's a File
       if (userData['profile_pic'] != null && userData['profile_pic'] is File) {
         request.files.add(
@@ -352,20 +362,24 @@ class ApiService {
         );
         print('🔄 [UPDATE_USER] Added profile pic file'); // Debug log
       }
-      
+
       print('🔄 [UPDATE_USER] Sending request to: $uri'); // Debug log
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
-      print('🔄 [UPDATE_USER] Response status: ${response.statusCode}'); // Debug log
+
+      print(
+        '🔄 [UPDATE_USER] Response status: ${response.statusCode}',
+      ); // Debug log
       print('🔄 [UPDATE_USER] Response body: ${response.body}'); // Debug log
-      
+
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
         print('✅ [UPDATE_USER] Update successful: $result'); // Debug log
         return result;
       } else {
-        print('❌ [UPDATE_USER] Update failed: ${response.statusCode} - ${response.body}'); // Debug log
+        print(
+          '❌ [UPDATE_USER] Update failed: ${response.statusCode} - ${response.body}',
+        ); // Debug log
         throw Exception('Failed to update user: ' + response.body);
       }
     } catch (e) {
@@ -534,10 +548,7 @@ class ApiService {
     final url = '$baseUrl/gifts/';
     apiLog('➡️ [GET_GIFTS] Request URL: $url');
     apiLog('➡️ [GET_GIFTS] Headers: $_headers');
-    final response = await http.get(
-      Uri.parse(url),
-      headers: _headers,
-    );
+    final response = await http.get(Uri.parse(url), headers: _headers);
     apiLog('⬅️ [GET_GIFTS] Response status: ${response.statusCode}');
     apiLog('⬅️ [GET_GIFTS] Response body: ${response.body}');
     if (response.statusCode == 200) {
@@ -585,19 +596,19 @@ class ApiService {
     required int liveStreamId,
     required DateTime since,
   }) async {
-    final url = '$baseUrl/gifts/recent?live_stream_id=$liveStreamId&since=${since.toIso8601String()}';
+    final url =
+        '$baseUrl/gifts/recent?live_stream_id=$liveStreamId&since=${since.toIso8601String()}';
     apiLog('➡️ [GET_RECENT_GIFTS] Request URL: $url');
     apiLog('➡️ [GET_RECENT_GIFTS] Headers: $_headers');
-    final response = await http.get(
-      Uri.parse(url),
-      headers: _headers,
-    );
+    final response = await http.get(Uri.parse(url), headers: _headers);
     apiLog('⬅️ [GET_RECENT_GIFTS] Response status: ${response.statusCode}');
     apiLog('⬅️ [GET_RECENT_GIFTS] Response body: ${response.body}');
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      apiLog('Failed to get recent gifts: ${response.statusCode} - ${response.body}');
+      apiLog(
+        'Failed to get recent gifts: ${response.statusCode} - ${response.body}',
+      );
       return [];
     }
   }
@@ -611,12 +622,16 @@ class ApiService {
     apiLog('➡️ [GET_USER_GIFTS_RECEIVED] Request URL: $url');
     apiLog('➡️ [GET_USER_GIFTS_RECEIVED] Headers: $_headers');
     final response = await http.get(Uri.parse(url), headers: _headers);
-    apiLog('⬅️ [GET_USER_GIFTS_RECEIVED] Response status: ${response.statusCode}');
+    apiLog(
+      '⬅️ [GET_USER_GIFTS_RECEIVED] Response status: ${response.statusCode}',
+    );
     apiLog('⬅️ [GET_USER_GIFTS_RECEIVED] Response body: ${response.body}');
     if (response.statusCode == 200) {
       return json.decode(response.body) as Map<String, dynamic>;
     } else {
-      apiLog('Failed to get user gifts received: ${response.statusCode} - ${response.body}');
+      apiLog(
+        'Failed to get user gifts received: ${response.statusCode} - ${response.body}',
+      );
       return null;
     }
   }
@@ -1629,11 +1644,12 @@ class ApiService {
         final List<dynamic> data = json.decode(response.body);
         return data.cast<Map<String, dynamic>>();
       } else {
-        throw Exception('Failed to load live video streams: ${response.statusCode}');
+        throw Exception(
+          'Failed to load live video streams: ${response.statusCode}',
+        );
       }
     } catch (e) {
       throw Exception('Error fetching live video streams: $e');
     }
   }
 }
-

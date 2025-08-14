@@ -2178,61 +2178,69 @@ class _LivePageState extends State<LivePage>
               ? message.user.name.substring(5)
               : message.user.name;
 
-      return Container(
-        width: 160,
-        // width: 50,
-        // Further reduced width
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Picture
-            Container(
-              width: 20,
-              height: 20,
-              margin: const EdgeInsets.only(right: 6),
-              child: ClipOval(
-                child: customAvatarBuilder(
-                  context,
-                  const Size(20, 20),
-                  message.user,
-                  extraInfo,
-                  profilePic: profilePic.isNotEmpty ? profilePic : null,
+      return GestureDetector(
+        onTap: () {
+          // Only show block popup for hosts
+          if (widget.isHost) {
+            _showBlockUserPopup(context, cleanUsername, message.user.id);
+          }
+        },
+        child: Container(
+          width: 160,
+          // width: 50,
+          // Further reduced width
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Profile Picture
+              Container(
+                width: 20,
+                height: 20,
+                margin: const EdgeInsets.only(right: 6),
+                child: ClipOval(
+                  child: customAvatarBuilder(
+                    context,
+                    const Size(20, 20),
+                    message.user,
+                    extraInfo,
+                    profilePic: profilePic.isNotEmpty ? profilePic : null,
+                  ),
                 ),
               ),
-            ),
-            // Message Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // User Name
-                  Text(
-                    cleanUsername,
-                    style: const TextStyle(
-                      color: Colors.orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+              // Message Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // User Name
+                    Text(
+                      cleanUsername,
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 1),
-                  // Message Text
-                  Text(
-                    message.message,
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    const SizedBox(height: 1),
+                    // Message Text
+                    Text(
+                      message.message,
+                      style: const TextStyle(color: Colors.white, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     };
@@ -3899,6 +3907,118 @@ class _LivePageState extends State<LivePage>
             ],
           ),
     );
+  }
+
+  // Show block user popup
+  void _showBlockUserPopup(
+    BuildContext context,
+    String userName,
+    String userId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF23272F),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Block User',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to block $userName?',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.grey,
+                side: const BorderSide(color: Colors.grey),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _blockUser(userId);
+              },
+              child: const Text('Block', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Block user method
+  Future<void> _blockUser(String userId) async {
+    try {
+      // Handle different user ID formats from live streaming
+      int userIdInt;
+
+      // First, try to get the user ID from the app's user list by username
+      // This is the most reliable way since we need the actual database user ID
+      final allUsers = await ApiService.getAllUsers();
+
+      // Clean the username by removing any prefixes
+      String cleanUsername = userId;
+      if (userId.startsWith('user_')) {
+        cleanUsername = userId.substring(5);
+      }
+
+      // Try to find the user by username first
+      final user = allUsers.firstWhere(
+        (u) =>
+            u['username'] == cleanUsername ||
+            u['id'].toString() == cleanUsername,
+        orElse: () => null,
+      );
+
+      if (user != null) {
+        userIdInt = user['id'] as int;
+      } else {
+        // Fallback: try to parse as integer
+        try {
+          userIdInt = int.parse(cleanUsername);
+        } catch (e) {
+          throw Exception('User not found in the system');
+        }
+      }
+
+      await ApiService.blockUser(userIdInt);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User blocked successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      String errorMsg = 'Failed to block user';
+      if (e is Exception && e.toString().contains('Exception:')) {
+        errorMsg = e.toString().replaceFirst('Exception: ', '');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+      );
+    }
   }
 }
 
