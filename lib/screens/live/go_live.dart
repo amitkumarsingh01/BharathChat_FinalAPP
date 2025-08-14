@@ -1721,11 +1721,13 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
           }
         }
 
-        // Create userName with avatar info for Zego
-        final userNameWithAvatar =
-            userAvatarUrl != null
-                ? '${userName}|avatar:$userAvatarUrl'
-                : userName;
+        // Use clean userName without avatar info
+        final cleanUserName =
+            userData != null
+                ? (userData['first_name'] ?? 'Host')
+                : (nameController.text.isNotEmpty
+                    ? nameController.text
+                    : 'Host');
 
         // Create the appropriate configuration
         late final ZegoUIKitPrebuiltLiveStreamingConfig config;
@@ -1764,6 +1766,108 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     extraInfo,
                     profilePic:
                         userData != null ? userData['profile_pic'] : null,
+                  );
+                }
+                // Customize text message UI with profile pictures
+                ..inRoomMessage.showAvatar = true
+                ..inRoomMessage.showName = true
+                ..inRoomMessage.backgroundColor = Colors.black.withOpacity(0.6)
+                ..inRoomMessage.opacity = 0.8
+                ..inRoomMessage.maxLines = 3
+                ..inRoomMessage.borderRadius = BorderRadius.circular(12)
+                ..inRoomMessage.paddings = const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                )
+                ..inRoomMessage.nameTextStyle = const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                )
+                ..inRoomMessage.messageTextStyle = const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                )
+                // Add user ID and profile picture attributes
+                ..inRoomMessage.attributes = () {
+                  return {
+                    'user_id':
+                        userData != null ? userData['id'].toString() : '',
+                    'profile_pic':
+                        userData != null ? (userData['profile_pic'] ?? '') : '',
+                  };
+                }
+                // Custom item builder for enhanced profile picture display
+                ..inRoomMessage.itemBuilder = (
+                  BuildContext context,
+                  ZegoInRoomMessage message,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Profile Picture
+                        Container(
+                          width: 24,
+                          height: 24,
+                          margin: const EdgeInsets.only(right: 8),
+                          child: ClipOval(
+                            child: customAvatarBuilder(
+                              context,
+                              const Size(24, 24),
+                              message.user,
+                              extraInfo,
+                              profilePic:
+                                  message.user.name.contains('|avatar:')
+                                      ? message.user.name.split('|avatar:')[1]
+                                      : null,
+                            ),
+                          ),
+                        ),
+                        // Message Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // User Name
+                              Text(
+                                message.user.name.split('|avatar:')[0],
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              // Message Text
+                              Text(
+                                message.message,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
                 // Custom button styles for enhanced UI
@@ -1882,6 +1986,108 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     extraInfo,
                     profilePic:
                         userData != null ? userData['profile_pic'] : null,
+                  );
+                }
+                // Customize text message UI with profile pictures for audio mode
+                ..inRoomMessage.showAvatar = true
+                ..inRoomMessage.showName = true
+                ..inRoomMessage.backgroundColor = Colors.black.withOpacity(0.6)
+                ..inRoomMessage.opacity = 0.8
+                ..inRoomMessage.maxLines = 3
+                ..inRoomMessage.borderRadius = BorderRadius.circular(12)
+                ..inRoomMessage.paddings = const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                )
+                ..inRoomMessage.nameTextStyle = const TextStyle(
+                  color: Colors.orange,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                )
+                ..inRoomMessage.messageTextStyle = const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                )
+                // Add user ID and profile picture attributes for audio mode
+                ..inRoomMessage.attributes = () {
+                  return {
+                    'user_id':
+                        userData != null ? userData['id'].toString() : '',
+                    'profile_pic':
+                        userData != null ? (userData['profile_pic'] ?? '') : '',
+                  };
+                }
+                // Custom item builder for enhanced profile picture display
+                ..inRoomMessage.itemBuilder = (
+                  BuildContext context,
+                  ZegoInRoomMessage message,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Profile Picture
+                        Container(
+                          width: 24,
+                          height: 24,
+                          margin: const EdgeInsets.only(right: 8),
+                          child: ClipOval(
+                            child: customAvatarBuilder(
+                              context,
+                              const Size(24, 24),
+                              message.user,
+                              extraInfo,
+                              profilePic:
+                                  message.user.name.contains('|avatar:')
+                                      ? message.user.name.split('|avatar:')[1]
+                                      : null,
+                            ),
+                          ),
+                        ),
+                        // Message Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // User Name
+                              Text(
+                                message.user.name.split('|avatar:')[0],
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              // Message Text
+                              Text(
+                                message.message,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
                 // Custom button styles for enhanced UI

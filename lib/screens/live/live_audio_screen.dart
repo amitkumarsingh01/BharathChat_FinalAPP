@@ -667,6 +667,106 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                   profilePic: widget.profilePic,
                 );
               }
+              // Customize text message UI with profile pictures for host
+              ..inRoomMessage.showAvatar = true
+              ..inRoomMessage.showName = true
+              ..inRoomMessage.backgroundColor = Colors.black.withOpacity(0.6)
+              ..inRoomMessage.opacity = 0.8
+              ..inRoomMessage.maxLines = 3
+              ..inRoomMessage.borderRadius = BorderRadius.circular(12)
+              ..inRoomMessage.paddings = const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              )
+              ..inRoomMessage.nameTextStyle = const TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              )
+              ..inRoomMessage.messageTextStyle = const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              )
+              // Add user ID and profile picture attributes
+              ..inRoomMessage.attributes = () {
+                return {
+                  'user_id': currentUser?['id']?.toString() ?? '',
+                  'profile_pic': currentUser?['profile_pic'] ?? '',
+                };
+              }
+              // Custom item builder for enhanced profile picture display
+              ..inRoomMessage.itemBuilder = (
+                BuildContext context,
+                ZegoInRoomMessage message,
+                Map<String, dynamic> extraInfo,
+              ) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Profile Picture
+                      Container(
+                        width: 24,
+                        height: 24,
+                        margin: const EdgeInsets.only(right: 8),
+                        child: ClipOval(
+                          child: customAvatarBuilder(
+                            context,
+                            const Size(24, 24),
+                            message.user,
+                            extraInfo,
+                            profilePic:
+                                message.user.name.contains('|avatar:')
+                                    ? message.user.name.split('|avatar:')[1]
+                                    : null,
+                          ),
+                        ),
+                      ),
+                      // Message Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // User Name
+                            Text(
+                              message.user.name.split('|avatar:')[0],
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            // Message Text
+                            Text(
+                              message.message,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
               // Custom button styles for enhanced UI
               ..bottomMenuBar
                   .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
@@ -832,6 +932,99 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                   user,
                   extraInfo,
                   profilePic: widget.profilePic,
+                );
+              }
+              // Customize text message UI with profile pictures for audience
+              ..inRoomMessage.showAvatar = true
+              ..inRoomMessage.showName = true
+              ..inRoomMessage.backgroundColor = Colors.black.withOpacity(0.6)
+              ..inRoomMessage.opacity = 0.8
+              ..inRoomMessage.maxLines = 3
+              ..inRoomMessage.borderRadius = BorderRadius.circular(12)
+              ..inRoomMessage.paddings = const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              )
+              ..inRoomMessage.nameTextStyle = const TextStyle(
+                color: Colors.orange,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              )
+              ..inRoomMessage.messageTextStyle = const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              )
+              // Custom item builder for enhanced profile picture display
+              ..inRoomMessage.itemBuilder = (
+                BuildContext context,
+                ZegoInRoomMessage message,
+                Map<String, dynamic> extraInfo,
+              ) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Profile Picture
+                      Container(
+                        width: 24,
+                        height: 24,
+                        margin: const EdgeInsets.only(right: 8),
+                        child: ClipOval(
+                          child: customAvatarBuilder(
+                            context,
+                            const Size(24, 24),
+                            message.user,
+                            extraInfo,
+                            profilePic:
+                                message.user.name.contains('|avatar:')
+                                    ? message.user.name.split('|avatar:')[1]
+                                    : null,
+                          ),
+                        ),
+                      ),
+                      // Message Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // User Name
+                            Text(
+                              message.user.name.split('|avatar:')[0],
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            // Message Text
+                            Text(
+                              message.message,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
               // Custom button styles for enhanced UI

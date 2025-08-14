@@ -2134,6 +2134,109 @@ class _LivePageState extends State<LivePage>
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
     config.audioVideoView.showUserNameOnView = false;
 
+    // Customize text message UI with profile pictures
+    config.inRoomMessage.showAvatar = true;
+    config.inRoomMessage.showName = true;
+    config.inRoomMessage.backgroundColor = Colors.black.withOpacity(0.6);
+    config.inRoomMessage.opacity = 0.8;
+    config.inRoomMessage.maxLines = 1;
+    config.inRoomMessage.borderRadius = BorderRadius.circular(12);
+    config.inRoomMessage.paddings = const EdgeInsets.symmetric(
+      horizontal: 8,
+      vertical: 4,
+    );
+    config.inRoomMessage.nameTextStyle = const TextStyle(
+      color: Colors.orange,
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+    );
+    config.inRoomMessage.messageTextStyle = const TextStyle(
+      color: Colors.white,
+      fontSize: 12,
+    );
+    // Add user ID and profile picture attributes
+    config.inRoomMessage.attributes = () {
+      return {
+        'user_id': widget.profilePic != null ? 'current_user' : '',
+        'profile_pic': widget.profilePic ?? '',
+      };
+    };
+    // Custom item builder for enhanced profile picture display
+    config.inRoomMessage.itemBuilder = (
+      BuildContext context,
+      ZegoInRoomMessage message,
+      Map<String, dynamic> extraInfo,
+    ) {
+      // Get user ID and profile picture from attributes
+      final attributes = message.attributes;
+      final userId = attributes['user_id'] ?? '';
+      final profilePic = attributes['profile_pic'] ?? '';
+
+      // Clean username by removing "user_" prefix
+      final cleanUsername =
+          message.user.name.startsWith('user_')
+              ? message.user.name.substring(5)
+              : message.user.name;
+
+      return Container(
+        width: 160,
+        // width: 50,
+        // Further reduced width
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.withOpacity(0.3), width: 1),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Picture
+            Container(
+              width: 20,
+              height: 20,
+              margin: const EdgeInsets.only(right: 6),
+              child: ClipOval(
+                child: customAvatarBuilder(
+                  context,
+                  const Size(20, 20),
+                  message.user,
+                  extraInfo,
+                  profilePic: profilePic.isNotEmpty ? profilePic : null,
+                ),
+              ),
+            ),
+            // Message Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User Name
+                  Text(
+                    cleanUsername,
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  // Message Text
+                  Text(
+                    message.message,
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    };
+
     // Custom button styles for enhanced UI
     config
         .bottomMenuBar
