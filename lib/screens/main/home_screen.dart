@@ -97,6 +97,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ? (userData['username'] ?? userData['id'].toString())
             : DateTime.now().millisecondsSinceEpoch.toString();
 
+    // Check if user is blocked by the host (only for audience members)
+    if (!isHost) {
+      try {
+        final currentUser = await ApiService.getCurrentUser();
+        if (currentUser != null) {
+          final relations = await ApiService.getUserSimpleRelations(hostId);
+          final blockedIds = List<int>.from(relations['blocked'] ?? []);
+
+          if (blockedIds.contains(currentUser['id'])) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'You are blocked by this host and cannot view their live stream',
+                  ),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return; // Prevent joining the live stream
+          }
+        }
+      } catch (e) {
+        debugPrint('Error checking if user is blocked: $e');
+        // Continue with joining if there's an error checking block status
+      }
+    }
+
     // Check for active PK battle if audience is joining
     Map<String, dynamic>? activePKBattle;
     if (!isHost) {
@@ -241,7 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
             print('Error parsing created_at: $e');
           }
         }
-        
+
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'video_${live['id']}',
@@ -266,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
             print('Error parsing created_at: $e');
           }
         }
-        
+
         _liveStreamService.addStream(
           LiveStream(
             channelName: live['live_url'] ?? 'audio_${live['id']}',
@@ -887,15 +916,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                 .toList()
                                 .reversed
                                 .toList();
-                        
+
                         // Filter streams less than 5 minutes old
-                        final recentStreams = videoStreams.where((stream) {
-                          if (stream.createdAt == null) return false;
-                          final now = DateTime.now();
-                          final difference = now.difference(stream.createdAt!);
-                          return difference.inMinutes < 5; // Less than 5 minutes
-                        }).toList();
-                        
+                        final recentStreams =
+                            videoStreams.where((stream) {
+                              if (stream.createdAt == null) return false;
+                              final now = DateTime.now();
+                              final difference = now.difference(
+                                stream.createdAt!,
+                              );
+                              return difference.inMinutes <
+                                  5; // Less than 5 minutes
+                            }).toList();
+
                         // Only unique hosts by userId
                         final Set<int> seenUserIds = {};
                         final uniqueHostStreams = <dynamic>[];
@@ -1005,7 +1038,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     ),
                                           ),
                                         ),
-
                                       ],
                                     ),
                                     const SizedBox(height: 8),
@@ -1246,12 +1278,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               // First check if stream is less than 5 minutes old
                               if (stream.createdAt != null) {
                                 final now = DateTime.now();
-                                final difference = now.difference(stream.createdAt!);
-                                if (difference.inMinutes >= 5) return false; // Skip if 5+ minutes old
+                                final difference = now.difference(
+                                  stream.createdAt!,
+                                );
+                                if (difference.inMinutes >= 5)
+                                  return false; // Skip if 5+ minutes old
                               } else {
                                 return false; // Skip if no created_at timestamp
                               }
-                              
+
                               final user = _usersById[stream.userId];
                               // Find the matching live data from _videoLives by live_url or id
                               final live = _videoLives.firstWhere(
@@ -1532,13 +1567,13 @@ class _HomeScreenState extends State<HomeScreen> {
   // Helper function to format elapsed time
   String formatElapsedTime(DateTime? createdAt) {
     if (createdAt == null) return 'LIVE';
-    
+
     final now = DateTime.now();
     final difference = now.difference(createdAt);
-    
+
     final hours = difference.inHours;
     final minutes = difference.inMinutes % 60;
-    
+
     if (hours > 0) {
       return '${hours} hour${hours > 1 ? 's' : ''} ${minutes} min';
     } else {

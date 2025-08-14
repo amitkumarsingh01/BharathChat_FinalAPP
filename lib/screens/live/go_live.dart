@@ -344,6 +344,10 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   bool isLoadingPKBattleData = false;
   int? currentPKBattleId = 150; // For testing, you can make this dynamic
 
+  // Host profile picture and username for top menu bar
+  String? _hostProfilePic;
+  String? _hostUsername;
+
   // Request permissions before joining live stream
   Future<bool> requestPermissions() async {
     final List<Permission> permissions =
@@ -379,6 +383,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
     super.initState();
     _initializeCamera();
     _loadBackgroundData();
+    _fetchHostProfilePicture();
   }
 
   Future<void> _initializeCamera() async {
@@ -403,6 +408,26 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
       musicList = music;
       gifts = giftsData;
     });
+  }
+
+  // Fetch host profile picture and username for top menu bar
+  Future<void> _fetchHostProfilePicture() async {
+    try {
+      final userData = await ApiService.getCurrentUser();
+      if (userData != null) {
+        setState(() {
+          _hostProfilePic = userData['profile_pic'];
+          _hostUsername =
+              userData['username'] ?? userData['first_name'] ?? 'Host';
+        });
+        debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
+        debugPrint('✅ Fetched host username: $_hostUsername');
+      } else {
+        debugPrint('⚠️ Host profile picture not found');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching host profile picture: $e');
+    }
   }
 
   Future<void> _loadPKBattleTransactions() async {
@@ -1738,6 +1763,49 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..turnOnCameraWhenJoining = videoOn
                 ..turnOnMicrophoneWhenJoining = true
                 ..useSpeakerWhenJoining = true
+                // Configure host avatar in top menu bar
+                ..topMenuBar.hostAvatarBuilder = (ZegoUIKitUser host) {
+                  return Container(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Host avatar
+                        customAvatarBuilder(
+                          context,
+                          const Size(40, 40),
+                          host,
+                          {},
+                          profilePic:
+                              _hostProfilePic ??
+                              (userData != null
+                                  ? userData['profile_pic']
+                                  : null),
+                        ),
+                        const SizedBox(width: 8),
+                        // Host username
+                        if (_hostUsername != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _hostUsername!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
                 ..topMenuBar.buttons = [
                   // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]
@@ -1973,6 +2041,49 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..turnOnCameraWhenJoining = false
                 ..turnOnMicrophoneWhenJoining = true
                 ..useSpeakerWhenJoining = true
+                // Configure host avatar in top menu bar for audio mode
+                ..topMenuBar.hostAvatarBuilder = (ZegoUIKitUser host) {
+                  return Container(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Host avatar
+                        customAvatarBuilder(
+                          context,
+                          const Size(40, 40),
+                          host,
+                          {},
+                          profilePic:
+                              _hostProfilePic ??
+                              (userData != null
+                                  ? userData['profile_pic']
+                                  : null),
+                        ),
+                        const SizedBox(width: 8),
+                        // Host username
+                        if (_hostUsername != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _hostUsername!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
                 ..topMenuBar.buttons = [
                   // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]

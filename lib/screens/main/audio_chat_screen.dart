@@ -160,13 +160,13 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
   // Helper function to format elapsed time
   String formatElapsedTime(DateTime? createdAt) {
     if (createdAt == null) return 'LIVE';
-    
+
     final now = DateTime.now();
     final difference = now.difference(createdAt);
-    
+
     final hours = difference.inHours;
     final minutes = difference.inMinutes % 60;
-    
+
     if (hours > 0) {
       return '${hours} hour${hours > 1 ? 's' : ''} ${minutes} min';
     } else {
@@ -328,327 +328,374 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                     // Audio Rooms List
                     Builder(
                       builder: (context) {
-                        final filteredRooms = _audioRooms.where((room) {
-                          // Filter rooms less than 5 minutes old
-                          if (room['created_at'] == null) return false;
-                          try {
-                            final createdAt = DateTime.parse(room['created_at']);
-                            final now = DateTime.now();
-                            final difference = now.difference(createdAt);
-                            return difference.inMinutes < 5; // Less than 5 minutes
-                          } catch (e) {
-                            return false;
-                          }
-                        }).toList();
+                        final filteredRooms =
+                            _audioRooms.where((room) {
+                              // Filter rooms less than 5 minutes old
+                              if (room['created_at'] == null) return false;
+                              try {
+                                final createdAt = DateTime.parse(
+                                  room['created_at'],
+                                );
+                                final now = DateTime.now();
+                                final difference = now.difference(createdAt);
+                                return difference.inMinutes <
+                                    5; // Less than 5 minutes
+                              } catch (e) {
+                                return false;
+                              }
+                            }).toList();
 
                         if (filteredRooms.isEmpty) {
-                           return Center(
-                             child: Container(
-                               height: MediaQuery.of(context).size.height * 0.8,
-                               padding: const EdgeInsets.all(32),
-                               child: Column(
-                                 mainAxisAlignment: MainAxisAlignment.center,
-                                 children: [
-                                   Icon(
-                                     Icons.mic_off,
-                                     size: 64,
-                                     color: Colors.grey[600],
-                                   ),
-                                   const SizedBox(height: 16),
-                                   Text(
-                                     'There is no Audio Live',
-                                     style: TextStyle(
-                                       color: Colors.grey[400],
-                                       fontSize: 18,
-                                       fontWeight: FontWeight.bold,
-                                     ),
-                                     textAlign: TextAlign.center,
-                                   ),
-                                   const SizedBox(height: 8),
-                                   Text(
-                                     'Join Live Audio',
-                                     style: TextStyle(
-                                       color: Colors.grey[500],
-                                       fontSize: 14,
-                                     ),
-                                     textAlign: TextAlign.center,
-                                   ),
-                                 ],
-                               ),
-                             ),
-                           );
-                         }
+                          return Center(
+                            child: Container(
+                              height: MediaQuery.of(context).size.height * 0.8,
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.mic_off,
+                                    size: 64,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'There is no Audio Live',
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Join Live Audio',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
-                                                return ListView.builder(
+                        return ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
                           itemCount: filteredRooms.length,
                           itemBuilder: (context, index) {
                             final room = filteredRooms.reversed.toList()[index];
-                        final user = _usersById[room['user_id']];
-                        final userName =
-                            user != null
-                                ? ((user['first_name'] ?? '') +
-                                        ' ' +
-                                        (user['last_name'] ?? ''))
-                                    .trim()
-                                : 'Host';
-                        final profilePic =
-                            user != null ? user['profile_pic'] : null;
-                        final seats =
-                            room['seats'] ?? 7; // fallback if not present
-                        final listeners = room['viewers'] ?? 0;
-                        
-                        // Parse created_at timestamp
-                        DateTime? createdAt;
-                        if (room['created_at'] != null) {
-                          try {
-                            createdAt = DateTime.parse(room['created_at']);
-                          } catch (e) {
-                            createdAt = null;
-                          }
-                        }
-                        return GestureDetector(
-                          onTap: () async {
-                            // Join audio room logic
-                            final userData = await ApiService.getCurrentUser();
-                            final userID =
-                                userData != null
-                                    ? (userData['username'] ??
-                                        userData['id'].toString())
-                                    : DateTime.now().millisecondsSinceEpoch
-                                        .toString();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => LiveAudioScreen(
-                                      liveID: room['live_url'] ?? '',
-                                      localUserID: userID,
-                                      isHost: false,
-                                      hostId: room['user_id'] ?? 0,
-                                      backgroundImage: room['background_img'],
-                                      backgroundMusic: room['music'],
-                                    ),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // Profile image with LIVE badge
-                                Stack(
-                                  children: [
-                                    Container(
-                                      margin: const EdgeInsets.all(12),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child:
-                                            profilePic != null &&
-                                                    profilePic.isNotEmpty
-                                                ? (profilePic.startsWith('http')
-                                                    ? Image.network(
-                                                      profilePic,
-                                                      width: 90,
-                                                      height: 90,
-                                                      fit: BoxFit.cover,
-                                                    )
-                                                    : Image.network(
-                                                      'https://server.bharathchat.com/' +
-                                                          profilePic,
-                                                      width: 90,
-                                                      height: 90,
-                                                      fit: BoxFit.cover,
-                                                    ))
-                                                : Container(
-                                                  width: 90,
-                                                  height: 90,
-                                                  color: Colors.black,
-                                                  child: const Icon(
-                                                    Icons.person,
-                                                    color: Colors.white,
-                                                    size: 50,
-                                                  ),
-                                                ),
-                                      ),
-                                    ),
+                            final user = _usersById[room['user_id']];
+                            final userName =
+                                user != null
+                                    ? ((user['first_name'] ?? '') +
+                                            ' ' +
+                                            (user['last_name'] ?? ''))
+                                        .trim()
+                                    : 'Host';
+                            final profilePic =
+                                user != null ? user['profile_pic'] : null;
+                            final seats =
+                                room['seats'] ?? 7; // fallback if not present
+                            final listeners = room['viewers'] ?? 0;
 
-                                  ],
+                            // Parse created_at timestamp
+                            DateTime? createdAt;
+                            if (room['created_at'] != null) {
+                              try {
+                                createdAt = DateTime.parse(room['created_at']);
+                              } catch (e) {
+                                createdAt = null;
+                              }
+                            }
+                            return GestureDetector(
+                              onTap: () async {
+                                // Join audio room logic
+                                final userData =
+                                    await ApiService.getCurrentUser();
+                                final userID =
+                                    userData != null
+                                        ? (userData['username'] ??
+                                            userData['id'].toString())
+                                        : DateTime.now().millisecondsSinceEpoch
+                                            .toString();
+
+                                // Check if user is blocked by the host
+                                try {
+                                  if (userData != null) {
+                                    final relations =
+                                        await ApiService.getUserSimpleRelations(
+                                          room['user_id'] ?? 0,
+                                        );
+                                    final blockedIds = List<int>.from(
+                                      relations['blocked'] ?? [],
+                                    );
+
+                                    if (blockedIds.contains(userData['id'])) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'You are blocked by this host and cannot view their live stream',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            duration: Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                      return; // Prevent joining the live stream
+                                    }
+                                  }
+                                } catch (e) {
+                                  debugPrint(
+                                    'Error checking if user is blocked: $e',
+                                  );
+                                  // Continue with joining if there's an error checking block status
+                                }
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => LiveAudioScreen(
+                                          liveID: room['live_url'] ?? '',
+                                          localUserID: userID,
+                                          isHost: false,
+                                          hostId: room['user_id'] ?? 0,
+                                          backgroundImage:
+                                              room['background_img'],
+                                          backgroundMusic: room['music'],
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[900],
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
-                                // Main info
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                      horizontal: 0,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // Profile image with LIVE badge
+                                    Stack(
                                       children: [
-                                        Text(
-                                          room['title'] ?? userName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          room['chat_room'] ?? '',
-                                          style: const TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 14,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.graphic_eq,
-                                              color: Colors.green,
-                                              size: 18,
+                                        Container(
+                                          margin: const EdgeInsets.all(12),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              listeners.toString(),
-                                              style: const TextStyle(
-                                                color: Colors.green,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
+                                            child:
+                                                profilePic != null &&
+                                                        profilePic.isNotEmpty
+                                                    ? (profilePic.startsWith(
+                                                          'http',
+                                                        )
+                                                        ? Image.network(
+                                                          profilePic,
+                                                          width: 90,
+                                                          height: 90,
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                        : Image.network(
+                                                          'https://server.bharathchat.com/' +
+                                                              profilePic,
+                                                          width: 90,
+                                                          height: 90,
+                                                          fit: BoxFit.cover,
+                                                        ))
+                                                    : Container(
+                                                      width: 90,
+                                                      height: 90,
+                                                      color: Colors.black,
+                                                      child: const Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                        size: 50,
+                                                      ),
+                                                    ),
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                ),
-                                // Seats and Join button
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 16),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Row(
-                                      //   children: [
-                                      //     Icon(
-                                      //       Icons.event_seat,
-                                      //       color: Colors.white54,
-                                      //       size: 20,
-                                      //     ),
-                                      //     const SizedBox(width: 4),
-                                      //     Text(
-                                      //       '$seats Seats',
-                                      //       style: const TextStyle(
-                                      //         color: Colors.white54,
-                                      //         fontWeight: FontWeight.bold,
-                                      //         fontSize: 14,
-                                      //       ),
-                                      //     ),
-                                      //   ],
-                                      // ),
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        height: 30,
-                                        width: 100,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Color(0xFFffa030),
-                                              Color(0xFFfe9b00),
-                                              Color(0xFFf67d00),
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            25,
-                                          ),
+                                    // Main info
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                          horizontal: 0,
                                         ),
-                                        child: ElevatedButton.icon(
-                                          onPressed: () async {
-                                            // Join audio room logic
-                                            final userData =
-                                                await ApiService.getCurrentUser();
-                                            final userID =
-                                                userData != null
-                                                    ? (userData['username'] ??
-                                                        userData['id']
-                                                            .toString())
-                                                    : DateTime.now()
-                                                        .millisecondsSinceEpoch
-                                                        .toString();
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder:
-                                                    (
-                                                      context,
-                                                    ) => LiveAudioScreen(
-                                                      liveID:
-                                                          room['live_url'] ??
-                                                          '',
-                                                      localUserID: userID,
-                                                      isHost: false,
-                                                      hostId:
-                                                          room['user_id'] ?? 0,
-                                                      backgroundImage:
-                                                          room['background_img'],
-                                                      backgroundMusic:
-                                                          room['music'],
-                                                    ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              room['title'] ?? userName,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
                                               ),
-                                            );
-                                          },
-                                          icon: const Icon(
-                                            Icons.headset_mic,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                          label: const Text(
-                                            'Join',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.transparent,
-                                            shadowColor: Colors.transparent,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              room['chat_room'] ?? '',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            // padding: const EdgeInsets.symmetric(
-                                            //   horizontal: 18,
-                                            //   vertical: 10,
-                                            // ),
-                                          ),
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.graphic_eq,
+                                                  color: Colors.green,
+                                                  size: 18,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  listeners.toString(),
+                                                  style: const TextStyle(
+                                                    color: Colors.green,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    // Seats and Join button
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 16),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // Row(
+                                          //   children: [
+                                          //     Icon(
+                                          //       Icons.event_seat,
+                                          //       color: Colors.white54,
+                                          //       size: 20,
+                                          //     ),
+                                          //     const SizedBox(width: 4),
+                                          //     Text(
+                                          //       '$seats Seats',
+                                          //       style: const TextStyle(
+                                          //         color: Colors.white54,
+                                          //         fontWeight: FontWeight.bold,
+                                          //         fontSize: 14,
+                                          //       ),
+                                          //     ),
+                                          //   ],
+                                          // ),
+                                          const SizedBox(height: 8),
+                                          Container(
+                                            height: 30,
+                                            width: 100,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFFffa030),
+                                                  Color(0xFFfe9b00),
+                                                  Color(0xFFf67d00),
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(25),
+                                            ),
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                // Join audio room logic
+                                                final userData =
+                                                    await ApiService.getCurrentUser();
+                                                final userID =
+                                                    userData != null
+                                                        ? (userData['username'] ??
+                                                            userData['id']
+                                                                .toString())
+                                                        : DateTime.now()
+                                                            .millisecondsSinceEpoch
+                                                            .toString();
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder:
+                                                        (
+                                                          context,
+                                                        ) => LiveAudioScreen(
+                                                          liveID:
+                                                              room['live_url'] ??
+                                                              '',
+                                                          localUserID: userID,
+                                                          isHost: false,
+                                                          hostId:
+                                                              room['user_id'] ??
+                                                              0,
+                                                          backgroundImage:
+                                                              room['background_img'],
+                                                          backgroundMusic:
+                                                              room['music'],
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                              icon: const Icon(
+                                                Icons.headset_mic,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
+                                              label: const Text(
+                                                'Join',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                shadowColor: Colors.transparent,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                // padding: const EdgeInsets.symmetric(
+                                                //   horizontal: 18,
+                                                //   vertical: 10,
+                                                // ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         );
-                      },
-                    );
                       },
                     ),
                   ],

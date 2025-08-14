@@ -80,6 +80,10 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   DateTime _lastGiftCheck = DateTime.now();
   final Set<String> _processedGifts = {};
 
+  // Host profile picture and username for top menu bar
+  String? _hostProfilePic;
+  String? _hostUsername;
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +93,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     _loadCurrentUser();
     _loadHostUser();
     _fetchAllUsers();
+    _fetchHostProfilePicture();
     _userListSub = ZegoUIKit().getUserListStream().listen((zegoUsers) {
       setState(() {
         _zegoUsers = zegoUsers;
@@ -117,6 +122,9 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
 
     // Start gift polling for synchronization across devices
     _startGiftPolling();
+
+    // Start block checking for audience members
+    _startBlockChecking();
   }
 
   // Gift polling methods for synchronization
@@ -296,6 +304,47 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
       });
     } catch (e) {
       print('Error loading host user: $e');
+    }
+  }
+
+  // Fetch host profile picture and username for top menu bar
+  Future<void> _fetchHostProfilePicture() async {
+    try {
+      if (widget.isHost) {
+        // For host, use current user's profile picture and username
+        if (currentUser != null) {
+          setState(() {
+            _hostProfilePic = currentUser!['profile_pic'];
+            _hostUsername =
+                currentUser!['username'] ??
+                currentUser!['first_name'] ??
+                'Host';
+          });
+          debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
+          debugPrint('✅ Fetched host username: $_hostUsername');
+        }
+      } else {
+        // For audience, fetch host's profile picture and username
+        final users = await ApiService.getAllUsers();
+        final host = users.firstWhere(
+          (user) => user['id'] == widget.hostId,
+          orElse: () => null,
+        );
+        if (host != null) {
+          setState(() {
+            _hostProfilePic = host['profile_pic'];
+            _hostUsername = host['username'] ?? host['first_name'] ?? 'Host';
+          });
+          debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
+          debugPrint('✅ Fetched host username: $_hostUsername');
+        } else {
+          debugPrint(
+            '⚠️ Host profile picture not found for ID: ${widget.hostId}',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching host profile picture: $e');
     }
   }
 
@@ -625,6 +674,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     _userListSub?.cancel();
     _likeController.dispose();
     _stopGiftPolling();
+    _stopBlockChecking();
     if (widget.isHost) {
       _liveStreamService.removeStream(widget.liveID);
     }
@@ -640,6 +690,45 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..turnOnCameraWhenJoining = false
               ..turnOnMicrophoneWhenJoining = true
               ..useSpeakerWhenJoining = true
+              // Configure host avatar in top menu bar
+              ..topMenuBar.hostAvatarBuilder = (ZegoUIKitUser host) {
+                return Container(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Host avatar
+                      customAvatarBuilder(
+                        context,
+                        const Size(40, 40),
+                        host,
+                        {},
+                        profilePic: _hostProfilePic ?? widget.profilePic,
+                      ),
+                      const SizedBox(width: 8),
+                      // Host username
+                      if (_hostUsername != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _hostUsername!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
                 // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
@@ -923,6 +1012,45 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                   false // No camera for audience
               ..turnOnMicrophoneWhenJoining = false
               ..useSpeakerWhenJoining = true
+              // Configure host avatar in top menu bar for audience view
+              ..topMenuBar.hostAvatarBuilder = (ZegoUIKitUser host) {
+                return Container(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Host avatar
+                      customAvatarBuilder(
+                        context,
+                        const Size(40, 40),
+                        host,
+                        {},
+                        profilePic: _hostProfilePic ?? widget.profilePic,
+                      ),
+                      const SizedBox(width: 8),
+                      // Host username
+                      if (_hostUsername != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _hostUsername!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
               // Top menu bar - minimal buttons for audio
               ..topMenuBar.buttons = [
                 // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
@@ -1410,20 +1538,49 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: CircleAvatar(
                           radius: 40,
-                          backgroundImage:
+                          backgroundImage: null, // Remove base64 decoding
+                          child:
                               profilePic != null && profilePic.isNotEmpty
-                                  ? MemoryImage(
-                                    base64Decode(
-                                      profilePic.contains(',')
-                                          ? profilePic.split(',').last
-                                          : profilePic,
+                                  ? ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl:
+                                          profilePic.startsWith('http')
+                                              ? profilePic
+                                              : 'https://server.bharathchat.com/$profilePic',
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      placeholder:
+                                          (context, url) => Container(
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.grey[300],
+                                            ),
+                                            child: Icon(
+                                              Icons.person,
+                                              size: 40,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                      errorWidget:
+                                          (context, url, error) => Container(
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.grey[300],
+                                            ),
+                                            child: Icon(
+                                              Icons.person,
+                                              size: 40,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
                                     ),
                                   )
-                                  : null,
-                          child:
-                              (profilePic == null || profilePic.isEmpty)
-                                  ? Icon(Icons.person, size: 40)
-                                  : null,
+                                  : Icon(Icons.person, size: 40),
                         ),
                       );
                     }).toList(),
@@ -1566,6 +1723,83 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
         );
       },
     );
+  }
+
+  // Check if current user is blocked by the host
+  Future<bool> _checkIfUserIsBlocked() async {
+    try {
+      if (widget.isHost)
+        return false; // Hosts can't be blocked in their own stream
+
+      final currentUser = await ApiService.getCurrentUser();
+      if (currentUser == null) return false;
+
+      // Get the host's blocked users list using the correct API
+      final relations = await ApiService.getUserSimpleRelations(widget.hostId);
+      final blockedIds = List<int>.from(relations['blocked'] ?? []);
+
+      // Check if current user is in the blocked list
+      return blockedIds.contains(currentUser['id']);
+    } catch (e) {
+      debugPrint('Error checking if user is blocked: $e');
+      return false;
+    }
+  }
+
+  // Block checking timer
+  Timer? _blockCheckTimer;
+  bool _isUserBlocked = false;
+
+  void _startBlockChecking() {
+    if (widget.isHost) return; // Only check for audience members
+
+    _blockCheckTimer?.cancel();
+    _blockCheckTimer = Timer.periodic(const Duration(seconds: 5), (
+      timer,
+    ) async {
+      final isBlocked = await _checkIfUserIsBlocked();
+      if (isBlocked && !_isUserBlocked) {
+        setState(() {
+          _isUserBlocked = true;
+        });
+        if (mounted) {
+          // Show blocking message and navigate back
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'You have been blocked by the host and cannot view this live stream',
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          // Navigate back to previous screen after a short delay
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          });
+        }
+      } else if (!isBlocked && _isUserBlocked) {
+        setState(() {
+          _isUserBlocked = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You have been unblocked by the host'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void _stopBlockChecking() {
+    _blockCheckTimer?.cancel();
+    _blockCheckTimer = null;
   }
 
   // Block user method

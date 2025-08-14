@@ -78,6 +78,10 @@ class _LivePageState extends State<LivePage>
   final requestIDNotifier = ValueNotifier<String>('');
   PKEvents? pkEvents;
 
+  // Host profile picture and username for top menu bar
+  String? _hostProfilePic;
+  String? _hostUsername;
+
   // Like animation state
   late AnimationController _likeController;
   late Animation<double> _likeScale;
@@ -134,6 +138,9 @@ class _LivePageState extends State<LivePage>
     _updateDebugInfo('local_user_id', widget.localUserID);
     _updateDebugInfo('receiver_id', widget.receiverId);
     _updateDebugInfo('has_active_pk_battle', widget.activePKBattle != null);
+
+    // Fetch host profile picture for top menu bar
+    _fetchHostProfilePicture();
 
     // Extract stream ID from liveID for audience
     // Extract stream ID for both hosts and audience
@@ -217,6 +224,9 @@ class _LivePageState extends State<LivePage>
       );
     } else {
       // For both hosts and audience without pre-loaded PK battle, fetch it immediately
+
+      // Start block checking for audience members
+      _startBlockChecking();
       debugPrint(
         '🎮 ${widget.isHost ? "Host" : "Audience"} joining - fetching PK battle data...',
       );
@@ -1081,6 +1091,7 @@ class _LivePageState extends State<LivePage>
     _stopGiftPolling();
     _stopUserGiftsPolling();
     _stopPKBattleActiveCheck();
+    _stopBlockChecking();
     _giftAudioPlayer.dispose();
     super.dispose();
   }
@@ -1139,6 +1150,34 @@ class _LivePageState extends State<LivePage>
 
     // Also print to console
     debugPrint(logEntry);
+  }
+
+  // Fetch host profile picture and username for top menu bar
+  Future<void> _fetchHostProfilePicture() async {
+    try {
+      // Get all users to find the host's profile picture and username
+      final users = await ApiService.getAllUsers();
+      final hostUser = users.firstWhere(
+        (user) => user['id'] == widget.receiverId,
+        orElse: () => null,
+      );
+
+      if (hostUser != null) {
+        setState(() {
+          _hostProfilePic = hostUser['profile_pic'];
+          _hostUsername =
+              hostUser['username'] ?? hostUser['first_name'] ?? 'Host';
+        });
+        debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
+        debugPrint('✅ Fetched host username: $_hostUsername');
+      } else {
+        debugPrint(
+          '⚠️ Host profile picture not found for ID: ${widget.receiverId}',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching host profile picture: $e');
+    }
   }
 
   // Set callback for when new logs are added
@@ -2458,6 +2497,44 @@ class _LivePageState extends State<LivePage>
 
     // If pkBattle is not a valid property, comment or remove the next line
     // config.pkBattle = pkConfig();
+
+    // Configure host avatar in top menu bar
+    config.topMenuBar.hostAvatarBuilder = (ZegoUIKitUser host) {
+      return Container(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Host avatar
+            customAvatarBuilder(
+              context,
+              const Size(40, 40),
+              host,
+              {},
+              profilePic: _hostProfilePic ?? widget.profilePic,
+            ),
+            const SizedBox(width: 8),
+            // Host username
+            if (_hostUsername != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _hostUsername!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    };
+
     config.topMenuBar.buttons = [
       // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
     ];
@@ -3966,6 +4043,85 @@ class _LivePageState extends State<LivePage>
         );
       },
     );
+  }
+
+  // Check if current user is blocked by the host
+  Future<bool> _checkIfUserIsBlocked() async {
+    try {
+      if (widget.isHost)
+        return false; // Hosts can't be blocked in their own stream
+
+      final currentUser = await ApiService.getCurrentUser();
+      if (currentUser == null) return false;
+
+      // Get the host's blocked users list using the correct API
+      final relations = await ApiService.getUserSimpleRelations(
+        widget.receiverId,
+      );
+      final blockedIds = List<int>.from(relations['blocked'] ?? []);
+
+      // Check if current user is in the blocked list
+      return blockedIds.contains(currentUser['id']);
+    } catch (e) {
+      debugPrint('Error checking if user is blocked: $e');
+      return false;
+    }
+  }
+
+  // Block checking timer
+  Timer? _blockCheckTimer;
+  bool _isUserBlocked = false;
+
+  void _startBlockChecking() {
+    if (widget.isHost) return; // Only check for audience members
+
+    _blockCheckTimer?.cancel();
+    _blockCheckTimer = Timer.periodic(const Duration(seconds: 5), (
+      timer,
+    ) async {
+      final isBlocked = await _checkIfUserIsBlocked();
+      if (isBlocked && !_isUserBlocked) {
+        setState(() {
+          _isUserBlocked = true;
+        });
+        if (mounted) {
+          // Show blocking message and navigate back
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'You have been blocked by the host and cannot view this live stream',
+              ),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          // Navigate back to previous screen after a short delay
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          });
+        }
+      } else if (!isBlocked && _isUserBlocked) {
+        setState(() {
+          _isUserBlocked = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You have been unblocked by the host'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  void _stopBlockChecking() {
+    _blockCheckTimer?.cancel();
+    _blockCheckTimer = null;
   }
 
   // Block user method
