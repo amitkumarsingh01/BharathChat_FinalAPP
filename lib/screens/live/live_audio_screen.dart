@@ -756,6 +756,59 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                   profilePic: widget.profilePic,
                 );
               }
+              // Custom start live button with app theme color
+              ..startLiveButtonBuilder = (
+                BuildContext context,
+                VoidCallback startLive,
+              ) {
+                return Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.orange.shade300,
+                        Colors.orange,
+                        Colors.orange.shade700,
+                      ],
+                      center: Alignment.center,
+                      radius: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.4),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: Colors.orange.withOpacity(0.2),
+                        blurRadius: 25,
+                        spreadRadius: 5,
+                        offset: const Offset(0, 0),
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(30),
+                      onTap: startLive,
+                      child: Center(
+                        child: Image.asset(
+                          'assets/start.png',
+                          // width: 32,
+                          // height: 32,
+                          width: 65,
+                          height: 65,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
               // Customize text message UI with profile pictures for host
               ..inRoomMessage.showAvatar = true
               ..inRoomMessage.showName = true
@@ -789,8 +842,19 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoInRoomMessage message,
                 Map<String, dynamic> extraInfo,
               ) {
-                // Clean username by removing avatar info
-                final cleanUsername = message.user.name.split('|avatar:')[0];
+                // Get user ID and profile picture from attributes
+                final attributes = message.attributes;
+                final userId = attributes['user_id'] ?? '';
+                final profilePic = attributes['profile_pic'] ?? '';
+
+                // Clean username by removing "user_" prefix and avatar info
+                String cleanUsername = message.user.name;
+                if (cleanUsername.startsWith('user_')) {
+                  cleanUsername = cleanUsername.substring(5);
+                }
+                if (cleanUsername.contains('|avatar:')) {
+                  cleanUsername = cleanUsername.split('|avatar:')[0];
+                }
 
                 return GestureDetector(
                   onTap: () {
@@ -832,9 +896,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                               message.user,
                               extraInfo,
                               profilePic:
-                                  message.user.name.contains('|avatar:')
-                                      ? message.user.name.split('|avatar:')[1]
-                                      : null,
+                                  profilePic.isNotEmpty ? profilePic : null,
                             ),
                           ),
                         ),
@@ -1097,14 +1159,32 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 color: Colors.white,
                 fontSize: 12,
               )
+              // Add user ID and profile picture attributes
+              ..inRoomMessage.attributes = () {
+                return {
+                  'user_id': currentUser?['id']?.toString() ?? '',
+                  'profile_pic': currentUser?['profile_pic'] ?? '',
+                };
+              }
               // Custom item builder for enhanced profile picture display
               ..inRoomMessage.itemBuilder = (
                 BuildContext context,
                 ZegoInRoomMessage message,
                 Map<String, dynamic> extraInfo,
               ) {
-                // Clean username by removing avatar info
-                final cleanUsername = message.user.name.split('|avatar:')[0];
+                // Get user ID and profile picture from attributes
+                final attributes = message.attributes;
+                final userId = attributes['user_id'] ?? '';
+                final profilePic = attributes['profile_pic'] ?? '';
+
+                // Clean username by removing "user_" prefix and avatar info
+                String cleanUsername = message.user.name;
+                if (cleanUsername.startsWith('user_')) {
+                  cleanUsername = cleanUsername.substring(5);
+                }
+                if (cleanUsername.contains('|avatar:')) {
+                  cleanUsername = cleanUsername.split('|avatar:')[0];
+                }
 
                 return GestureDetector(
                   onTap: () {
@@ -1146,9 +1226,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                               message.user,
                               extraInfo,
                               profilePic:
-                                  message.user.name.contains('|avatar:')
-                                      ? message.user.name.split('|avatar:')[1]
-                                      : null,
+                                  profilePic.isNotEmpty ? profilePic : null,
                             ),
                           ),
                         ),

@@ -2173,6 +2173,60 @@ class _LivePageState extends State<LivePage>
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
     config.audioVideoView.showUserNameOnView = false;
 
+    // Custom start live button with app theme color
+    config.startLiveButtonBuilder = (
+      BuildContext context,
+      VoidCallback startLive,
+    ) {
+      return Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              Colors.orange.shade300,
+              Colors.orange,
+              Colors.orange.shade700,
+            ],
+            center: Alignment.center,
+            radius: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.orange.withOpacity(0.4),
+              blurRadius: 15,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.orange.withOpacity(0.2),
+              blurRadius: 25,
+              spreadRadius: 5,
+              offset: const Offset(0, 0),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(30),
+            onTap: startLive,
+            child: Center(
+              child: Image.asset(
+                'assets/start.png',
+                // width: 32,
+                // height: 32,
+                width: 65,
+                height: 65,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      );
+    };
+
     // Customize text message UI with profile pictures
     config.inRoomMessage.showAvatar = true;
     config.inRoomMessage.showName = true;
