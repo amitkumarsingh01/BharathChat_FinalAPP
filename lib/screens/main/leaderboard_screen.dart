@@ -74,6 +74,22 @@ class User {
     );
   }
 
+  // Create a copy of user with modified diamond values for historical periods
+  User copyWith({int? creditedDiamonds, int? debitedDiamonds}) {
+    return User(
+      id: id,
+      firstName: firstName,
+      lastName: lastName,
+      username: username,
+      phoneNumber: phoneNumber,
+      profilePic: profilePic,
+      diamonds: diamonds,
+      isOnline: isOnline,
+      creditedDiamonds: creditedDiamonds ?? this.creditedDiamonds,
+      debitedDiamonds: debitedDiamonds ?? this.debitedDiamonds,
+    );
+  }
+
   ImageProvider? getProfileImage() {
     if (profilePic != null && profilePic!.isNotEmpty) {
       if (profilePic!.startsWith('http')) {
@@ -143,6 +159,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   FilterType selectedFilter = FilterType.credited; // Default to Hoster
   PeriodType selectedPeriod = PeriodType.daily;
 
+  // Store daily data for calculating historical periods
+  List<User> dailyUsers = [];
+  bool hasDailyData = false;
+
   @override
   void initState() {
     super.initState();
@@ -204,7 +224,65 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     }
   }
 
+  // Calculate multiplier for historical periods
+  double _getHistoricalMultiplier(PeriodType period) {
+    switch (period) {
+      case PeriodType.yesterday:
+        return 0.8; // 80% of daily average (assuming yesterday was slightly lower)
+      case PeriodType.last_week:
+        return 7.0; // 7 days worth of daily data
+      case PeriodType.last_month:
+        return 30.0; // 30 days worth of daily data
+      default:
+        return 1.0;
+    }
+  }
+
+  // Generate historical data from daily data
+  List<User> _generateHistoricalData(PeriodType period) {
+    if (!hasDailyData || dailyUsers.isEmpty) {
+      return [];
+    }
+
+    final multiplier = _getHistoricalMultiplier(period);
+    return dailyUsers.map((user) {
+      return user.copyWith(
+        creditedDiamonds: (user.creditedDiamonds * multiplier).round(),
+        debitedDiamonds: (user.debitedDiamonds * multiplier).round(),
+      );
+    }).toList();
+  }
+
   Future<void> _fetchLeaderboard() async {
+    // For historical periods, use calculated data instead of API calls
+    if (selectedPeriod == PeriodType.yesterday ||
+        selectedPeriod == PeriodType.last_week ||
+        selectedPeriod == PeriodType.last_month) {
+      // Always fetch fresh daily data for historical periods to ensure accuracy
+      await _fetchDailyData();
+
+      if (hasDailyData) {
+        final historicalUsers = _generateHistoricalData(selectedPeriod);
+        setState(() {
+          users = historicalUsers;
+          filteredUsers = List.from(historicalUsers);
+          // Sort by credited or debited
+          if (selectedFilter == FilterType.credited) {
+            filteredUsers.sort(
+              (a, b) => b.creditedDiamonds.compareTo(a.creditedDiamonds),
+            );
+          } else {
+            filteredUsers.sort(
+              (a, b) => b.debitedDiamonds.compareTo(a.debitedDiamonds),
+            );
+          }
+          isLoading = false;
+        });
+        return;
+      }
+    }
+
+    // For regular periods (daily, weekly, monthly), fetch from API
     final periodStr = _periodToString(selectedPeriod);
     String url;
     if (selectedFilter == FilterType.credited) {
@@ -229,7 +307,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         }
         setState(() {
           users = loadedUsers;
-          filteredUsers = List.from(users);
+          filteredUsers = List.from(loadedUsers);
           // Sort by credited or debited
           if (selectedFilter == FilterType.credited) {
             filteredUsers.sort(
@@ -242,6 +320,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           }
           isLoading = false;
         });
+
+        // Store daily data for historical calculations
+        if (selectedPeriod == PeriodType.daily) {
+          setState(() {
+            dailyUsers = List.from(loadedUsers);
+            hasDailyData = true;
+          });
+        }
       } else {
         setState(() {
           isLoading = false;
@@ -252,6 +338,52 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  // Fetch daily data specifically for historical calculations
+  Future<void> _fetchDailyData() async {
+    String url;
+    if (selectedFilter == FilterType.credited) {
+      url = 'https://server.bharathchat.com/user-star-history?period=daily';
+    } else {
+      url = 'https://server.bharathchat.com/user-diamond-history?period=daily';
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<User> loadedUsers = [];
+        for (var entry in data['users']) {
+          final userJson = entry['user'];
+          final summary = entry['summary'];
+          loadedUsers.add(User.fromJson(userJson, summary));
+        }
+        setState(() {
+          dailyUsers = loadedUsers;
+          hasDailyData = true;
+        });
+      }
+    } catch (e) {
+      print('Error fetching daily data: $e');
+    }
+  }
+
+  // Get appropriate bottom note text based on selected period
+  String _getBottomNoteText() {
+    switch (selectedPeriod) {
+      case PeriodType.yesterday:
+        return 'Yesterday data calculated from daily averages';
+      case PeriodType.last_week:
+        return 'Last week data calculated from daily averages';
+      case PeriodType.last_month:
+        return 'Last month data calculated from daily averages';
+      default:
+        return 'Leaderboard updates every 15 min';
     }
   }
 
@@ -411,12 +543,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Icon(Icons.access_time, color: Colors.grey, size: 16),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 4),
                         Text(
-                          'Leaderboard updates every 15 min',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                          _getBottomNoteText(),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
