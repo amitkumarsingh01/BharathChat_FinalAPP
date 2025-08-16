@@ -11,7 +11,12 @@ class GiftPanel extends StatefulWidget {
   final String? liveStreamType;
   final String roomId;
   final Function()? onGiftSent;
-  final Function(String giftName, String gifUrl, String senderName, {String? pkBattleSide})?
+  final Function(
+    String giftName,
+    String gifUrl,
+    String senderName, {
+    String? pkBattleSide,
+  })?
   onGiftAnimation;
   final VoidCallback? onClose;
 
@@ -79,13 +84,15 @@ class _GiftPanelState extends State<GiftPanel> {
     try {
       final requestId = DateTime.now().millisecondsSinceEpoch.toString();
       debugPrint('🎁 [$requestId] Starting gift send...');
-      
+
       // Check if we have enough diamonds
       final currentDiamonds = await ApiService.getCurrentUserDiamonds();
       final giftCost = gift['diamond_amount'] as int? ?? 0;
-      
+
       if (currentDiamonds < giftCost) {
-        debugPrint('❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost');
+        debugPrint(
+          '❌ [$requestId] Insufficient diamonds: $currentDiamonds < $giftCost',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -97,9 +104,11 @@ class _GiftPanelState extends State<GiftPanel> {
         }
         return;
       }
-      
-      debugPrint('✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost');
-      
+
+      debugPrint(
+        '✅ [$requestId] Sufficient diamonds: $currentDiamonds >= $giftCost',
+      );
+
       // Send gift via API
       final success = await ApiService.sendGift(
         receiverId: widget.receiverId,
@@ -107,16 +116,20 @@ class _GiftPanelState extends State<GiftPanel> {
         liveStreamId: widget.liveStreamId ?? 0,
         liveStreamType: widget.liveStreamType ?? 'audio',
       );
-      
+
       if (success) {
         debugPrint('✅ [$requestId] Gift sent successfully via API');
-        
+
         // Play gift audio if available (with 2-second delay)
         final dynamic audioFilenameRaw = gift['audio_filename'];
-        final String? audioFilename = (audioFilenameRaw is String) ? audioFilenameRaw : (audioFilenameRaw?.toString());
+        final String? audioFilename =
+            (audioFilenameRaw is String)
+                ? audioFilenameRaw
+                : (audioFilenameRaw?.toString());
         if (audioFilename != null && audioFilename.isNotEmpty) {
           try {
-            final audioUrl = 'https://server.bharathchat.com/uploads/audio/$audioFilename';
+            final audioUrl =
+                'https://server.bharathchat.com/uploads/audio/$audioFilename';
             debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
             // Wait 2 seconds before playing audio
             await Future.delayed(const Duration(seconds: 2));
@@ -128,29 +141,35 @@ class _GiftPanelState extends State<GiftPanel> {
             debugPrint('🎁 [$requestId] Error playing gift audio: $e');
           }
         }
-        
+
         // Immediately show animation for the sender (ensure URL correctness)
         try {
           String? gifUrl;
           final dynamic gifUrlRaw = gift['gif_url'];
           if (gifUrlRaw is String && gifUrlRaw.isNotEmpty) {
-            gifUrl = gifUrlRaw.startsWith('http')
-                ? gifUrlRaw
-                : 'https://server.bharathchat.com$gifUrlRaw';
+            gifUrl =
+                gifUrlRaw.startsWith('http')
+                    ? gifUrlRaw
+                    : 'https://server.bharathchat.com$gifUrlRaw';
           } else {
             final dynamic gifFilenameRaw = gift['gif_filename'];
-            final String gifFilename = (gifFilenameRaw is String)
-                ? gifFilenameRaw
-                : (gifFilenameRaw?.toString() ?? '');
-            gifUrl = 'https://server.bharathchat.com/uploads/gifts/$gifFilename';
+            final String gifFilename =
+                (gifFilenameRaw is String)
+                    ? gifFilenameRaw
+                    : (gifFilenameRaw?.toString() ?? '');
+            gifUrl =
+                'https://server.bharathchat.com/uploads/gifts/$gifFilename';
           }
-          final String senderName = currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
+          final String senderName =
+              currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
           final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
           if (gifUrl != null) {
             widget.onGiftAnimation?.call(giftName, gifUrl, senderName);
           }
         } catch (e) {
-          debugPrint('🎁 [$requestId] Error creating immediate gift animation: $e');
+          debugPrint(
+            '🎁 [$requestId] Error creating immediate gift animation: $e',
+          );
         }
 
         // Send ZEGOCLOUD in-room command for synchronization
@@ -166,12 +185,14 @@ class _GiftPanelState extends State<GiftPanel> {
           "receiver_id": widget.receiverId,
           "timestamp": DateTime.now().millisecondsSinceEpoch,
         });
-        
+
         debugPrint('🎁 [$requestId] Sending in-room command: $message');
         // Note: ZEGOCLOUD command sending is disabled due to API limitations
         // Gift animations will be synchronized through server-side polling
-        debugPrint('🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync');
-        
+        debugPrint(
+          '🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync',
+        );
+
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -182,7 +203,7 @@ class _GiftPanelState extends State<GiftPanel> {
             ),
           );
         }
-        
+
         // Close the gift panel
         Navigator.of(context).pop();
       } else {

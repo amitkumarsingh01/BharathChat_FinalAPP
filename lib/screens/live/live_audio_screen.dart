@@ -1,24 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:just_audio/just_audio.dart';
-import 'gift_panel.dart';
 import 'gift_animation.dart';
 import '../../services/api_service.dart';
 import '../../services/live_stream_service.dart';
-import 'package:finalchat/pk_widgets/config.dart';
-import 'package:finalchat/pk_widgets/events.dart';
-import 'package:finalchat/pk_widgets/surface.dart';
-import 'package:finalchat/pk_widgets/widgets/mute_button.dart';
 import 'package:finalchat/common.dart';
-import 'package:finalchat/constants.dart';
-import 'live_page.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:finalchat/screens/main/store_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:zego_uikit/zego_uikit.dart';
 
 class LiveAudioScreen extends StatefulWidget {
   final String liveID;
@@ -733,6 +724,191 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..topMenuBar.buttons = [
                 // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
+              // Member button configuration with custom builder
+              ..memberButton.builder = (int memberCount) {
+                return Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade300, Colors.orange.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      const Icon(Icons.people, color: Colors.white, size: 18),
+                      if (memberCount > 0)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              memberCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+              // Member list configuration with custom item builder
+              ..memberList.itemBuilder = (
+                BuildContext context,
+                Size size,
+                ZegoUIKitUser user,
+                Map<String, dynamic> extraInfo,
+              ) {
+                // Get user profile from our cached data
+                final userProfile = _userProfiles[user.id];
+                final profilePic = userProfile?['profile_pic'];
+                final username =
+                    userProfile?['username'] ??
+                    userProfile?['first_name'] ??
+                    user.name;
+
+                // Clean username by removing "user_" prefix and avatar info
+                String cleanUsername = username;
+                if (cleanUsername.startsWith('user_')) {
+                  cleanUsername = cleanUsername.substring(5);
+                }
+                if (cleanUsername.contains('|avatar:')) {
+                  cleanUsername = cleanUsername.split('|avatar:')[0];
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      // User avatar
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.orange.shade300,
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child:
+                              profilePic != null && profilePic.isNotEmpty
+                                  ? CachedNetworkImage(
+                                    imageUrl:
+                                        profilePic.startsWith('http')
+                                            ? profilePic
+                                            : 'https://server.bharathchat.com/$profilePic',
+                                    fit: BoxFit.cover,
+                                    placeholder:
+                                        (context, url) => Container(
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                    errorWidget:
+                                        (context, url, error) => Container(
+                                          color: Colors.grey[300],
+                                          child: Text(
+                                            cleanUsername.isNotEmpty
+                                                ? cleanUsername[0].toUpperCase()
+                                                : 'U',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                  )
+                                  : Container(
+                                    color: Colors.orange.shade300,
+                                    child: Text(
+                                      cleanUsername.isNotEmpty
+                                          ? cleanUsername[0].toUpperCase()
+                                          : 'U',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // User info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cleanUsername,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (user.id == widget.localUserID && widget.isHost)
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade400,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Host',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      // Online indicator
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
               // Bottom menu bar - audio-specific buttons with extend buttons
               ..bottomMenuBar.hostButtons = [
                 ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
@@ -1117,6 +1293,191 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               ..topMenuBar.buttons = [
                 // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
               ]
+              // Member button configuration with custom builder
+              ..memberButton.builder = (int memberCount) {
+                return Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.orange.shade300, Colors.orange.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      const Icon(Icons.people, color: Colors.white, size: 18),
+                      if (memberCount > 0)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              memberCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+              // Member list configuration with custom item builder for audience
+              ..memberList.itemBuilder = (
+                BuildContext context,
+                Size size,
+                ZegoUIKitUser user,
+                Map<String, dynamic> extraInfo,
+              ) {
+                // Get user profile from our cached data
+                final userProfile = _userProfiles[user.id];
+                final profilePic = userProfile?['profile_pic'];
+                final username =
+                    userProfile?['username'] ??
+                    userProfile?['first_name'] ??
+                    user.name;
+
+                // Clean username by removing "user_" prefix and avatar info
+                String cleanUsername = username;
+                if (cleanUsername.startsWith('user_')) {
+                  cleanUsername = cleanUsername.substring(5);
+                }
+                if (cleanUsername.contains('|avatar:')) {
+                  cleanUsername = cleanUsername.split('|avatar:')[0];
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      // User avatar
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.orange.shade300,
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child:
+                              profilePic != null && profilePic.isNotEmpty
+                                  ? CachedNetworkImage(
+                                    imageUrl:
+                                        profilePic.startsWith('http')
+                                            ? profilePic
+                                            : 'https://server.bharathchat.com/$profilePic',
+                                    fit: BoxFit.cover,
+                                    placeholder:
+                                        (context, url) => Container(
+                                          color: Colors.grey[300],
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                    errorWidget:
+                                        (context, url, error) => Container(
+                                          color: Colors.grey[300],
+                                          child: Text(
+                                            cleanUsername.isNotEmpty
+                                                ? cleanUsername[0].toUpperCase()
+                                                : 'U',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                  )
+                                  : Container(
+                                    color: Colors.orange.shade300,
+                                    child: Text(
+                                      cleanUsername.isNotEmpty
+                                          ? cleanUsername[0].toUpperCase()
+                                          : 'U',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // User info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cleanUsername,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (user.id == widget.hostId.toString())
+                              Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade400,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Host',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      // Online indicator
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
               // Bottom menu bar - audience buttons for audio with extend buttons
               ..bottomMenuBar.audienceButtons = [
                 ZegoLiveStreamingMenuBarButtonName.leaveButton,

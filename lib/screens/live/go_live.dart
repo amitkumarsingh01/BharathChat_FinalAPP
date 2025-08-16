@@ -90,6 +90,160 @@ class _HomePageState extends State<HomePage> {
                     ..topMenuBar.buttons = [
                       // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                     ]
+                    // Member button configuration with custom builder
+                    ..memberButton.builder = (int memberCount) {
+                      return Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.orange.shade300,
+                              Colors.orange.shade600,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            const Icon(
+                              Icons.people,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            if (memberCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    memberCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+                    // Member list configuration with custom item builder
+                    ..memberList.itemBuilder = (
+                      BuildContext context,
+                      Size size,
+                      ZegoUIKitUser user,
+                      Map<String, dynamic> extraInfo,
+                    ) {
+                      // Clean username by removing "user_" prefix and avatar info
+                      String cleanUsername = user.name;
+                      if (cleanUsername.startsWith('user_')) {
+                        cleanUsername = cleanUsername.substring(5);
+                      }
+                      if (cleanUsername.contains('|avatar:')) {
+                        cleanUsername = cleanUsername.split('|avatar:')[0];
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            // User avatar
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.orange.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Container(
+                                color: Colors.orange.shade300,
+                                child: Text(
+                                  cleanUsername.isNotEmpty
+                                      ? cleanUsername[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // User info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    cleanUsername,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (user.id == userID)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.shade400,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'Host',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            // Online indicator
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                     // Bottom menu bar settings
                     ..bottomMenuBar.hostButtons = [
                       ZegoLiveStreamingMenuBarButtonName.toggleCameraButton,
@@ -1864,6 +2018,52 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..topMenuBar.buttons = [
                   // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]
+                // Member button configuration with custom builder
+                ..memberButton.builder = (int memberCount) {
+                  return Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.orange.shade300,
+                          Colors.orange.shade600,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        const Icon(Icons.people, color: Colors.white, size: 18),
+                        if (memberCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                memberCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
                 ..bottomMenuBar.hostButtons = [
                   ZegoLiveStreamingMenuBarButtonName.toggleCameraButton,
                   ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
@@ -2089,7 +2289,108 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     color: Colors.white,
                     size: 24,
                   ),
-                );
+                )
+                // Member list configuration with custom item builder
+                ..memberList.itemBuilder = (
+                  BuildContext context,
+                  Size size,
+                  ZegoUIKitUser user,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  // Clean username by removing "user_" prefix and avatar info
+                  String cleanUsername = user.name;
+                  if (cleanUsername.startsWith('user_')) {
+                    cleanUsername = cleanUsername.substring(5);
+                  }
+                  if (cleanUsername.contains('|avatar:')) {
+                    cleanUsername = cleanUsername.split('|avatar:')[0];
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        // User avatar
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.orange.shade300,
+                              width: 2,
+                            ),
+                          ),
+                          child: Container(
+                            color: Colors.orange.shade300,
+                            child: Text(
+                              cleanUsername.isNotEmpty
+                                  ? cleanUsername[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // User info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cleanUsername,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (user.id == userID)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade400,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Host',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Online indicator
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                };
         } else {
           config =
               ZegoUIKitPrebuiltLiveStreamingConfig.host()
@@ -2142,6 +2443,52 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                 ..topMenuBar.buttons = [
                   // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
                 ]
+                // Member button configuration with custom builder
+                ..memberButton.builder = (int memberCount) {
+                  return Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.orange.shade300,
+                          Colors.orange.shade600,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Stack(
+                      children: [
+                        const Icon(Icons.people, color: Colors.white, size: 18),
+                        if (memberCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                memberCount.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }
                 ..bottomMenuBar.hostButtons = [
                   ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
                   ZegoLiveStreamingMenuBarButtonName.leaveButton,
@@ -2353,7 +2700,108 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     color: Colors.white,
                     size: 24,
                   ),
-                );
+                )
+                // Member list configuration with custom item builder for audio mode
+                ..memberList.itemBuilder = (
+                  BuildContext context,
+                  Size size,
+                  ZegoUIKitUser user,
+                  Map<String, dynamic> extraInfo,
+                ) {
+                  // Clean username by removing "user_" prefix and avatar info
+                  String cleanUsername = user.name;
+                  if (cleanUsername.startsWith('user_')) {
+                    cleanUsername = cleanUsername.substring(5);
+                  }
+                  if (cleanUsername.contains('|avatar:')) {
+                    cleanUsername = cleanUsername.split('|avatar:')[0];
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        // User avatar
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.orange.shade300,
+                              width: 2,
+                            ),
+                          ),
+                          child: Container(
+                            color: Colors.orange.shade300,
+                            child: Text(
+                              cleanUsername.isNotEmpty
+                                  ? cleanUsername[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // User info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                cleanUsername,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (user.id == userID)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade400,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Host',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Online indicator
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                };
         }
 
         // Navigate to the appropriate screen based on mode

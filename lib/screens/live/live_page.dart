@@ -121,6 +121,14 @@ class _LivePageState extends State<LivePage>
   // Audio player for gift sounds
   final AudioPlayer _giftAudioPlayer = AudioPlayer();
 
+  // User profiles for member list
+  Map<String, dynamic> _userProfiles = {};
+  List<dynamic> _allUsers = [];
+  List<dynamic> _zegoUsers = [];
+
+  // Stream subscription for user list
+  StreamSubscription? _userListSub;
+
   @override
   void initState() {
     super.initState();
@@ -141,6 +149,17 @@ class _LivePageState extends State<LivePage>
 
     // Fetch host profile picture for top menu bar
     _fetchHostProfilePicture();
+
+    // Load all users for member list
+    _fetchAllUsers();
+
+    // Listen for Zego user list changes
+    _userListSub = ZegoUIKit().getUserListStream().listen((zegoUsers) {
+      setState(() {
+        _zegoUsers = zegoUsers;
+      });
+      _mapZegoUsersToProfiles(zegoUsers);
+    });
 
     // Extract stream ID from liveID for audience
     // Extract stream ID for both hosts and audience
@@ -1093,6 +1112,7 @@ class _LivePageState extends State<LivePage>
     _stopPKBattleActiveCheck();
     _stopBlockChecking();
     _giftAudioPlayer.dispose();
+    _userListSub?.cancel();
     super.dispose();
   }
 
@@ -2172,6 +2192,185 @@ class _LivePageState extends State<LivePage>
         );
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
     config.audioVideoView.showUserNameOnView = false;
+
+    // Member button configuration with custom builder
+    config.memberButton.builder = (int memberCount) {
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade300, Colors.orange.shade600],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          children: [
+            const Icon(Icons.people, color: Colors.white, size: 18),
+            if (memberCount > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    memberCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    };
+
+    // Member list configuration with custom item builder
+    config.memberList.itemBuilder = (
+      BuildContext context,
+      Size size,
+      ZegoUIKitUser user,
+      Map<String, dynamic> extraInfo,
+    ) {
+      // Get user profile from our cached data
+      final userProfile = _userProfiles[user.id];
+      final profilePic = userProfile?['profile_pic'];
+      final username =
+          userProfile?['username'] ?? userProfile?['first_name'] ?? user.name;
+
+      // Clean username by removing "user_" prefix and avatar info
+      String cleanUsername = username;
+      if (cleanUsername.startsWith('user_')) {
+        cleanUsername = cleanUsername.substring(5);
+      }
+      if (cleanUsername.contains('|avatar:')) {
+        cleanUsername = cleanUsername.split('|avatar:')[0];
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            // User avatar
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.orange.shade300, width: 2),
+              ),
+              child: ClipOval(
+                child:
+                    profilePic != null && profilePic.isNotEmpty
+                        ? CachedNetworkImage(
+                          imageUrl:
+                              profilePic.startsWith('http')
+                                  ? profilePic
+                                  : 'https://server.bharathchat.com/$profilePic',
+                          fit: BoxFit.cover,
+                          placeholder:
+                              (context, url) => Container(
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                          errorWidget:
+                              (context, url, error) => Container(
+                                color: Colors.grey[300],
+                                child: Text(
+                                  cleanUsername.isNotEmpty
+                                      ? cleanUsername[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                        )
+                        : Container(
+                          color: Colors.orange.shade300,
+                          child: Text(
+                            cleanUsername.isNotEmpty
+                                ? cleanUsername[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // User info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cleanUsername,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (user.id == widget.localUserID && widget.isHost)
+                    Container(
+                      margin: const EdgeInsets.only(top: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade400,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Host',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Online indicator
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1),
+              ),
+            ),
+          ],
+        ),
+      );
+    };
 
     // Custom start live button with app theme color
     config.startLiveButtonBuilder = (
@@ -4228,6 +4427,39 @@ class _LivePageState extends State<LivePage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  // Function to fetch all users for member list
+  Future<void> _fetchAllUsers() async {
+    try {
+      final users = await ApiService.getUsers();
+      setState(() {
+        _allUsers = users;
+      });
+    } catch (e) {
+      debugPrint('Error fetching all users: $e');
+    }
+  }
+
+  // Function to map Zego users to profiles
+  void _mapZegoUsersToProfiles(List zegoUsers) {
+    for (var zUser in zegoUsers) {
+      final userId = zUser.id ?? zUser.userID ?? zUser['userID'] ?? zUser['id'];
+      if (userId != null && !_userProfiles.containsKey(userId)) {
+        // Try to find user in _allUsers by username or id
+        final match = _allUsers.firstWhere(
+          (u) =>
+              u['username'] == userId ||
+              u['id'].toString() == userId.toString(),
+          orElse: () => null,
+        );
+        if (match != null) {
+          setState(() {
+            _userProfiles[userId] = match;
+          });
+        }
+      }
     }
   }
 }
