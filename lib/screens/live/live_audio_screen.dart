@@ -365,8 +365,40 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
           setState(() {
             _userProfiles[userId] = match;
           });
+        } else {
+          // If not found in cached users, fetch individually
+          _fetchUserProfileOnDemand(userId);
         }
       }
+    }
+  }
+
+  // Optimized method to fetch user profile on-demand
+  Future<void> _fetchUserProfileOnDemand(String userId) async {
+    try {
+      // Clean the user ID by removing "user_" prefix
+      String cleanUserId = userId;
+      if (cleanUserId.startsWith('user_')) {
+        cleanUserId = cleanUserId.substring(5);
+      }
+
+      // Try to parse the user ID as integer
+      final int? userIntId = int.tryParse(cleanUserId);
+      if (userIntId == null) {
+        debugPrint('Invalid user ID format: $cleanUserId');
+        return;
+      }
+
+      // Fetch user details from API
+      final userDetails = await ApiService.getUserById(userIntId);
+      if (userDetails != null && mounted) {
+        setState(() {
+          _userProfiles[userId] = userDetails;
+        });
+        debugPrint('✅ Fetched profile for user $userId on-demand');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching profile for $userId: $e');
     }
   }
 
@@ -815,7 +847,8 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                                   ? CachedNetworkImage(
                                     imageUrl:
                                         profilePic.startsWith('http')
-                                            ? profilePic
+                                            // ? profilePic
+                                            ? 'https://server.bharathchat.com/$profilePic'
                                             : 'https://server.bharathchat.com/$profilePic',
                                     fit: BoxFit.cover,
                                     placeholder:
@@ -840,6 +873,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                                             ),
                                           ),
                                         ),
+                                    // Add caching configuration for better performance
+                                    memCacheWidth: 80,
+                                    memCacheHeight: 80,
+                                    maxWidthDiskCache: 80,
+                                    maxHeightDiskCache: 80,
                                   )
                                   : Container(
                                     color: Colors.orange.shade300,

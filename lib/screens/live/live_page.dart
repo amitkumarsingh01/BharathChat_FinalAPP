@@ -136,9 +136,12 @@ class _LivePageState extends State<LivePage>
     // Set up log callback to capture API logs
     _setLogCallback();
 
-    // Listen for in-room commands (gift animations from other users)
+    // Listen for in-room commands (gift animations and co-host invitations from other users)
     // Note: We'll handle this through the ZegoUIKitPrebuiltLiveStreaming events
-    // The gift animations will be broadcasted via sendInRoomCommand
+    // The gift animations and co-host commands will be broadcasted via sendInRoomCommand
+
+    // Set up signaling listener for co-host invitations and requests
+    _setupSignalingListener();
 
     // Initialize debug info
     _updateDebugInfo('is_host', widget.isHost);
@@ -2193,7 +2196,7 @@ class _LivePageState extends State<LivePage>
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
     config.audioVideoView.showUserNameOnView = false;
 
-    // Member button configuration with custom builder
+    // Member button configuration with custom builder and co-host integration
     config.memberButton.builder = (int memberCount) {
       return Container(
         width: 32,
@@ -2237,7 +2240,7 @@ class _LivePageState extends State<LivePage>
       );
     };
 
-    // Member list configuration with custom item builder
+    // Member list configuration with custom item builder with co-host integration
     config.memberList.itemBuilder = (
       BuildContext context,
       Size size,
@@ -2259,64 +2262,125 @@ class _LivePageState extends State<LivePage>
         cleanUsername = cleanUsername.split('|avatar:')[0];
       }
 
+      // Check if user is a co-host
+      final isCoHost = extraInfo['isCoHost'] == true;
+      final isHost = user.id == widget.localUserID && widget.isHost;
+
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            // User avatar
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.orange.shade300, width: 2),
-              ),
-              child: ClipOval(
-                child:
-                    profilePic != null && profilePic.isNotEmpty
-                        ? CachedNetworkImage(
-                          imageUrl:
-                              profilePic.startsWith('http')
-                                  ? profilePic
-                                  : 'https://server.bharathchat.com/$profilePic',
-                          fit: BoxFit.cover,
-                          placeholder:
-                              (context, url) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                          errorWidget:
-                              (context, url, error) => Container(
-                                color: Colors.grey[300],
-                                child: Text(
-                                  cleanUsername.isNotEmpty
-                                      ? cleanUsername[0].toUpperCase()
-                                      : 'U',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+            // User avatar with co-host indicator
+            Stack(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color:
+                          isCoHost
+                              ? Colors.purple.shade400
+                              : isHost
+                              ? Colors.orange.shade600
+                              : Colors.orange.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child:
+                        profilePic != null && profilePic.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl:
+                                  profilePic.startsWith('http')
+                                      ? profilePic
+                                      : 'https://server.bharathchat.com/$profilePic',
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.person,
+                                      color: Colors.grey,
+                                    ),
                                   ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey[300],
+                                    child: Text(
+                                      cleanUsername.isNotEmpty
+                                          ? cleanUsername[0].toUpperCase()
+                                          : 'U',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                              // Add caching configuration for better performance
+                              memCacheWidth: 80,
+                              memCacheHeight: 80,
+                              maxWidthDiskCache: 80,
+                              maxHeightDiskCache: 80,
+                            )
+                            : Container(
+                              color: Colors.orange.shade300,
+                              child: Text(
+                                cleanUsername.isNotEmpty
+                                    ? cleanUsername[0].toUpperCase()
+                                    : 'U',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
                               ),
-                        )
-                        : Container(
-                          color: Colors.orange.shade300,
-                          child: Text(
-                            cleanUsername.isNotEmpty
-                                ? cleanUsername[0].toUpperCase()
-                                : 'U',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
                             ),
-                          ),
-                        ),
-              ),
+                  ),
+                ),
+                // Co-host indicator badge
+                if (isCoHost)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade400,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.mic,
+                        color: Colors.white,
+                        size: 8,
+                      ),
+                    ),
+                  ),
+                // Host indicator badge
+                if (isHost)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade600,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.star,
+                        color: Colors.white,
+                        size: 8,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 12),
             // User info
@@ -2357,6 +2421,114 @@ class _LivePageState extends State<LivePage>
                 ],
               ),
             ),
+            // Co-host action buttons (only show for host)
+            if (widget.isHost && user.id != widget.localUserID)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Invite to co-host button (Host can invite audience)
+                  if (!isCoHost && widget.isHost)
+                    GestureDetector(
+                      onTap: () {
+                        // Host invites audience to co-host
+                        _inviteToCoHost(user, cleanUsername);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic, color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'Invite',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Request co-host button (Audience can request to become co-host)
+                  if (!isCoHost &&
+                      !widget.isHost &&
+                      user.id == widget.localUserID)
+                    GestureDetector(
+                      onTap: () {
+                        // Audience requests to become co-host
+                        _requestToBecomeCoHost();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic, color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'Request',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Remove from co-host button (Host can remove co-hosts)
+                  if (isCoHost && widget.isHost)
+                    GestureDetector(
+                      onTap: () {
+                        // Remove user from co-host
+                        _removeFromCoHost(user, cleanUsername);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade400,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.mic_off, color: Colors.white, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'Remove',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             // Online indicator
             Container(
               width: 8,
@@ -2371,6 +2543,18 @@ class _LivePageState extends State<LivePage>
         ),
       );
     };
+
+    // Enhanced co-host configuration with proper integration
+    config.coHost = ZegoLiveStreamingCoHostConfig(
+      maxCoHostCount: 2, // Allow up to 2 co-hosts
+      inviteTimeoutSecond: 60, // 60 seconds timeout for invitations
+      turnOnCameraWhenCohosted:
+          () => true, // Turn on camera when becoming co-host
+      stopCoHostingWhenMicCameraOff:
+          false, // Don't auto-stop co-hosting when devices are off
+      disableCoHostInvitationReceivedDialog:
+          false, // Use default invitation dialog
+    );
 
     // Custom start live button with app theme color
     config.startLiveButtonBuilder = (
@@ -2889,6 +3073,7 @@ class _LivePageState extends State<LivePage>
         giftButton,
         likeButton,
         diamondButton,
+        // Co-host button is automatically added by Zego when coHost config is set
       ];
     }
 
@@ -4458,9 +4643,645 @@ class _LivePageState extends State<LivePage>
           setState(() {
             _userProfiles[userId] = match;
           });
+        } else {
+          // If not found in cached users, fetch individually
+          _fetchUserProfileOnDemand(userId);
         }
       }
     }
+  }
+
+  // Optimized method to fetch user profile on-demand
+  Future<void> _fetchUserProfileOnDemand(String userId) async {
+    try {
+      // Clean the user ID by removing "user_" prefix
+      String cleanUserId = userId;
+      if (cleanUserId.startsWith('user_')) {
+        cleanUserId = cleanUserId.substring(5);
+      }
+
+      // Try to parse the user ID as integer
+      final int? userIntId = int.tryParse(cleanUserId);
+      if (userIntId == null) {
+        debugPrint('Invalid user ID format: $cleanUserId');
+        return;
+      }
+
+      // Fetch user details from API
+      final userDetails = await ApiService.getUserById(userIntId);
+      if (userDetails != null && mounted) {
+        setState(() {
+          _userProfiles[userId] = userDetails;
+        });
+        debugPrint('✅ Fetched profile for user $userId on-demand');
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching profile for $userId: $e');
+    }
+  }
+
+  // Show co-host invitation dialog
+  void _showCoHostInvitationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            "Request Co-Host",
+            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            "Would you like to request co-host status from the stream host?",
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _requestToBecomeCoHost();
+              },
+              child: const Text(
+                'Request',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Co-host invitation methods
+  void _inviteToCoHost(ZegoUIKitUser user, String username) {
+    // Show invitation dialog to the audience member
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Invite to Co-host',
+            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Do you want to invite $username to become a co-host?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _sendCoHostInvitation(user, username);
+              },
+              child: const Text(
+                'Invite',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _sendCoHostInvitation(ZegoUIKitUser user, String username) {
+    // Send co-host invitation via Zego signaling
+    debugPrint('🎤 Sending co-host invitation to $username (${user.id})');
+
+    try {
+      // Send custom command to the user
+      final command = jsonEncode({
+        'type': 'cohost_invitation',
+        'from_host_id': widget.localUserID,
+        'host_name':
+            _currentUser?['username'] ?? _currentUser?['first_name'] ?? 'Host',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      // Use Zego's signaling to send the command
+      ZegoUIKit().sendInRoomCommand(command, [user.id]).then((result) {
+        if (result) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎤 Co-host invitation sent to $username'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          debugPrint('🎤 Error sending co-host invitation');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Failed to send invitation'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('🎤 Error sending co-host invitation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error sending invitation: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _requestToBecomeCoHost() {
+    // Show confirmation dialog for audience to request co-host
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Request Co-host',
+            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Do you want to request to become a co-host?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.blue,
+                side: const BorderSide(color: Colors.blue),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.blue)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _sendCoHostRequest();
+              },
+              child: const Text(
+                'Request',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _sendCoHostRequest() {
+    // Send co-host request to the host via Zego signaling
+    debugPrint('🎤 Sending co-host request to host');
+
+    try {
+      // Send custom command to the host
+      final command = jsonEncode({
+        'type': 'cohost_request',
+        'from_user_id': widget.localUserID,
+        'user_name':
+            _currentUser?['username'] ?? _currentUser?['first_name'] ?? 'User',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      // Use Zego's signaling to send the command to the host
+      // Note: In a real implementation, you'd need to get the host's user ID
+      final hostUserId =
+          widget.receiverId
+              .toString(); // Assuming this is the host's Zego user ID
+
+      ZegoUIKit().sendInRoomCommand(command, [hostUserId]).then((result) {
+        if (result) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎤 Co-host request sent to host'),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          debugPrint('🎤 Error sending co-host request');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Failed to send request'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('🎤 Error sending co-host request: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error sending request: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _removeFromCoHost(ZegoUIKitUser user, String username) {
+    // Show confirmation dialog for removing co-host
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Remove Co-host',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Do you want to remove $username from co-host?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _performRemoveCoHost(user, username);
+              },
+              child: const Text(
+                'Remove',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _performRemoveCoHost(ZegoUIKitUser user, String username) {
+    // Remove user from co-host via Zego signaling
+    debugPrint('🎤 Removing $username from co-host');
+
+    try {
+      // Send custom command to remove co-host status
+      final command = jsonEncode({
+        'type': 'cohost_remove',
+        'from_host_id': widget.localUserID,
+        'target_user_id': user.id,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+
+      // Use Zego's signaling to send the command
+      ZegoUIKit().sendInRoomCommand(command, [user.id]).then((result) {
+        if (result) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('🎤 Removed $username from co-host'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        } else {
+          debugPrint('🎤 Error removing co-host');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Failed to remove co-host'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('🎤 Error removing co-host: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error removing co-host: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // Handle incoming co-host invitations (for audience)
+  void _handleIncomingCoHostInvitation(String fromHostId, String hostName) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Co-host Invitation',
+            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '$hostName has invited you to become a co-host. Do you accept?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _rejectCoHostInvitation(fromHostId);
+              },
+              child: const Text('Decline', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _acceptCoHostInvitation(fromHostId);
+              },
+              child: const Text(
+                'Accept',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _acceptCoHostInvitation(String fromHostId) {
+    debugPrint('🎤 Accepting co-host invitation from $fromHostId');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🎤 Co-host invitation accepted!'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // In real implementation, accept the co-host invitation
+  }
+
+  void _rejectCoHostInvitation(String fromHostId) {
+    debugPrint('🎤 Rejecting co-host invitation from $fromHostId');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🎤 Co-host invitation declined'),
+        backgroundColor: Colors.grey,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // In real implementation, reject the co-host invitation
+  }
+
+  // Handle incoming co-host requests (for host)
+  void _handleIncomingCoHostRequest(String fromUserId, String userName) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Co-host Request',
+            style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '$userName has requested to become a co-host. Do you accept?',
+            style: TextStyle(color: Colors.white),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _rejectCoHostRequest(fromUserId);
+              },
+              child: const Text('Decline', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _acceptCoHostRequest(fromUserId);
+              },
+              child: const Text(
+                'Accept',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _acceptCoHostRequest(String fromUserId) {
+    debugPrint('🎤 Accepting co-host request from $fromUserId');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🎤 Co-host request accepted!'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // In real implementation, accept the co-host request
+  }
+
+  void _rejectCoHostRequest(String fromUserId) {
+    debugPrint('🎤 Rejecting co-host request from $fromUserId');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🎤 Co-host request declined'),
+        backgroundColor: Colors.grey,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    // In real implementation, reject the co-host request
+  }
+
+  // Set up signaling listener for co-host invitations and requests
+  void _setupSignalingListener() {
+    // Listen for in-room commands from other users
+    ZegoUIKit().getInRoomCommandReceivedStream().listen((event) {
+      debugPrint('🎤 Received in-room command: ${event.command}');
+
+      try {
+        final commandData = jsonDecode(event.command);
+        final commandType = commandData['type'];
+
+        switch (commandType) {
+          case 'cohost_invitation':
+            // Host sent invitation to audience
+            if (!widget.isHost) {
+              final fromHostId = commandData['from_host_id'];
+              final hostName = commandData['host_name'] ?? 'Host';
+              _handleIncomingCoHostInvitation(fromHostId, hostName);
+            }
+            break;
+
+          case 'cohost_request':
+            // Audience sent request to host
+            if (widget.isHost) {
+              final fromUserId = commandData['from_user_id'];
+              final userName = commandData['user_name'] ?? 'User';
+              _handleIncomingCoHostRequest(fromUserId, userName);
+            }
+            break;
+
+          case 'cohost_response':
+            // Response to co-host invitation/request
+            final response =
+                commandData['response']; // 'accepted' or 'declined'
+            final fromUserId = commandData['from_user_id'];
+
+            if (response == 'accepted') {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎤 Co-host request accepted!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎤 Co-host request declined'),
+                  backgroundColor: Colors.grey,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+            break;
+
+          case 'cohost_remove':
+            // Host removed user from co-host
+            if (!widget.isHost &&
+                commandData['target_user_id'] == widget.localUserID) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('🎤 You have been removed from co-host'),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+            break;
+        }
+      } catch (e) {
+        debugPrint('🎤 Error parsing signaling command: $e');
+      }
+    });
   }
 }
 
