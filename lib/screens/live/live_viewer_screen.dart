@@ -106,7 +106,7 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
               currentUser?['id']?.toString() ??
               'viewer_${DateTime.now().millisecondsSinceEpoch}',
           isHost: false,
-          profilePic: currentUser?['profile_pic'],
+          
           receiverId: widget.hostId, // <-- pass hostId
         ),
         // Gift Button (PK battle active)

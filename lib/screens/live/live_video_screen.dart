@@ -102,7 +102,7 @@ class _LiveVideoScreenState extends State<LiveVideoScreen> {
               liveID: widget.liveID,
               localUserID: widget.localUserID,
               isHost: widget.isHost,
-              profilePic: user['profile_pic'],
+              
               onGiftButtonPressed: _showGiftPanel, // NEW
               receiverId: widget.hostId, // <-- pass hostId
               activePKBattle: widget.activePKBattle, // Pass the new parameter

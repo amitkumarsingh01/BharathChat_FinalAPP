@@ -2162,15 +2162,23 @@ class _LivePageState extends State<LivePage>
               plugins: [ZegoUIKitSignalingPlugin()],
             ));
 
-    config.avatarBuilder =
-        (context, size, user, extraInfo) => customAvatarBuilder(
-          context,
-          size,
-          user,
-          extraInfo,
-          profilePic: widget.profilePic,
-        );
+    config.avatarBuilder = (
+      BuildContext context,
+      Size size,
+      ZegoUIKitUser? user,
+      Map<String, dynamic> extraInfo,
+    ) {
+      return user != null
+          ? customAvatarBuilder(context, size, user, {
+            ...extraInfo,
+            'profile_pic_url': widget.profilePic,
+            'user_data': {'profile_pic': widget.profilePic},
+          })
+          : const SizedBox();
+    };
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
+
+    // Note: memberList.showAvatar and cohost.applyButtonStyle are not available in this version
     config.audioVideoView.showUserNameOnView = false;
 
     // Custom start live button with app theme color
@@ -2303,7 +2311,6 @@ class _LivePageState extends State<LivePage>
                     const Size(20, 20),
                     message.user,
                     extraInfo,
-                    profilePic: profilePic.isNotEmpty ? profilePic : null,
                   ),
                 ),
               ),
@@ -2559,13 +2566,7 @@ class _LivePageState extends State<LivePage>
           mainAxisSize: MainAxisSize.min,
           children: [
             // Host avatar
-            customAvatarBuilder(
-              context,
-              const Size(40, 40),
-              host,
-              {},
-              profilePic: _hostProfilePic ?? widget.profilePic,
-            ),
+            customAvatarBuilder(context, const Size(40, 40), host, {}),
             const SizedBox(width: 8),
             // Host username
             if (_hostUsername != null)

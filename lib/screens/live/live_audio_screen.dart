@@ -702,7 +702,8 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                         const Size(40, 40),
                         host,
                         {},
-                        profilePic: _hostProfilePic ?? widget.profilePic,
+
+                        //
                       ),
                       const SizedBox(width: 8),
                       // Host username
@@ -730,9 +731,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 );
               }
               // Top menu bar - minimal buttons for audio
-              ..topMenuBar.buttons = [
-                // ZegoLiveStreamingMenuBarButtonName.minimizingButton,
-              ]
+              ..topMenuBar.buttons = []
               // Bottom menu bar - audio-specific buttons with extend buttons
               ..bottomMenuBar.hostButtons = [
                 ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
@@ -748,14 +747,15 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoUIKitUser? user,
                 Map<String, dynamic> extraInfo,
               ) {
-                return customAvatarBuilder(
-                  context,
-                  size,
-                  user,
-                  extraInfo,
-                  profilePic: widget.profilePic,
-                );
+                return user != null
+                    ? customAvatarBuilder(context, size, user, {
+                      ...extraInfo,
+                      'profile_pic_url': _hostProfilePic,
+                      'user_data': _userProfiles[user.id],
+                    })
+                    : const SizedBox();
               }
+              // Note: memberList.showAvatar and cohost.applyButtonStyle are not available in this version
               // Custom start live button with app theme color
               ..startLiveButtonBuilder = (
                 BuildContext context,
@@ -895,8 +895,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                               const Size(24, 24),
                               message.user,
                               extraInfo,
-                              profilePic:
-                                  profilePic.isNotEmpty ? profilePic : null,
                             ),
                           ),
                         ),
@@ -1086,7 +1084,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                         const Size(40, 40),
                         host,
                         {},
-                        profilePic: _hostProfilePic ?? widget.profilePic,
                       ),
                       const SizedBox(width: 8),
                       // Host username
@@ -1131,13 +1128,13 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoUIKitUser? user,
                 Map<String, dynamic> extraInfo,
               ) {
-                return customAvatarBuilder(
-                  context,
-                  size,
-                  user,
-                  extraInfo,
-                  profilePic: widget.profilePic,
-                );
+                return user != null
+                    ? customAvatarBuilder(context, size, user, {
+                      ...extraInfo,
+                      'profile_pic_url': _hostProfilePic,
+                      'user_data': _userProfiles[user.id],
+                    })
+                    : const SizedBox();
               }
               // Customize text message UI with profile pictures for audience
               ..inRoomMessage.showAvatar = true
@@ -1225,8 +1222,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                               const Size(24, 24),
                               message.user,
                               extraInfo,
-                              profilePic:
-                                  profilePic.isNotEmpty ? profilePic : null,
                             ),
                           ),
                         ),

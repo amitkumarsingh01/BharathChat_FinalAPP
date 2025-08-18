@@ -82,7 +82,7 @@ class User {
       lastName: lastName,
       username: username,
       phoneNumber: phoneNumber,
-      profilePic: profilePic,
+
       diamonds: diamonds,
       isOnline: isOnline,
       creditedDiamonds: creditedDiamonds ?? this.creditedDiamonds,
@@ -228,7 +228,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   double _getHistoricalMultiplier(PeriodType period) {
     switch (period) {
       case PeriodType.yesterday:
-        return 0.8; // 80% of daily average (assuming yesterday was slightly lower)
+        return 0.9; // 90% of daily average (assuming yesterday was slightly lower)
       case PeriodType.last_week:
         return 7.0; // 7 days worth of daily data
       case PeriodType.last_month:
@@ -327,6 +327,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             dailyUsers = List.from(loadedUsers);
             hasDailyData = true;
           });
+        } else if (selectedPeriod == PeriodType.weekly ||
+            selectedPeriod == PeriodType.monthly) {
+          // Also fetch and store daily data for historical calculations
+          await _fetchDailyData();
         }
       } else {
         setState(() {
@@ -343,28 +347,58 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   // Fetch daily data specifically for historical calculations
   Future<void> _fetchDailyData() async {
-    String url;
-    if (selectedFilter == FilterType.credited) {
-      url = 'https://server.bharathchat.com/user-star-history?period=daily';
-    } else {
-      url = 'https://server.bharathchat.com/user-diamond-history?period=daily';
-    }
-
     try {
-      final response = await http.get(
-        Uri.parse(url),
+      // Fetch both credited and debited data for daily period
+      final creditedResponse = await http.get(
+        Uri.parse(
+          'https://server.bharathchat.com/user-star-history?period=daily',
+        ),
         headers: {'accept': 'application/json'},
       );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<User> loadedUsers = [];
-        for (var entry in data['users']) {
+
+      final debitedResponse = await http.get(
+        Uri.parse(
+          'https://server.bharathchat.com/user-diamond-history?period=daily',
+        ),
+        headers: {'accept': 'application/json'},
+      );
+
+      if (creditedResponse.statusCode == 200 &&
+          debitedResponse.statusCode == 200) {
+        final creditedData = json.decode(creditedResponse.body);
+        final debitedData = json.decode(debitedResponse.body);
+
+        // Create a map to store user data with both credited and debited values
+        Map<int, User> userMap = {};
+
+        // Process credited data
+        for (var entry in creditedData['users']) {
           final userJson = entry['user'];
           final summary = entry['summary'];
-          loadedUsers.add(User.fromJson(userJson, summary));
+          final user = User.fromJson(userJson, summary);
+          userMap[user.id] = user;
         }
+
+        // Process debited data and merge with credited data
+        for (var entry in debitedData['users']) {
+          final userJson = entry['user'];
+          final summary = entry['summary'];
+          final debitedUser = User.fromJson(userJson, summary);
+
+          if (userMap.containsKey(debitedUser.id)) {
+            // Update existing user with debited diamonds
+            final existingUser = userMap[debitedUser.id]!;
+            userMap[debitedUser.id] = existingUser.copyWith(
+              debitedDiamonds: debitedUser.debitedDiamonds,
+            );
+          } else {
+            // Add new user with only debited diamonds
+            userMap[debitedUser.id] = debitedUser.copyWith(creditedDiamonds: 0);
+          }
+        }
+
         setState(() {
-          dailyUsers = loadedUsers;
+          dailyUsers = userMap.values.toList();
           hasDailyData = true;
         });
       }
@@ -377,11 +411,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   String _getBottomNoteText() {
     switch (selectedPeriod) {
       case PeriodType.yesterday:
-        return 'Yesterday data calculated from daily averages';
+        return 'Yesterday data estimated from daily averages';
       case PeriodType.last_week:
-        return 'Last week data calculated from daily averages';
+        return 'Last week data estimated from daily averages';
       case PeriodType.last_month:
-        return 'Last month data calculated from daily averages';
+        return 'Last month data estimated from daily averages';
       default:
         return 'Leaderboard updates every 15 min';
     }
@@ -426,7 +460,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
             lastName: currentUserData!['last_name'],
             username: currentUserData!['username'],
             phoneNumber: currentUserData!['phone_number'],
-            profilePic: currentUserData!['profile_pic'],
+
             diamonds: currentUserData!['diamonds'] ?? 0,
             isOnline: currentUserData!['is_online'] ?? false,
           ),
@@ -670,17 +704,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         if (isFirst)
           Container(
             margin: const EdgeInsets.only(bottom: 8),
-            child: Image.asset(
-              'assets/crown.png', // You'll need to add crown asset
-              width: 30,
-              height: 25,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.emoji_events,
-                  color: Colors.yellow,
-                  size: 30,
-                );
-              },
+            child: const Icon(
+              Icons.emoji_events,
+              color: Colors.yellow,
+              size: 30,
             ),
           ),
         // User avatar with decorative frame

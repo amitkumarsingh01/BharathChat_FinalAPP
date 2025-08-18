@@ -114,15 +114,11 @@ class _HomePageState extends State<HomePage> {
                       ZegoUIKitUser? user,
                       Map<String, dynamic> extraInfo,
                     ) {
-                      return customAvatarBuilder(
-                        context,
-                        size,
-                        user,
-                        extraInfo,
-                        profilePic:
-                            null, // For this simple test, we don't have user data
-                      );
+                      return user != null
+                          ? customAvatarBuilder(context, size, user, extraInfo)
+                          : const SizedBox();
                     }
+                    // Note: memberList.showAvatar and cohost.applyButtonStyle are not available in this version
                     // Custom start live button with app theme color
                     ..startLiveButtonBuilder = (
                       BuildContext context,
@@ -1830,11 +1826,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                           const Size(40, 40),
                           host,
                           {},
-                          profilePic:
-                              _hostProfilePic ??
-                              (userData != null
-                                  ? userData['profile_pic']
-                                  : null),
                         ),
                         const SizedBox(width: 8),
                         // Host username
@@ -1882,14 +1873,14 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   ZegoUIKitUser? user,
                   Map<String, dynamic> extraInfo,
                 ) {
-                  return customAvatarBuilder(
-                    context,
-                    size,
-                    user,
-                    extraInfo,
-                    profilePic:
-                        userData != null ? userData['profile_pic'] : null,
-                  );
+                  return user != null
+                      ? customAvatarBuilder(context, size, user, {
+                        ...extraInfo,
+                        'profile_pic_url':
+                            userData != null ? userData['profile_pic'] : null,
+                        'user_data': userData,
+                      })
+                      : const SizedBox();
                 }
                 // Customize text message UI with profile pictures
                 ..inRoomMessage.showAvatar = true
@@ -1966,10 +1957,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                                 const Size(24, 24),
                                 message.user,
                                 extraInfo,
-                                profilePic:
-                                    message.user.name.contains('|avatar:')
-                                        ? message.user.name.split('|avatar:')[1]
-                                        : null,
                               ),
                             ),
                           ),
@@ -2108,11 +2095,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                           const Size(40, 40),
                           host,
                           {},
-                          profilePic:
-                              _hostProfilePic ??
-                              (userData != null
-                                  ? userData['profile_pic']
-                                  : null),
                         ),
                         const SizedBox(width: 8),
                         // Host username
@@ -2158,14 +2140,14 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                   ZegoUIKitUser? user,
                   Map<String, dynamic> extraInfo,
                 ) {
-                  return customAvatarBuilder(
-                    context,
-                    size,
-                    user,
-                    extraInfo,
-                    profilePic:
-                        userData != null ? userData['profile_pic'] : null,
-                  );
+                  return user != null
+                      ? customAvatarBuilder(context, size, user, {
+                        ...extraInfo,
+                        'profile_pic_url':
+                            userData != null ? userData['profile_pic'] : null,
+                        'user_data': userData,
+                      })
+                      : const SizedBox();
                 }
                 // Customize text message UI with profile pictures for audio mode
                 ..inRoomMessage.showAvatar = true
@@ -2242,10 +2224,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                                 const Size(24, 24),
                                 message.user,
                                 extraInfo,
-                                profilePic:
-                                    message.user.name.contains('|avatar:')
-                                        ? message.user.name.split('|avatar:')[1]
-                                        : null,
                               ),
                             ),
                           ),
@@ -2382,8 +2360,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     hostId: userData != null ? userData['id'] ?? 0 : 0,
                     backgroundImage: selectedBackgroundImage,
                     backgroundMusic: selectedMusic,
-                    profilePic:
-                        userData != null ? userData['profile_pic'] : null,
                   ),
             ),
           );
