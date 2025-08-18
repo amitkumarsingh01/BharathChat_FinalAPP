@@ -310,6 +310,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   // Fetch host profile picture and username for top menu bar
   Future<void> _fetchHostProfilePicture() async {
     try {
+      debugPrint('🔄 [HOST_PROFILE] Starting host profile fetch...');
+      debugPrint('🔄 [HOST_PROFILE] isHost: ${widget.isHost}');
+      debugPrint('🔄 [HOST_PROFILE] hostId: ${widget.hostId}');
+      debugPrint('🔄 [HOST_PROFILE] currentUser: ${currentUser != null}');
+
       if (widget.isHost) {
         // For host, use current user's profile picture and username
         if (currentUser != null) {
@@ -320,31 +325,44 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 currentUser!['first_name'] ??
                 'Host';
           });
-          debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
-          debugPrint('✅ Fetched host username: $_hostUsername');
+          debugPrint(
+            '✅ [HOST_PROFILE] Fetched host profile picture: $_hostProfilePic',
+          );
+          debugPrint('✅ [HOST_PROFILE] Fetched host username: $_hostUsername');
         }
       } else {
         // For audience, fetch host's profile picture and username
+        debugPrint(
+          '🔄 [HOST_PROFILE] Fetching host profile for audience view...',
+        );
         final users = await ApiService.getAllUsers();
+        debugPrint('🔄 [HOST_PROFILE] Found ${users.length} total users');
+
         final host = users.firstWhere(
           (user) => user['id'] == widget.hostId,
           orElse: () => null,
         );
+
         if (host != null) {
           setState(() {
             _hostProfilePic = host['profile_pic'];
             _hostUsername = host['username'] ?? host['first_name'] ?? 'Host';
           });
-          debugPrint('✅ Fetched host profile picture: $_hostProfilePic');
-          debugPrint('✅ Fetched host username: $_hostUsername');
+          debugPrint(
+            '✅ [HOST_PROFILE] Fetched host profile picture: $_hostProfilePic',
+          );
+          debugPrint('✅ [HOST_PROFILE] Fetched host username: $_hostUsername');
         } else {
           debugPrint(
-            '⚠️ Host profile picture not found for ID: ${widget.hostId}',
+            '⚠️ [HOST_PROFILE] Host profile picture not found for ID: ${widget.hostId}',
+          );
+          debugPrint(
+            '⚠️ [HOST_PROFILE] Available user IDs: ${users.map((u) => u['id']).toList()}',
           );
         }
       }
     } catch (e) {
-      debugPrint('❌ Error fetching host profile picture: $e');
+      debugPrint('❌ [HOST_PROFILE] Error fetching host profile picture: $e');
     }
   }
 
@@ -360,22 +378,149 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   }
 
   void _mapZegoUsersToProfiles(List zegoUsers) {
+    debugPrint(
+      '🔄 [USER_MAPPING] Mapping ${zegoUsers.length} ZEGO users to profiles',
+    );
+    debugPrint(
+      '🔄 [USER_MAPPING] Available users in _allUsers: ${_allUsers.length}',
+    );
+    debugPrint(
+      '🔄 [USER_MAPPING] Current _userProfiles count: ${_userProfiles.length}',
+    );
+
     for (var zUser in zegoUsers) {
       final userId = zUser.id ?? zUser.userID ?? zUser['userID'] ?? zUser['id'];
+      debugPrint(
+        '🔄 [USER_MAPPING] Processing ZEGO user: $userId (${zUser.name})',
+      );
+
       if (userId != null && !_userProfiles.containsKey(userId)) {
-        // Try to find user in _allUsers by username or id
-        final match = _allUsers.firstWhere(
-          (u) =>
-              u['username'] == userId ||
-              u['id'].toString() == userId.toString(),
-          orElse: () => null,
-        );
+        // Try multiple matching strategies
+        Map<String, dynamic>? match;
+
+        // Strategy 1: Match by exact username
+        try {
+          match = _allUsers.firstWhere(
+            (u) => u['username'] == userId,
+            orElse: () => null,
+          );
+          if (match != null) {
+            debugPrint(
+              '✅ [USER_MAPPING] Found user by username: $userId -> ${match['username']}',
+            );
+          }
+        } catch (e) {
+          debugPrint('❌ [USER_MAPPING] Error matching by username: $e');
+        }
+
+        // Strategy 2: Match by ID (handle both string and int formats)
+        if (match == null) {
+          try {
+            // Try exact string match first
+            match = _allUsers.firstWhere(
+              (u) => u['id'].toString() == userId.toString(),
+              orElse: () => null,
+            );
+            if (match != null) {
+              debugPrint(
+                '✅ [USER_MAPPING] Found user by ID (string): $userId -> ${match['username']}',
+              );
+            }
+          } catch (e) {
+            debugPrint('❌ [USER_MAPPING] Error matching by ID: $e');
+          }
+        }
+
+        // Strategy 3: Match by first_name if username contains it
+        if (match == null) {
+          try {
+            match = _allUsers.firstWhere(
+              (u) =>
+                  u['first_name'] != null &&
+                  userId.toString().toLowerCase().contains(
+                    u['first_name'].toString().toLowerCase(),
+                  ),
+              orElse: () => null,
+            );
+            if (match != null) {
+              debugPrint(
+                '✅ [USER_MAPPING] Found user by first_name: $userId -> ${match['username']}',
+              );
+            }
+          } catch (e) {
+            debugPrint('❌ [USER_MAPPING] Error matching by first_name: $e');
+          }
+        }
+
+        // Strategy 4: Try to parse userId as integer and match
+        if (match == null) {
+          try {
+            final userIdInt = int.tryParse(userId.toString());
+            if (userIdInt != null) {
+              match = _allUsers.firstWhere(
+                (u) => u['id'] == userIdInt,
+                orElse: () => null,
+              );
+              if (match != null) {
+                debugPrint(
+                  '✅ [USER_MAPPING] Found user by parsed ID: $userId -> ${match['username']}',
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('❌ [USER_MAPPING] Error matching by parsed ID: $e');
+          }
+        }
+
         if (match != null) {
           setState(() {
             _userProfiles[userId] = match;
           });
+          debugPrint(
+            '✅ [USER_MAPPING] Added user profile for $userId: ${match['profile_pic']}',
+          );
+        } else {
+          debugPrint('⚠️ [USER_MAPPING] No match found for ZEGO user: $userId');
+          // Try to fetch user directly from backend as last resort
+          _fetchUserFromBackend(userId);
         }
       }
+    }
+
+    debugPrint(
+      '🔄 [USER_MAPPING] Final _userProfiles count: ${_userProfiles.length}',
+    );
+  }
+
+  // Helper method to fetch user from backend as last resort
+  Future<void> _fetchUserFromBackend(String userId) async {
+    try {
+      debugPrint(
+        '🔄 [BACKEND_FETCH] Trying to fetch user $userId from backend...',
+      );
+
+      // Try to parse as integer first
+      final userIdInt = int.tryParse(userId.toString());
+      if (userIdInt != null) {
+        final userData = await ApiService.getUserById(userIdInt);
+        if (userData != null) {
+          setState(() {
+            _userProfiles[userId] = userData;
+          });
+          debugPrint(
+            '✅ [BACKEND_FETCH] Successfully fetched user $userId from backend',
+          );
+          return;
+        }
+      }
+
+      debugPrint(
+        '⚠️ [BACKEND_FETCH] Could not fetch user $userId from backend',
+      );
+    } catch (e) {
+      debugPrint(
+        '❌ [BACKEND_FETCH] Error fetching user $userId from backend: $e',
+      );
     }
   }
 
@@ -697,14 +842,13 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Host avatar
-                      customAvatarBuilder(
-                        context,
-                        const Size(40, 40),
-                        host,
-                        {},
-
-                        //
-                      ),
+                      customAvatarBuilder(context, const Size(40, 40), host, {
+                        'profile_pic_url': _hostProfilePic,
+                        'user_data': {
+                          'profile_pic': _hostProfilePic,
+                          'username': _hostUsername,
+                        },
+                      }),
                       const SizedBox(width: 8),
                       // Host username
                       if (_hostUsername != null)
@@ -750,8 +894,18 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 return user != null
                     ? customAvatarBuilder(context, size, user, {
                       ...extraInfo,
-                      'profile_pic_url': _hostProfilePic,
-                      'user_data': _userProfiles[user.id],
+                      // For host, use host profile picture
+                      'profile_pic_url':
+                          user.id == widget.localUserID
+                              ? _hostProfilePic
+                              : null,
+                      'user_data':
+                          user.id == widget.localUserID
+                              ? {
+                                'profile_pic': _hostProfilePic,
+                                'username': _hostUsername,
+                              }
+                              : _userProfiles[user.id],
                     })
                     : const SizedBox();
               }
@@ -1079,12 +1233,13 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Host avatar
-                      customAvatarBuilder(
-                        context,
-                        const Size(40, 40),
-                        host,
-                        {},
-                      ),
+                      customAvatarBuilder(context, const Size(40, 40), host, {
+                        'profile_pic_url': _hostProfilePic,
+                        'user_data': {
+                          'profile_pic': _hostProfilePic,
+                          'username': _hostUsername,
+                        },
+                      }),
                       const SizedBox(width: 8),
                       // Host username
                       if (_hostUsername != null)
@@ -1128,11 +1283,37 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
                 ZegoUIKitUser? user,
                 Map<String, dynamic> extraInfo,
               ) {
+                if (user != null) {
+                  debugPrint(
+                    '🎭 [AUDIENCE] Processing user: ${user.id} (${user.name})',
+                  );
+                  debugPrint('🎭 [AUDIENCE] Host ID: ${widget.hostId}');
+                  debugPrint(
+                    '🎭 [AUDIENCE] Local User ID: ${widget.localUserID}',
+                  );
+                  debugPrint(
+                    '🎭 [AUDIENCE] Is host? ${user.id == widget.hostId.toString()}',
+                  );
+                  debugPrint(
+                    '🎭 [AUDIENCE] User profile in cache: ${_userProfiles[user.id]}',
+                  );
+                }
+
                 return user != null
                     ? customAvatarBuilder(context, size, user, {
                       ...extraInfo,
-                      'profile_pic_url': _hostProfilePic,
-                      'user_data': _userProfiles[user.id],
+                      // For host, use host profile picture (check by hostId in audience view)
+                      'profile_pic_url':
+                          user.id == widget.hostId.toString()
+                              ? _hostProfilePic
+                              : null,
+                      'user_data':
+                          user.id == widget.hostId.toString()
+                              ? {
+                                'profile_pic': _hostProfilePic,
+                                'username': _hostUsername,
+                              }
+                              : _userProfiles[user.id],
                     })
                     : const SizedBox();
               }

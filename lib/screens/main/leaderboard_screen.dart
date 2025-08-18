@@ -74,6 +74,36 @@ class User {
     );
   }
 
+  // Factory method for creating user with specific period data
+  factory User.fromJsonWithPeriod(
+    Map<String, dynamic> userJson,
+    Map<String, dynamic> summary,
+    String period,
+  ) {
+    int creditedDiamonds = 0;
+    int debitedDiamonds = 0;
+
+    // Extract data based on period
+    if (summary.containsKey(period)) {
+      final periodData = summary[period];
+      creditedDiamonds = periodData['credited'] ?? 0;
+      debitedDiamonds = periodData['debited'] ?? 0;
+    }
+
+    return User(
+      id: userJson['id'],
+      firstName: userJson['first_name'],
+      lastName: userJson['last_name'],
+      username: userJson['username'],
+      phoneNumber: userJson['phone_number'],
+      profilePic: userJson['profile_pic'],
+      diamonds: userJson['diamonds'] ?? 0,
+      isOnline: userJson['is_online'] ?? false,
+      creditedDiamonds: creditedDiamonds,
+      debitedDiamonds: debitedDiamonds,
+    );
+  }
+
   // Create a copy of user with modified diamond values for historical periods
   User copyWith({int? creditedDiamonds, int? debitedDiamonds}) {
     return User(
@@ -82,7 +112,7 @@ class User {
       lastName: lastName,
       username: username,
       phoneNumber: phoneNumber,
-
+      profilePic: profilePic,
       diamonds: diamonds,
       isOnline: isOnline,
       creditedDiamonds: creditedDiamonds ?? this.creditedDiamonds,
@@ -303,7 +333,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         for (var entry in data['users']) {
           final userJson = entry['user'];
           final summary = entry['summary'];
-          loadedUsers.add(User.fromJson(userJson, summary));
+          loadedUsers.add(
+            User.fromJsonWithPeriod(userJson, summary, periodStr),
+          );
         }
         setState(() {
           users = loadedUsers;
@@ -375,7 +407,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         for (var entry in creditedData['users']) {
           final userJson = entry['user'];
           final summary = entry['summary'];
-          final user = User.fromJson(userJson, summary);
+          final user = User.fromJsonWithPeriod(userJson, summary, 'daily');
           userMap[user.id] = user;
         }
 
@@ -383,7 +415,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         for (var entry in debitedData['users']) {
           final userJson = entry['user'];
           final summary = entry['summary'];
-          final debitedUser = User.fromJson(userJson, summary);
+          final debitedUser = User.fromJsonWithPeriod(
+            userJson,
+            summary,
+            'daily',
+          );
 
           if (userMap.containsKey(debitedUser.id)) {
             // Update existing user with debited diamonds
