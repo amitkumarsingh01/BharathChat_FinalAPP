@@ -121,6 +121,13 @@ class _LivePageState extends State<LivePage>
   // Audio player for gift sounds
   final AudioPlayer _giftAudioPlayer = AudioPlayer();
 
+  // Set to track processed gifts to avoid duplicates
+  final Set<String> _processedGifts = {};
+
+  // Global deduplication for gift animations to prevent duplicates
+  final Set<String> _globalProcessedAnimations = {};
+  DateTime _lastAnimationCleanup = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -245,7 +252,7 @@ class _LivePageState extends State<LivePage>
     _checkActivePKBattle();
 
     // Start a timer to periodically check for PK battle ID if not available (using stream ID only)
-    Timer.periodic(Duration(seconds: 2), (timer) {
+    Timer.periodic(Duration(milliseconds: 500), (timer) {
       if (_pkBattleId == null &&
           PKEvents.currentPKBattleId == null &&
           _showPKBattleTimer) {
@@ -759,11 +766,10 @@ class _LivePageState extends State<LivePage>
                 }
               }
               if (gifUrl != null) {
-                _createGiftAnimation(
-                  giftName,
-                  gifUrl,
-                  senderName,
-                  pkBattleSide,
+                // REMOVED: _createGiftAnimation(giftName, gifUrl, senderName, pkBattleSide);
+                // Animation will be handled by polling system to prevent duplicates
+                debugPrint(
+                  '🎁 [$requestId] Gift animation will be shown via polling system',
                 );
               }
             } catch (e) {
@@ -796,16 +802,7 @@ class _LivePageState extends State<LivePage>
               '🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync',
             );
 
-            // Show success message
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('🎁 Gift sent successfully!'),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            }
+            // Success message removed - gift sent silently
           } else {
             debugPrint('❌ [$requestId] Failed to send gift via API');
             if (mounted) {
@@ -1037,6 +1034,7 @@ class _LivePageState extends State<LivePage>
             style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
           ),
           content: Text(
+            // 'Do you want to send "${gift['name']}"?',
             'Do you want to send "${gift['name']}"?',
             style: TextStyle(color: Colors.white),
           ),
@@ -1072,6 +1070,8 @@ class _LivePageState extends State<LivePage>
               onPressed: () {
                 debugPrint('🎁 [${requestId}] User confirmed gift sending');
                 debugPrint('🎁 [${requestId}] Calling onConfirm callback...');
+                // onConfirm();
+
                 Navigator.of(context).pop();
                 onConfirm();
               },
@@ -1553,7 +1553,9 @@ class _LivePageState extends State<LivePage>
 
   void _startGiftPolling() {
     _giftPollingTimer?.cancel();
-    _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _giftPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (
+      timer,
+    ) {
       // Check if PK battle is active
       if (PKEvents.currentPKBattleId != null) {
         // PK battle active - poll for PK battle gifts
@@ -1576,7 +1578,7 @@ class _LivePageState extends State<LivePage>
   void _startUserGiftsPolling() {
     _userGiftsPollingTimer?.cancel();
     _lastUserGiftsCheck = DateTime.now();
-    _userGiftsPollingTimer = Timer.periodic(const Duration(seconds: 2), (
+    _userGiftsPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (
       timer,
     ) {
       // Only for single host normal live (no PK battle)
@@ -1802,11 +1804,11 @@ class _LivePageState extends State<LivePage>
     }
   }
 
-  // Helper method to play gift audio with 2-second delay
+  // Helper method to play gift audio with 500ms delay
   Future<void> _playGiftAudioWithDelay(String audioUrl) async {
     try {
-      // Wait 2 seconds before playing audio
-      await Future.delayed(const Duration(seconds: 2));
+      // Wait 200ms before playing audio (reduced from 500ms)
+      await Future.delayed(const Duration(milliseconds: 200));
       if (mounted) {
         await _giftAudioPlayer.setUrl(audioUrl);
         await _giftAudioPlayer.play();
@@ -1815,9 +1817,6 @@ class _LivePageState extends State<LivePage>
       debugPrint('🎁 Error playing gift audio with delay: $e');
     }
   }
-
-  // Set to track processed gifts to avoid duplicates
-  final Set<String> _processedGifts = {};
 
   // Handle in-room commands for gift animations (legacy - kept for compatibility)
   void _handleInRoomCommand(String command) {
@@ -1881,11 +1880,33 @@ class _LivePageState extends State<LivePage>
     String senderName,
     String? pkBattleSide,
   ) {
+    // Clean up old animation keys every 5 minutes to prevent memory leaks
+    final now = DateTime.now();
+    if (now.difference(_lastAnimationCleanup).inMinutes >= 5) {
+      _globalProcessedAnimations.clear();
+      _lastAnimationCleanup = now;
+      debugPrint('🎁 Cleaned up old animation deduplication keys');
+    }
+
+    // Create a unique key for this animation
+    final animationKey =
+        '${senderName}_${giftName}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Check if this animation was already processed
+    if (_globalProcessedAnimations.contains(animationKey)) {
+      debugPrint('🎁 Animation already processed, skipping: $animationKey');
+      return;
+    }
+
+    // Add to processed animations
+    _globalProcessedAnimations.add(animationKey);
+
     debugPrint('🎁 Creating gift animation:');
     debugPrint('🎁   - Gift Name: $giftName');
     debugPrint('🎁   - GIF URL: $gifUrl');
     debugPrint('🎁   - Sender: $senderName');
     debugPrint('🎁   - PK Battle Side: $pkBattleSide');
+    debugPrint('🎁   - Animation Key: $animationKey');
 
     setState(() {
       _activeGiftAnimations.add(
@@ -3066,13 +3087,7 @@ class _LivePageState extends State<LivePage>
                                   debugPrint(
                                     '🎁 Can afford: $canAfford, Sending: $_sendingGift',
                                   );
-                                  _showGiftConfirmationDialog(
-                                    gift,
-                                    gift['diamond_amount'],
-                                    DateTime.now().millisecondsSinceEpoch
-                                        .toString(),
-                                    () => _sendGiftFromList(gift),
-                                  );
+                                  _sendGiftFromList(gift);
                                 }
                                 : () {
                                   debugPrint(

@@ -1088,6 +1088,11 @@ class PKBattleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 100,
+      height: 30,
+      // margin: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(right: 15, bottom: 10),
+
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFffa030), Color(0xFFfe9b00), Color(0xFFf67d00)],
@@ -1109,9 +1114,9 @@ class PKBattleButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: const Text(
@@ -1119,8 +1124,8 @@ class PKBattleButton extends StatelessWidget {
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 15,
-            letterSpacing: 1.1,
+            fontSize: 12,
+            letterSpacing: 0.8,
           ),
         ),
       ),

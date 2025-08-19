@@ -134,7 +134,8 @@ class _LiveViewerScreenState extends State<LiveViewerScreen> {
                       receiverId: widget.hostId,
                       roomId: widget.channelName,
                       onGiftSent: _hideGiftPanel,
-                      onGiftAnimation: _showGiftAnimation,
+                      // REMOVED: onGiftAnimation: _showGiftAnimation,
+                      // Animations are now handled by polling system to prevent duplicates
                       onClose: _hideGiftPanel,
                     ),
                   ),

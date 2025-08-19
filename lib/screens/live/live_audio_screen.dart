@@ -52,7 +52,10 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   final String appSign =
       "12e07321bd8231dda371ea9235e274178403bd97a7ccabcb09e22474c42da3a4"; // Your ZEGOCLOUD AppSign
 
+  // Gift panel state
+  bool showGiftPanel = false;
   List<Map<String, dynamic>> giftAnimations = [];
+
   Map<String, dynamic>? currentUser;
   Map<String, dynamic>? hostUser;
   final LiveStreamService _liveStreamService = LiveStreamService();
@@ -75,6 +78,10 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
   List<Widget> _activeGiftAnimations = [];
   int _giftAnimKey = 0;
 
+  // Global deduplication for gift animations to prevent duplicates
+  final Set<String> _globalProcessedAnimations = {};
+  DateTime _lastAnimationCleanup = DateTime.now();
+
   // Gift polling for synchronization
   Timer? _giftPollingTimer;
   DateTime _lastGiftCheck = DateTime.now();
@@ -94,6 +101,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     _loadHostUser();
     _fetchAllUsers();
     _fetchHostProfilePicture();
+
     _userListSub = ZegoUIKit().getUserListStream().listen((zegoUsers) {
       setState(() {
         _zegoUsers = zegoUsers;
@@ -119,18 +127,52 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     });
 
     _fetchGiftsAndUser();
-
-    // Start gift polling for synchronization across devices
     _startGiftPolling();
 
     // Start block checking for audience members
     _startBlockChecking();
   }
 
+  // Gift panel functions
+  void _showGiftPanel() {
+    setState(() {
+      showGiftPanel = true;
+    });
+  }
+
+  void _hideGiftPanel() {
+    setState(() {
+      showGiftPanel = false;
+    });
+  }
+
+  void _showGiftAnimation(
+    String giftName,
+    String gifUrl,
+    String senderName, {
+    String? pkBattleSide,
+  }) {
+    setState(() {
+      giftAnimations.add({
+        'giftName': giftName,
+        'gifUrl': gifUrl,
+        'senderName': senderName,
+        'pkBattleSide': pkBattleSide,
+        'id': DateTime.now().millisecondsSinceEpoch,
+      });
+    });
+  }
+
+  void _removeGiftAnimation(int id) {
+    setState(() {
+      giftAnimations.removeWhere((animation) => animation['id'] == id);
+    });
+  }
+
   // Gift polling methods for synchronization
   void _startGiftPolling() {
     _giftPollingTimer?.cancel();
-    _giftPollingTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+          _giftPollingTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
       // For audio screen (non-PK), use user gifts received endpoint
       final int targetUserId =
           widget.isHost
@@ -237,10 +279,32 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
 
   // Create gift animation (reusable method)
   void _createGiftAnimation(String giftName, String gifUrl, String senderName) {
+    // Clean up old animation keys every 5 minutes to prevent memory leaks
+    final now = DateTime.now();
+    if (now.difference(_lastAnimationCleanup).inMinutes >= 5) {
+      _globalProcessedAnimations.clear();
+      _lastAnimationCleanup = now;
+      debugPrint('🎁 Cleaned up old animation deduplication keys');
+    }
+
+    // Create a unique key for this animation
+    final animationKey =
+        '${senderName}_${giftName}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Check if this animation was already processed
+    if (_globalProcessedAnimations.contains(animationKey)) {
+      debugPrint('🎁 Animation already processed, skipping: $animationKey');
+      return;
+    }
+
+    // Add to processed animations
+    _globalProcessedAnimations.add(animationKey);
+
     debugPrint('🎁 Creating gift animation:');
     debugPrint('🎁   - Gift Name: $giftName');
     debugPrint('🎁   - GIF URL: $gifUrl');
     debugPrint('🎁   - Sender: $senderName');
+    debugPrint('🎁   - Animation Key: $animationKey');
 
     setState(() {
       _activeGiftAnimations.add(
@@ -524,29 +588,6 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
     }
   }
 
-  void _showGiftAnimation(
-    String giftName,
-    String gifUrl,
-    String senderName, {
-    String? pkBattleSide,
-  }) {
-    setState(() {
-      giftAnimations.add({
-        'giftName': giftName,
-        'gifUrl': gifUrl,
-        'senderName': senderName,
-        'pkBattleSide': pkBattleSide,
-        'id': DateTime.now().millisecondsSinceEpoch,
-      });
-    });
-  }
-
-  void _removeGiftAnimation(int id) {
-    setState(() {
-      giftAnimations.removeWhere((animation) => animation['id'] == id);
-    });
-  }
-
   void _triggerLike() {
     setState(() {
       _burstKey++;
@@ -628,8 +669,8 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
             final audioUrl =
                 'https://server.bharathchat.com/uploads/audio/$audioFilename';
             debugPrint('🎁 [$requestId] Playing gift audio: $audioUrl');
-            // Wait 2 seconds before playing audio
-            await Future.delayed(const Duration(seconds: 2));
+            // Wait 200ms before playing audio (reduced from 500ms)
+            await Future.delayed(const Duration(milliseconds: 200));
             if (mounted) {
               await _audioPlayer.setUrl(audioUrl);
               await _audioPlayer.play();
@@ -661,7 +702,11 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               currentUser?['username'] ?? currentUser?['first_name'] ?? 'You';
           final String giftName = gift['name'] ?? gift['gift_name'] ?? 'Gift';
           if (gifUrl != null) {
-            _createGiftAnimation(giftName, gifUrl, senderName);
+            // REMOVED: _createGiftAnimation(giftName, gifUrl, senderName);
+            // Animation will be handled by polling system to prevent duplicates
+            debugPrint(
+              '🎁 [$requestId] Gift animation will be shown via polling system',
+            );
           }
         } catch (e) {
           debugPrint(
@@ -691,16 +736,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
           '🎁 [$requestId] ZEGOCLOUD command sending disabled - using server polling for sync',
         );
 
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('🎁 Gift sent successfully!'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        // Success message removed - gift sent silently
       } else {
         debugPrint('❌ [$requestId] Failed to send gift via API');
         if (mounted) {
@@ -1577,7 +1613,7 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               elevation: 0,
             ),
             onPressed: () {
-              // Removed _showGiftPanel()
+              _showGiftPanel();
             },
             child: const Icon(
               Icons.card_giftcard,
@@ -1866,6 +1902,30 @@ class _LiveAudioScreenState extends State<LiveAudioScreen>
               onAnimationComplete: () => _removeGiftAnimation(anim['id']),
             ),
           ),
+
+          // Gift Panel
+          if (showGiftPanel)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _hideGiftPanel,
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(
+                    child: FractionallySizedBox(
+                      heightFactor: 0.5,
+                      child: GiftPanel(
+                        receiverId: widget.hostId,
+                        roomId: widget.liveID,
+                        onGiftSent: _hideGiftPanel,
+                        // REMOVED: onGiftAnimation: _showGiftAnimation,
+                        // Animations are now handled by polling system to prevent duplicates
+                        onClose: _hideGiftPanel,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // Watermark logo in top left
           Positioned(

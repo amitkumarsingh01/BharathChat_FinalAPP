@@ -69,7 +69,7 @@ class _GiftAnimationState extends State<GiftAnimation>
     _audioPlayer = AudioPlayer();
 
     _controller.forward().then((_) {
-      Future.delayed(const Duration(seconds: 2), () {
+      Future.delayed(const Duration(milliseconds: 200), () {
         if (mounted) {
           _controller.reverse().then((_) {
             widget.onAnimationComplete?.call();
@@ -86,11 +86,11 @@ class _GiftAnimationState extends State<GiftAnimation>
     super.dispose();
   }
 
-  // Method to play custom audio with 2-second delay
+  // Method to play custom audio with 200ms delay
   Future<void> playCustomAudio(String audioUrl) async {
     try {
-      // Wait 2 seconds before playing audio
-      await Future.delayed(const Duration(seconds: 2));
+      // Wait 200ms before playing audio (reduced from 500ms)
+      await Future.delayed(const Duration(milliseconds: 200));
       if (mounted) {
         await _audioPlayer.play(UrlSource(audioUrl));
       }
@@ -134,22 +134,24 @@ class _GiftAnimationState extends State<GiftAnimation>
                             child: CachedNetworkImage(
                               imageUrl: widget.gifUrl,
                               fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.card_giftcard,
-                                  color: Colors.white,
-                                  size: 60,
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => Container(
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.card_giftcard,
-                                  color: Colors.white,
-                                  size: 60,
-                                ),
-                              ),
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey[800],
+                                    child: const Icon(
+                                      Icons.card_giftcard,
+                                      color: Colors.white,
+                                      size: 60,
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey[800],
+                                    child: const Icon(
+                                      Icons.card_giftcard,
+                                      color: Colors.white,
+                                      size: 60,
+                                    ),
+                                  ),
                             ),
                           ),
                         ),
@@ -180,24 +182,29 @@ class _GiftAnimationState extends State<GiftAnimation>
                         ),
 
                         // PK Battle indicator
-                        if (widget.isPKBattleGift && widget.pkBattleSide != null) ...[
+                        if (widget.isPKBattleGift &&
+                            widget.pkBattleSide != null) ...[
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: widget.pkBattleSide == 'left' 
-                                  ? [Colors.green, Colors.lightGreen]
-                                  : [Colors.orange, Colors.deepOrange],
+                                colors:
+                                    widget.pkBattleSide == 'left'
+                                        ? [Colors.green, Colors.lightGreen]
+                                        : [Colors.orange, Colors.deepOrange],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              widget.pkBattleSide == 'left' 
-                                ? '🟢 LEFT SIDE 🟢'
-                                : '🟠 RIGHT SIDE 🟠',
+                              widget.pkBattleSide == 'left'
+                                  ? '🟢 LEFT SIDE 🟢'
+                                  : '🟠 RIGHT SIDE 🟠',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
