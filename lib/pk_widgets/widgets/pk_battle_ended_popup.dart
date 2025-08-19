@@ -31,9 +31,11 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _confettiController;
+  late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -49,6 +51,11 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
       vsync: this,
     );
 
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
     _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
     );
@@ -61,8 +68,13 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
     );
 
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
     _animationController.forward();
     _confettiController.repeat();
+    _pulseController.repeat(reverse: true);
 
     // Auto dismiss after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
@@ -84,6 +96,7 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
   void dispose() {
     _animationController.dispose();
     _confettiController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -132,123 +145,153 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(28),
                       border: Border.all(
-                        color: _getWinnerColor().withOpacity(0.3),
-                        width: 2,
+                        color: _getWinnerColor().withOpacity(0.4),
+                        width: 2.5,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _getWinnerColor().withOpacity(0.2),
-                          blurRadius: 20,
-                          spreadRadius: 5,
+                          color: _getWinnerColor().withOpacity(0.3),
+                          blurRadius: 25,
+                          spreadRadius: 8,
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 30,
-                          spreadRadius: 10,
+                          color: Colors.black.withOpacity(0.6),
+                          blurRadius: 40,
+                          spreadRadius: 15,
                         ),
                       ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Header with confetti effect
+                        // Enhanced Header with confetti effect
                         Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                _getWinnerColor().withOpacity(0.2),
+                                _getWinnerColor().withOpacity(0.25),
                                 _getWinnerColor().withOpacity(0.1),
+                                Colors.transparent,
                               ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                             ),
                             borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(24),
-                              topRight: Radius.circular(24),
+                              topLeft: Radius.circular(28),
+                              topRight: Radius.circular(28),
                             ),
                           ),
                           child: Column(
                             children: [
-                              // Trophy icon
+                              // Enhanced Trophy icon with pulse animation
                               AnimatedBuilder(
-                                animation: _confettiController,
+                                animation: Listenable.merge([
+                                  _confettiController,
+                                  _pulseController,
+                                ]),
                                 builder: (context, child) {
                                   return Transform.rotate(
                                     angle: _confettiController.value * 0.1,
-                                    child: Icon(
-                                      widget.winnerId == 0
-                                          ? Icons.emoji_events
-                                          : Icons.emoji_events,
-                                      size: 48,
-                                      color: _getWinnerColor(),
+                                    child: Transform.scale(
+                                      scale: _pulseAnimation.value,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: RadialGradient(
+                                            colors: [
+                                              _getWinnerColor().withOpacity(
+                                                0.3,
+                                              ),
+                                              _getWinnerColor().withOpacity(
+                                                0.1,
+                                              ),
+                                              Colors.transparent,
+                                            ],
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          widget.winnerId == 0
+                                              ? Icons.emoji_events
+                                              : Icons.emoji_events,
+                                          size: 52,
+                                          color: _getWinnerColor(),
+                                        ),
+                                      ),
                                     ),
                                   );
                                 },
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 20),
                               Text(
                                 'PK Battle Ended!',
                                 style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
                                   color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: _getWinnerColor().withOpacity(0.5),
-                                      blurRadius: 10,
-                                    ),
-                                  ],
+                                  letterSpacing: 1.2,
+                                  decoration: TextDecoration.none,
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                        // Content
+                        // Enhanced Content
                         Padding(
-                          padding: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(28),
                           child: Column(
                             children: [
-                              // Winner announcement
+                              // Enhanced Winner announcement
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
+                                  horizontal: 24,
+                                  vertical: 16,
                                 ),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      _getWinnerColor().withOpacity(0.3),
-                                      _getWinnerColor().withOpacity(0.1),
+                                      _getWinnerColor().withOpacity(0.4),
+                                      _getWinnerColor().withOpacity(0.15),
                                     ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: _getWinnerColor().withOpacity(0.5),
-                                  ),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        widget.winnerId == 0
-                                            ? Icons.handshake
-                                            : Icons.star,
-                                        color: _getWinnerColor(),
-                                        size: 24,
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _getWinnerColor().withOpacity(
+                                            0.2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          widget.winnerId == 0
+                                              ? Icons.handshake
+                                              : Icons.star,
+                                          color: _getWinnerColor(),
+                                          size: 26,
+                                        ),
                                       ),
-                                      const SizedBox(width: 5),
+                                      const SizedBox(width: 12),
                                       Text(
                                         'Winner: ${_getWinnerName()}',
                                         style: TextStyle(
-                                          fontSize: 15,
+                                          fontSize: 17,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.white,
+                                          letterSpacing: 0.5,
+                                          decoration: TextDecoration.none,
                                         ),
                                       ),
                                     ],
@@ -256,121 +299,160 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                                 ),
                               ),
 
-                              const SizedBox(height: 24),
+                              const SizedBox(height: 28),
 
-                              // Final scores
+                              // Enhanced Final scores
                               Container(
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(24),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.3),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.1),
-                                  ),
+                                  color: Colors.black.withOpacity(0.4),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Column(
                                   children: [
                                     Text(
                                       'Final Scores',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                         color: Colors.white70,
+                                        letterSpacing: 0.5,
+                                        decoration: TextDecoration.none,
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: 20),
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
                                       children: [
-                                        // Left host score
+                                        // Enhanced Left host score
                                         Column(
                                           children: [
-                                            CircleAvatar(
-                                              radius: 30,
-                                              backgroundColor: const Color(
-                                                0xFF00d4ff,
-                                              ).withOpacity(0.2),
-                                              child: Text(
-                                                '${widget.leftScore}',
-                                                style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFF00d4ff),
+                                            Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: RadialGradient(
+                                                  colors: [
+                                                    const Color(
+                                                      0xFF00d4ff,
+                                                    ).withOpacity(0.3),
+                                                    const Color(
+                                                      0xFF00d4ff,
+                                                    ).withOpacity(0.1),
+                                                  ],
+                                                ),
+                                              ),
+                                              child: CircleAvatar(
+                                                radius: 32,
+                                                backgroundColor: const Color(
+                                                  0xFF00d4ff,
+                                                ).withOpacity(0.2),
+                                                child: Text(
+                                                  '${widget.leftScore}',
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF00d4ff),
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 10),
                                             Text(
                                               widget.leftHostName ??
                                                   widget.leftHostId ??
                                                   'Left',
                                               style: const TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 13,
                                                 color: Colors.white70,
+                                                fontWeight: FontWeight.w500,
+                                                decoration: TextDecoration.none,
                                               ),
                                             ),
                                           ],
                                         ),
 
-                                        // VS indicator
+                                        // Enhanced VS indicator
                                         Column(
                                           children: [
                                             Container(
-                                              width: 40,
-                                              height: 40,
+                                              width: 44,
+                                              height: 44,
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
                                                 gradient: LinearGradient(
                                                   colors: [
-                                                    const Color(0xFFffd700),
-                                                    const Color(0xFF9d4edd),
+                                                    _getWinnerColor()
+                                                        .withOpacity(0.8),
+                                                    _getWinnerColor()
+                                                        .withOpacity(0.4),
                                                   ],
                                                 ),
                                               ),
-                                              child: const Icon(
+                                              child: Icon(
                                                 Icons.sports_martial_arts,
                                                 color: Colors.white,
-                                                size: 20,
+                                                size: 22,
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
-                                            const Text(
+                                            const SizedBox(height: 10),
+                                            Text(
                                               'VS',
                                               style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.white54,
+                                                fontSize: 13,
+                                                color: Colors.white60,
                                                 fontWeight: FontWeight.bold,
+                                                letterSpacing: 1,
+                                                decoration: TextDecoration.none,
                                               ),
                                             ),
                                           ],
                                         ),
 
-                                        // Right host score
+                                        // Enhanced Right host score
                                         Column(
                                           children: [
-                                            CircleAvatar(
-                                              radius: 30,
-                                              backgroundColor: const Color(
-                                                0xFFff69b4,
-                                              ).withOpacity(0.2),
-                                              child: Text(
-                                                '${widget.rightScore}',
-                                                style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Color(0xFFff69b4),
+                                            Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: RadialGradient(
+                                                  colors: [
+                                                    const Color(
+                                                      0xFFff69b4,
+                                                    ).withOpacity(0.3),
+                                                    const Color(
+                                                      0xFFff69b4,
+                                                    ).withOpacity(0.1),
+                                                  ],
+                                                ),
+                                              ),
+                                              child: CircleAvatar(
+                                                radius: 32,
+                                                backgroundColor: const Color(
+                                                  0xFFff69b4,
+                                                ).withOpacity(0.2),
+                                                child: Text(
+                                                  '${widget.rightScore}',
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFFff69b4),
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 10),
                                             Text(
                                               widget.rightHostName ??
                                                   widget.rightHostId ??
                                                   'Right',
                                               style: const TextStyle(
-                                                fontSize: 12,
+                                                fontSize: 13,
                                                 color: Colors.white70,
+                                                fontWeight: FontWeight.w500,
+                                                decoration: TextDecoration.none,
                                               ),
                                             ),
                                           ],
@@ -384,33 +466,44 @@ class _PKBattleEndedPopupState extends State<PKBattleEndedPopup>
                           ),
                         ),
 
-                        // Action buttons
+                        // Enhanced Action buttons
                         Container(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                          padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
                           child: Row(
                             children: [
                               Expanded(
-                                child: ElevatedButton(
-                                  onPressed: _dismiss,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _getWinnerColor(),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 8,
-                                    shadowColor: _getWinnerColor().withOpacity(
-                                      0.3,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        _getWinnerColor(),
+                                        _getWinnerColor().withOpacity(0.8),
+                                      ],
                                     ),
                                   ),
-                                  child: const Text(
-                                    'Continue',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                  child: ElevatedButton(
+                                    onPressed: _dismiss,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.transparent,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 18,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      elevation: 0,
+                                      shadowColor: Colors.transparent,
+                                    ),
+                                    child: const Text(
+                                      'Continue',
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                        decoration: TextDecoration.none,
+                                      ),
                                     ),
                                   ),
                                 ),

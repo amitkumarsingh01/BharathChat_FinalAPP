@@ -242,8 +242,8 @@ class _LivePageState extends State<LivePage>
         'Fetching PK battle data',
       );
 
-      // Fetch PK battle data with delay to allow backend to create PK battle
-      Future.delayed(Duration(seconds: 2), () {
+      // Fetch PK battle data with reduced delay to allow backend to create PK battle
+      Future.delayed(Duration(milliseconds: 500), () {
         _fetchPKBattleDataFromServer();
       });
     }
@@ -252,7 +252,7 @@ class _LivePageState extends State<LivePage>
     _checkActivePKBattle();
 
     // Start a timer to periodically check for PK battle ID if not available (using stream ID only)
-    Timer.periodic(Duration(milliseconds: 500), (timer) {
+    Timer.periodic(Duration(milliseconds: 300), (timer) {
       if (_pkBattleId == null &&
           PKEvents.currentPKBattleId == null &&
           _showPKBattleTimer) {
@@ -846,159 +846,136 @@ class _LivePageState extends State<LivePage>
 
     return await showDialog<int>(
       context: context,
+      barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
+        return Dialog(
           backgroundColor: Colors.black,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            '🎁 Choose Gift Recipient',
-            style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.4,
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with title and close button
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Which host would you like to send the gift to?',
+                        style: const TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.visible,
+                        maxLines: 3,
+                        textAlign: TextAlign.left,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Cancel icon at top right
+                    GestureDetector(
+                      onTap: () {
+                        debugPrint('🎁 User cancelled host selection');
+                        Navigator.of(context).pop(null);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                // Host selection buttons
+                Row(
+                  children: [
+                    // Left Host Button
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.pink.withOpacity(0.2),
+                          foregroundColor: Colors.pink,
+                          side: const BorderSide(color: Colors.pink),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          debugPrint(
+                            '🎁 User selected LEFT HOST: ${_leftHostId} - ${_leftHostName}',
+                          );
+                          Navigator.of(
+                            context,
+                          ).pop(int.tryParse(_leftHostId ?? '0') ?? 0);
+                        },
+                        child: Flexible(
+                          child: Text(
+                            '🟣 ${_leftHostName ?? 'Left Host'}',
+                            style: const TextStyle(
+                              color: Colors.pink,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Right Host Button
+                    Expanded(
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.blue.withOpacity(0.2),
+                          foregroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          debugPrint(
+                            '🎁 User selected RIGHT HOST: ${_rightHostId} - ${_rightHostName}',
+                          );
+                          Navigator.of(
+                            context,
+                          ).pop(int.tryParse(_rightHostId ?? '0') ?? 0);
+                        },
+                        child: Flexible(
+                          child: Text(
+                            '🔵 ${_rightHostName ?? 'Right Host'}',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Which host would you like to send the gift to?',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              // Left Host Info
-              // Container(
-              //   padding: const EdgeInsets.all(12),
-              //   decoration: BoxDecoration(
-              //     color: Colors.green.withOpacity(0.1),
-              //     borderRadius: BorderRadius.circular(8),
-              //     border: Border.all(color: Colors.green),
-              //   ),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         '🟢 Left Host: ${_leftHostName ?? 'Unknown'}',
-              //         style: const TextStyle(
-              //           color: Colors.green,
-              //           fontWeight: FontWeight.bold,
-              //           fontSize: 14,
-              //         ),
-              //       ),
-              //       Text(
-              //         'ID: ${_leftHostId ?? 'N/A'}',
-              //         style: const TextStyle(
-              //           color: Colors.green,
-              //           fontSize: 12,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              // const SizedBox(height: 8),
-              // // Right Host Info
-              // Container(
-              //   padding: const EdgeInsets.all(12),
-              //   decoration: BoxDecoration(
-              //     color: Colors.orange.withOpacity(0.1),
-              //     borderRadius: BorderRadius.circular(8),
-              //     border: Border.all(color: Colors.orange),
-              //   ),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         '🟠 Right Host: ${_rightHostName ?? 'Unknown'}',
-              //         style: const TextStyle(
-              //           color: Colors.orange,
-              //           fontWeight: FontWeight.bold,
-              //           fontSize: 14,
-              //         ),
-              //       ),
-              //       Text(
-              //         'ID: ${_rightHostId ?? 'N/A'}',
-              //         style: const TextStyle(
-              //           color: Colors.orange,
-              //           fontSize: 12,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-            ],
-          ),
-          actions: [
-            // Left Host Button
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.green.withOpacity(0.2),
-                foregroundColor: Colors.green,
-                side: BorderSide(color: Colors.green),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                debugPrint(
-                  '🎁 User selected LEFT HOST: ${_leftHostId} - ${_leftHostName}',
-                );
-                Navigator.of(
-                  context,
-                ).pop(int.tryParse(_leftHostId ?? '0') ?? 0);
-              },
-              child: Text(
-                '🟢 ${_leftHostName ?? 'Left Host'}',
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            // Right Host Button
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.orange.withOpacity(0.2),
-                foregroundColor: Colors.orange,
-                side: BorderSide(color: Colors.orange),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                debugPrint(
-                  '🎁 User selected RIGHT HOST: ${_rightHostId} - ${_rightHostName}',
-                );
-                Navigator.of(
-                  context,
-                ).pop(int.tryParse(_rightHostId ?? '0') ?? 0);
-              },
-              child: Text(
-                '🟠 ${_rightHostName ?? 'Right Host'}',
-                style: const TextStyle(
-                  color: Colors.orange,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            // Cancel Button
-            TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                debugPrint('🎁 User cancelled host selection');
-                Navigator.of(context).pop(null);
-              },
-              child: const Text(
-                '❌ Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-          ],
         );
       },
     );
@@ -1484,8 +1461,8 @@ class _LivePageState extends State<LivePage>
       if (streamId != null) {
         debugPrint('🎯 Using stream ID: $streamId');
 
-        // Add 2-second delay as requested
-        await Future.delayed(Duration(seconds: 2));
+        // Add reduced delay for faster loading
+        await Future.delayed(Duration(milliseconds: 300));
 
         final pkBattle = await ApiService.getActivePKBattleByStreamId(streamId);
         if (pkBattle != null) {
@@ -1953,9 +1930,9 @@ class _LivePageState extends State<LivePage>
         );
       }
 
-      // Fetch PK battle ID if not available (with 2-second delay for backend timing)
+      // Fetch PK battle ID if not available (with reduced delay for faster loading)
       if (PKEvents.currentPKBattleId == null) {
-        Future.delayed(Duration(seconds: 2), () {
+        Future.delayed(Duration(milliseconds: 500), () {
           _fetchPKBattleDataFromServer();
         });
       }
@@ -2900,93 +2877,16 @@ class _LivePageState extends State<LivePage>
                             },
                           )
                           : Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: Colors.yellow,
-                                width: 2,
+                            padding: const EdgeInsets.all(8),
+                            child: const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _leftHostName ?? 'Left',
-                                        textAlign: TextAlign.left,
-                                        style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Center(
-                                        child: Text(
-                                          'PK: ${PKEvents.currentPKBattleId ?? "..."}',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            color: Colors.yellow,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        _rightHostName ?? 'Right',
-                                        textAlign: TextAlign.right,
-                                        style: const TextStyle(
-                                          color: Colors.orange,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(9),
-                                    color: Colors.grey[800],
-                                  ),
-                                  child: const Row(
-                                    children: [
-                                      Expanded(
-                                        child: Center(
-                                          child: Text(
-                                            '0',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Center(
-                                          child: Text(
-                                            '0',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
                             ),
                           );
                     },
@@ -3318,9 +3218,9 @@ class _LivePageState extends State<LivePage>
                                       'PK Battle ID':
                                           PKEvents.currentPKBattleId.toString(),
                                       'Left Host':
-                                          '${_debugInfo['left_host_name'] ?? _leftHostName ?? 'Unknown'} (${_leftHostId ?? 'N/A'})',
+                                          '${_debugInfo['left_host_name'] ?? _leftHostName ?? 'Left Host'} (${_leftHostId ?? 'N/A'})',
                                       'Right Host':
-                                          '${_debugInfo['right_host_name'] ?? _rightHostName ?? 'Unknown'} (${_rightHostId ?? 'N/A'})',
+                                          '${_debugInfo['right_host_name'] ?? _rightHostName ?? 'Right Host'} (${_rightHostId ?? 'N/A'})',
                                       'Left Score':
                                           _debugInfo['left_score']
                                               ?.toString() ??
@@ -3858,9 +3758,9 @@ class _LivePageState extends State<LivePage>
                               'Live State': liveStateNotifier.value.toString(),
                               'Is Host': widget.isHost.toString(),
                               'Left Host':
-                                  '${_leftHostName ?? 'Unknown'} (${_leftHostId ?? 'N/A'})',
+                                  '${_leftHostName ?? 'Left host'} (${_leftHostId ?? 'left host'})',
                               'Right Host':
-                                  '${_rightHostName ?? 'Unknown'} (${_rightHostId ?? 'N/A'})',
+                                  '${_rightHostName ?? 'Right host'} (${_rightHostId ?? 'right host'})',
                               'Active Gift Animations':
                                   _activeGiftAnimations.length.toString(),
                               'Transaction Polling':

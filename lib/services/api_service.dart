@@ -1318,7 +1318,7 @@ class ApiService {
               try {
                 if (battle['left_host_id'] != null) {
                   final leftHost = await getUserById(battle['left_host_id']);
-                  leftHostName = leftHost?['username'] ?? 'Unknown';
+                  leftHostName = leftHost?['username'] ?? 'Left host';
                   apiLog(
                     '👤 [API-$requestId] Left host name fetched: $leftHostName (ID: ${battle['left_host_id']})',
                   );
@@ -1326,15 +1326,15 @@ class ApiService {
 
                 if (battle['right_host_id'] != null) {
                   final rightHost = await getUserById(battle['right_host_id']);
-                  rightHostName = rightHost?['username'] ?? 'Unknown';
+                  rightHostName = rightHost?['username'] ?? 'Right host';
                   apiLog(
                     '👤 [API-$requestId] Right host name fetched: $rightHostName (ID: ${battle['right_host_id']})',
                   );
                 }
               } catch (e) {
                 apiLog('⚠️ [API-$requestId] Error fetching host names: $e');
-                leftHostName = 'Unknown';
-                rightHostName = 'Unknown';
+                leftHostName = 'Left host';
+                rightHostName = 'Right host';
               }
 
               final result = {
