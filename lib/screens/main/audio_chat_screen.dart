@@ -5,7 +5,7 @@ import 'package:avatar_glow/avatar_glow.dart';
 import '../../services/api_service.dart';
 import 'dart:convert';
 import 'package:carousel_slider/carousel_slider.dart';
-import '../live/live_audio_screen.dart';
+import '../live/live_audio_screen_new.dart';
 import '../auth/pending.dart';
 
 class AudioChatScreen extends StatefulWidget {
@@ -464,7 +464,7 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                   context,
                                   MaterialPageRoute(
                                     builder:
-                                        (context) => LiveAudioScreen(
+                                        (context) => LiveAudioScreenNew(
                                           liveID: room['live_url'] ?? '',
                                           localUserID: userID,
                                           isHost: false,
@@ -642,7 +642,7 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                                     builder:
                                                         (
                                                           context,
-                                                        ) => LiveAudioScreen(
+                                                        ) => LiveAudioScreenNew(
                                                           liveID:
                                                               room['live_url'] ??
                                                               '',

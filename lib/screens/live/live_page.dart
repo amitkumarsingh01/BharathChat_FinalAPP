@@ -2703,6 +2703,7 @@ class _LivePageState extends State<LivePage>
               userID: widget.localUserID,
               userName: widget.localUserID,
               liveID: widget.liveID,
+
               config: config,
               events: ZegoUIKitPrebuiltLiveStreamingEvents(
                 pk: pkEvents?.event,

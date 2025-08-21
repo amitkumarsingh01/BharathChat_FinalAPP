@@ -11,7 +11,7 @@ import 'package:camera/camera.dart'
         availableCameras;
 import 'package:just_audio/just_audio.dart';
 import '../live/live_video_screen.dart';
-import '../live/live_audio_screen.dart';
+import '../live/live_audio_screen_new.dart';
 import '../../services/live_stream_service.dart';
 import '../../common.dart';
 import 'pk_battle_debug_screen.dart';
@@ -2353,7 +2353,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
             context,
             MaterialPageRoute(
               builder:
-                  (context) => LiveAudioScreen(
+                  (context) => LiveAudioScreenNew(
                     liveID: liveUrl,
                     localUserID: userID,
                     isHost: true,
