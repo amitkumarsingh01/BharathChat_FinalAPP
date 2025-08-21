@@ -513,6 +513,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+
           onPressed:
               () => Navigator.push(
                 context,

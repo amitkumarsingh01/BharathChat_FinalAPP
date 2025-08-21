@@ -636,6 +636,50 @@ class _AudioChatScreenState extends State<AudioChatScreen> {
                                                         : DateTime.now()
                                                             .millisecondsSinceEpoch
                                                             .toString();
+
+                                                // Check if user is blocked by the host
+                                                try {
+                                                  if (userData != null) {
+                                                    final relations =
+                                                        await ApiService.getUserSimpleRelations(
+                                                          room['user_id'] ?? 0,
+                                                        );
+                                                    final blockedIds = List<
+                                                      int
+                                                    >.from(
+                                                      relations['blocked'] ??
+                                                          [],
+                                                    );
+
+                                                    if (blockedIds.contains(
+                                                      userData['id'],
+                                                    )) {
+                                                      if (mounted) {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          const SnackBar(
+                                                            content: Text(
+                                                              'You are blocked by this host and cannot view their live stream',
+                                                            ),
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                            duration: Duration(
+                                                              seconds: 3,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }
+                                                      return; // Prevent joining the live stream
+                                                    }
+                                                  }
+                                                } catch (e) {
+                                                  debugPrint(
+                                                    'Error checking if user is blocked: $e',
+                                                  );
+                                                  // Continue with joining if there's an error checking block status
+                                                }
+
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(

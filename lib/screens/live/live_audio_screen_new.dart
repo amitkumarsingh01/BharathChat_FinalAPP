@@ -92,13 +92,6 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
   StreamSubscription? _userListSub;
   List<dynamic> _allUsers = [];
 
-  // Like animation state
-  late AnimationController _likeController;
-  late Animation<double> _likeScale;
-  bool _showLike = false;
-  List<Widget> _burstHearts = [];
-  int _burstKey = 0;
-
   // Gift state
   List<dynamic> _gifts = [];
   bool _giftsLoading = true;
@@ -137,23 +130,6 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
       _mapZegoUsersToProfiles(zegoUsers);
     });
 
-    // Initialize like animation
-    _likeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _likeScale = Tween<double>(
-      begin: 0.0,
-      end: 1.5,
-    ).chain(CurveTween(curve: Curves.elasticOut)).animate(_likeController);
-    _likeController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 300), () {
-          _likeController.reverse();
-        });
-      }
-    });
-
     _fetchGiftsAndUser();
     _startGiftPolling();
 
@@ -164,7 +140,6 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
   @override
   void dispose() {
     _audioPlayer.dispose();
-    _likeController.dispose();
     _userListSub?.cancel();
     _stopGiftPolling();
     _stopBlockChecking();
@@ -626,32 +601,6 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
     );
   }
 
-  // Like animation methods
-  void _showLikeAnimation() {
-    setState(() {
-      _showLike = true;
-      _burstKey++;
-    });
-    _likeController.forward();
-
-    // Create burst hearts
-    final random = Random();
-    for (int i = 0; i < 5; i++) {
-      _burstHearts.add(
-        AnimatedHeart(delay: Duration(milliseconds: i * 100), random: random),
-      );
-    }
-
-    // Remove hearts after animation
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        setState(() {
-          _burstHearts.clear();
-        });
-      }
-    });
-  }
-
   // Block checking methods
   Future<bool> _checkIfUserIsBlocked() async {
     try {
@@ -959,6 +908,65 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
     }
+  }
+
+  // Show block user popup
+  void _showBlockUserPopup(
+    BuildContext context,
+    String userName,
+    String userId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF23272F),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Block User',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to block $userName?',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.grey,
+                side: const BorderSide(color: Colors.grey),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _blockUser(userId);
+              },
+              child: const Text('Block', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Custom seat background builder
@@ -1386,7 +1394,143 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
                 // Custom seat UI configuration
                 ..seat.showSoundWaveInAudioMode = true
                 ..seat.backgroundBuilder = _customSeatBackgroundBuilder
-                ..seat.foregroundBuilder = _customSeatForegroundBuilder,
+                ..seat.foregroundBuilder = _customSeatForegroundBuilder
+                // Custom message configuration for enhanced UI
+                ..inRoomMessage = ZegoLiveAudioRoomInRoomMessageConfig(
+                  itemBuilder: (
+                    BuildContext context,
+                    ZegoInRoomMessage message,
+                    Map<String, dynamic> extraInfo,
+                  ) {
+                    // Clean username by removing "user_" prefix
+                    final cleanUsername =
+                        message.user.name.startsWith('user_')
+                            ? message.user.name.substring(5)
+                            : message.user.name;
+
+                    return GestureDetector(
+                      onTap: () {
+                        // Only show block popup for hosts
+                        if (widget.isHost) {
+                          _showBlockUserPopup(
+                            context,
+                            cleanUsername,
+                            message.user.id,
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 160,
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.orange.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Profile Picture
+                            Container(
+                              width: 20,
+                              height: 20,
+                              margin: const EdgeInsets.only(right: 6),
+                              child: ClipOval(
+                                child: _customAvatarBuilder(
+                                  context,
+                                  const Size(20, 20),
+                                  message.user,
+                                  extraInfo,
+                                ),
+                              ),
+                            ),
+                            // Message Content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // User Name
+                                  Text(
+                                    cleanUsername,
+                                    style: const TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  // Message Text
+                                  Text(
+                                    message.message,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                )
+                // Custom bottom menu bar configuration - only add gift button for audience
+                ..bottomMenuBar =
+                    widget.isHost
+                        ? ZegoLiveAudioRoomBottomMenuBarConfig() // Use default for host
+                        : ZegoLiveAudioRoomBottomMenuBarConfig(
+                          maxCount: 5,
+                          showInRoomMessageButton: true,
+                          audienceExtendButtons: [
+                            // Custom gift button with gradient background
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.pink.shade300,
+                                    Colors.pink.shade500,
+                                    Colors.pink.shade700,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.pink.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: _showGiftPanel,
+                                  child: const Icon(
+                                    Icons.card_giftcard,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
           events: ZegoUIKitPrebuiltLiveAudioRoomEvents(
             onLeaveConfirmation: (event, defaultAction) async {
               return await showDialog<bool>(
@@ -1448,30 +1592,6 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
           ),
         ),
 
-        // Gift Button (audience only)
-        if (!widget.isHost)
-          Positioned(
-            bottom: 120,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: _showGiftPanel,
-              backgroundColor: Colors.orange,
-              child: const Icon(Icons.card_giftcard, color: Colors.white),
-            ),
-          ),
-
-        // Like Button (audience only)
-        if (!widget.isHost)
-          Positioned(
-            bottom: 120,
-            left: 20,
-            child: FloatingActionButton(
-              onPressed: _showLikeAnimation,
-              backgroundColor: Colors.pink,
-              child: const Icon(Icons.favorite, color: Colors.white),
-            ),
-          ),
-
         // Gift Panel
         if (showGiftPanel)
           Positioned.fill(
@@ -1508,95 +1628,7 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
 
         // Active Gift Animations
         ..._activeGiftAnimations,
-
-        // Like Animation (audience only)
-        if (_showLike && !widget.isHost)
-          Positioned(
-            bottom: 200,
-            left: 50,
-            child: AnimatedBuilder(
-              animation: _likeScale,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _likeScale.value,
-                  child: const Icon(
-                    Icons.favorite,
-                    color: Colors.pink,
-                    size: 50,
-                  ),
-                );
-              },
-            ),
-          ),
-
-        // Burst Hearts (audience only)
-        if (!widget.isHost)
-          ..._burstHearts.map(
-            (heart) => Positioned(bottom: 200, left: 50, child: heart),
-          ),
       ],
-    );
-  }
-}
-
-// AnimatedHeart widget for burst effect
-class AnimatedHeart extends StatefulWidget {
-  final Duration delay;
-  final Random random;
-  const AnimatedHeart({Key? key, required this.delay, required this.random})
-    : super(key: key);
-
-  @override
-  State<AnimatedHeart> createState() => _AnimatedHeartState();
-}
-
-class _AnimatedHeartState extends State<AnimatedHeart>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _moveUp;
-  late Animation<double> _fade;
-  late double _xOffset;
-
-  @override
-  void initState() {
-    super.initState();
-    _xOffset = widget.random.nextDouble() * 60 - 30;
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _moveUp = Tween<double>(
-      begin: 0,
-      end: -80,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _fade = Tween<double>(
-      begin: 1,
-      end: 0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
-    Future.delayed(widget.delay, () {
-      if (mounted) _controller.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(
-          opacity: _fade.value,
-          child: Transform.translate(
-            offset: Offset(_xOffset, _moveUp.value),
-            child: const Icon(Icons.favorite, color: Colors.pink, size: 28),
-          ),
-        );
-      },
     );
   }
 }
