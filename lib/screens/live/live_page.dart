@@ -1784,7 +1784,7 @@ class _LivePageState extends State<LivePage>
   // Helper method to play gift audio with 500ms delay
   Future<void> _playGiftAudioWithDelay(String audioUrl) async {
     try {
-      // Wait 200ms before playing audio (reduced from 500ms)
+      // Wait 200ms before playing audio
       await Future.delayed(const Duration(milliseconds: 200));
       if (mounted) {
         await _giftAudioPlayer.setUrl(audioUrl);

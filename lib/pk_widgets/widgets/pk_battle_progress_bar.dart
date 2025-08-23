@@ -618,7 +618,7 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                                       ),
                                       child: Image.asset(
                                         //'assets/sword2.jpeg',
-                                        'assets/2.png',
+                                        'assets/sword2.png',
                                         width: 48,
                                         height: 48,
                                         //   fit: BoxFit.cover,
@@ -683,7 +683,7 @@ class _PKBattleProgressBarState extends State<PKBattleProgressBar>
                                   ),
                                   child: Image.asset(
                                     // 'assets/sword2.jpeg',
-                                    'assets/2.png',
+                                    'assets/sword2.png',
                                     width: 48,
                                     height: 48,
                                     // fit: BoxFit.cover,

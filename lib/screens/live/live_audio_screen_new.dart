@@ -80,6 +80,21 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
   final String appSign =
       "12e07321bd8231dda371ea9235e274178403bd97a7ccabcb09e22474c42da3a4"; // Your ZEGOCLOUD AppSign
 
+  // Background selection state
+  String _selectedBackground = 'assets/background.jpg';
+  final List<Map<String, String>> _availableBackgrounds = [
+    {'name': 'Template 1', 'path': 'assets/2.png'},
+    {'name': 'Template 2', 'path': 'assets/template1.png'},
+    {'name': 'Template 3', 'path': 'assets/background.jpg'},
+    {'name': 'Template 4', 'path': 'assets/3.png'},
+    {'name': 'Template 5', 'path': 'assets/4.png'},
+    {'name': 'Template 6', 'path': 'assets/5.png'},
+
+    // {'name': 'Template 6', 'path': 'assets/template6.png'},
+    // {'name': 'Template 7', 'path': 'assets/template7.png'},
+    // {'name': 'Template 8', 'path': 'assets/template8.png'},
+  ];
+
   // Gift panel state
   bool showGiftPanel = false;
   List<Map<String, dynamic>> giftAnimations = [];
@@ -262,7 +277,7 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
             debugPrint(
               '🎁 (User $targetUserId) Playing received gift audio: $audioUrl',
             );
-            await Future.delayed(const Duration(seconds: 2));
+            await Future.delayed(const Duration(milliseconds: 200));
             if (mounted) {
               await _audioPlayer.setUrl(audioUrl);
               await _audioPlayer.play();
@@ -1011,28 +1026,10 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
       );
     }
 
-    // Add subtle background for other occupied seats
-    if (user != null && !isHostSeat) {
-      return Positioned(
-        top: -4,
-        left: 0,
-        child: Container(
-          width: size.width,
-          height: size.height,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.blue.withOpacity(0.2),
-                Colors.blue.withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(size.width / 2),
-          ),
-        ),
-      );
-    }
+    // No background for speaker seats (removed blue gradient)
+    // if (user != null && !isHostSeat) {
+    //   return Positioned(...);
+    // }
 
     return Container(); // No special background for empty seats
   }
@@ -1114,24 +1111,24 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
       );
     }
 
-    // Add speaker indicator for non-host seats
-    if (!isHostSeat && user != null) {
-      widgets.add(
-        Positioned(
-          top: -5,
-          left: -5,
-          child: Container(
-            width: size.width * 0.3,
-            height: size.height * 0.3,
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.8),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.mic, color: Colors.white, size: 12),
-          ),
-        ),
-      );
-    }
+    // Speaker mic icons removed for cleaner look
+    // if (!isHostSeat && user != null) {
+    //   widgets.add(
+    //     Positioned(
+    //       top: -5,
+    //       left: -5,
+    //       child: Container(
+    //         width: size.width * 0.3,
+    //         height: size.height * 0.3,
+    //         decoration: BoxDecoration(
+    //           color: Colors.blue.withOpacity(0.8),
+    //           shape: BoxShape.circle,
+    //         ),
+    //         child: const Icon(Icons.mic, color: Colors.white, size: 12),
+    //       ),
+    //     ),
+    //   );
+    // }
 
     // Add seat number indicator
     widgets.add(
@@ -1142,7 +1139,10 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
           width: size.width * 0.25,
           height: size.height * 0.25,
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.7),
+            color:
+                seatIndex == 0
+                    ? Colors.grey.withOpacity(0.7) // Host seat (seat 1) - grey
+                    : Colors.orange.withOpacity(0.8), // Seats 2-9 - orange
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -1276,6 +1276,15 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
               if (widget.isHost) ...[
                 // Host options
                 _buildMenuOption(
+                  'Change Background',
+                  Icons.wallpaper,
+                  Colors.purple,
+                  () {
+                    Navigator.of(context).pop();
+                    _showBackgroundSelectionDialog();
+                  },
+                ),
+                _buildMenuOption(
                   'Remove from Seat',
                   Icons.remove_circle_outline,
                   Colors.red,
@@ -1350,6 +1359,164 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
     );
   }
 
+  // Show background selection dialog for hosts
+  void _showBackgroundSelectionDialog() {
+    showModalBottomSheet(
+      backgroundColor: const Color(0xff111014),
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32.0),
+          topRight: Radius.circular(32.0),
+        ),
+      ),
+      isDismissible: true,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Background',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 300,
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.2,
+                  ),
+                  itemCount: _availableBackgrounds.length,
+                  itemBuilder: (context, index) {
+                    final background = _availableBackgrounds[index];
+                    final isSelected =
+                        _selectedBackground == background['path'];
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedBackground = background['path']!;
+                        });
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Background changed to ${background['name']}',
+                            ),
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? Colors.orange
+                                    : Colors.grey.withOpacity(0.3),
+                            width: isSelected ? 3 : 1,
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: Stack(
+                            children: [
+                              // Background image
+                              Positioned.fill(
+                                child: Image.asset(
+                                  background['path']!,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              // Overlay for better text visibility
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withOpacity(0.7),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Background name
+                              Positioned(
+                                bottom: 8,
+                                left: 8,
+                                right: 8,
+                                child: Text(
+                                  background['name']!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              // Selected indicator
+                              if (isSelected)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -1367,6 +1534,17 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
                     : ZegoUIKitPrebuiltLiveAudioRoomConfig.audience())
                 ..userAvatarUrl = _getCurrentUserAvatarUrl()
                 ..seat.avatarBuilder = _customAvatarBuilder
+                // Add background image to the audio room
+                ..background = Container(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(_selectedBackground),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                )
                 // Custom seat layout configuration
                 ..seat.hostIndexes = [0] // Host sits in seat 0
                 ..seat.takeIndexWhenJoining =
@@ -1485,10 +1663,51 @@ class _LiveAudioScreenNewState extends State<LiveAudioScreenNew>
                     );
                   },
                 )
-                // Custom bottom menu bar configuration - only add gift button for audience
+                // Custom bottom menu bar configuration - add background selection for host, gift button for audience
                 ..bottomMenuBar =
                     widget.isHost
-                        ? ZegoLiveAudioRoomBottomMenuBarConfig() // Use default for host
+                        ? ZegoLiveAudioRoomBottomMenuBarConfig(
+                          maxCount: 5,
+                          showInRoomMessageButton: true,
+                          hostExtendButtons: [
+                            // Custom background selection button for host
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.purple.shade300,
+                                    Colors.purple.shade500,
+                                    Colors.purple.shade700,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.purple.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: _showBackgroundSelectionDialog,
+                                  child: const Icon(
+                                    Icons.wallpaper,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
                         : ZegoLiveAudioRoomBottomMenuBarConfig(
                           maxCount: 5,
                           showInRoomMessageButton: true,
