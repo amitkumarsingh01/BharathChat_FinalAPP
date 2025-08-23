@@ -2150,6 +2150,8 @@ class _LivePageState extends State<LivePage>
             ? (ZegoUIKitPrebuiltLiveStreamingConfig.host(
                 plugins: [ZegoUIKitSignalingPlugin()],
               )
+              // Performance optimization: ensure camera is ready when joining
+              ..turnOnCameraWhenJoining = true
               ..foreground = PKV2Surface(
                 requestIDNotifier: requestIDNotifier,
                 liveStateNotifier: liveStateNotifier,
@@ -2175,6 +2177,18 @@ class _LivePageState extends State<LivePage>
           : const SizedBox();
     };
     config.audioVideoView.foregroundBuilder = foregroundBuilder;
+
+    // Remove beauty button from host's bottom menu bar
+    if (widget.isHost) {
+      config.bottomMenuBar.hostButtons = [
+        ZegoLiveStreamingMenuBarButtonName.toggleCameraButton,
+        ZegoLiveStreamingMenuBarButtonName.toggleMicrophoneButton,
+        ZegoLiveStreamingMenuBarButtonName.switchCameraButton,
+        ZegoLiveStreamingMenuBarButtonName.chatButton,
+        ZegoLiveStreamingMenuBarButtonName.leaveButton,
+        // Beauty button removed to improve camera switching performance
+      ];
+    }
 
     // Note: memberList.showAvatar and cohost.applyButtonStyle are not available in this version
     config.audioVideoView.showUserNameOnView = false;
@@ -2490,26 +2504,6 @@ class _LivePageState extends State<LivePage>
         child: const Icon(
           Icons.call_end_outlined,
           color: Colors.white,
-          size: 24,
-        ),
-      ),
-
-      // Beauty effect button icon
-      beautyEffectButtonIcon: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            // colors: [Color(0xFFf00000), Color(0xFFff9966)],
-            colors: [Color(0xFFFFDEE9), Color(0xFFB5FFFC)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: const Icon(
-          Icons.face_outlined,
-          color: Color(0xFF7A7A7A),
           size: 24,
         ),
       ),

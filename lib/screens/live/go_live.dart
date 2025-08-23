@@ -173,105 +173,105 @@ class _HomePageState extends State<HomePage> {
                       );
                     }
                     // Custom button styles for enhanced UI
-                    ..bottomMenuBar.buttonStyle =
-                        ZegoLiveStreamingBottomMenuBarButtonStyle(
-                          // Camera button icons with enhanced colors
-                          toggleCameraOnButtonIcon: const Icon(
-                            Icons.camera_alt,
+                    ..bottomMenuBar
+                        .buttonStyle = ZegoLiveStreamingBottomMenuBarButtonStyle(
+                      // Camera button icons with enhanced colors
+                      toggleCameraOnButtonIcon: const Icon(
+                        Icons.camera_alt,
 
-                            // Icons.broadcast_on_home_outlined,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          toggleCameraOffButtonIcon: const Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.red,
-                            size: 24,
-                          ),
+                        // Icons.broadcast_on_home_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      toggleCameraOffButtonIcon: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: Colors.red,
+                        size: 24,
+                      ),
 
-                          // Microphone button icons with enhanced colors
-                          toggleMicrophoneOnButtonIcon: const Icon(
-                            Icons.mic,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          toggleMicrophoneOffButtonIcon: const Icon(
-                            Icons.mic_off,
-                            color: Colors.red,
-                            size: 24,
-                          ),
+                      // Microphone button icons with enhanced colors
+                      toggleMicrophoneOnButtonIcon: const Icon(
+                        Icons.mic,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      toggleMicrophoneOffButtonIcon: const Icon(
+                        Icons.mic_off,
+                        color: Colors.red,
+                        size: 24,
+                      ),
 
-                          // Chat button icons with enhanced colors
-                          chatEnabledButtonIcon: const Icon(
-                            Icons.chat_bubble,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          chatDisabledButtonIcon: const Icon(
-                            Icons.chat_bubble_outline,
-                            color: Colors.grey,
-                            size: 24,
-                          ),
+                      // Chat button icons with enhanced colors
+                      chatEnabledButtonIcon: const Icon(
+                        Icons.chat_bubble,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      chatDisabledButtonIcon: const Icon(
+                        Icons.chat_bubble_outline,
+                        color: Colors.grey,
+                        size: 24,
+                      ),
 
-                          // Audio output button icons with enhanced colors
-                          switchAudioOutputToSpeakerButtonIcon: const Icon(
-                            Icons.volume_up,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          switchAudioOutputToHeadphoneButtonIcon: const Icon(
-                            Icons.headphones,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                          switchAudioOutputToBluetoothButtonIcon: const Icon(
-                            Icons.bluetooth,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                      // Audio output button icons with enhanced colors
+                      switchAudioOutputToSpeakerButtonIcon: const Icon(
+                        Icons.volume_up,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      switchAudioOutputToHeadphoneButtonIcon: const Icon(
+                        Icons.headphones,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      switchAudioOutputToBluetoothButtonIcon: const Icon(
+                        Icons.bluetooth,
+                        color: Colors.white,
+                        size: 24,
+                      ),
 
-                          // Leave button icon with enhanced color
-                          leaveButtonIcon: const Icon(
-                            Icons.call_end,
-                            color: Colors.red,
-                            size: 24,
-                          ),
+                      // Leave button icon with enhanced color
+                      leaveButtonIcon: const Icon(
+                        Icons.call_end,
+                        color: Colors.red,
+                        size: 24,
+                      ),
 
-                          // Beauty effect button icon
-                          beautyEffectButtonIcon: const Icon(
-                            Icons.face,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                      // Beauty effect button icon - REMOVED to improve camera switching performance
+                      // beautyEffectButtonIcon: const Icon(
+                      //   Icons.face,
+                      //   color: Colors.white,
+                      //   size: 24,
+                      // ),
 
-                          // Sound effect button icon
-                          soundEffectButtonIcon: const Icon(
-                            Icons.graphic_eq,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                      // Sound effect button icon
+                      soundEffectButtonIcon: const Icon(
+                        Icons.graphic_eq,
+                        color: Colors.white,
+                        size: 24,
+                      ),
 
-                          // Switch camera button icon with enhanced colors
-                          switchCameraButtonIcon: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFFa1c4fd), Color(0xFFc2e9fb)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.flip_camera_ios,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+                      // Switch camera button icon with enhanced colors
+                      switchCameraButtonIcon: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFa1c4fd), Color(0xFFc2e9fb)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-
-                          // Background button icon
                         ),
+                        child: const Icon(
+                          Icons.flip_camera_ios,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+
+                      // Background button icon
+                    ),
             ),
       ),
     );
@@ -2056,12 +2056,12 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     size: 24,
                   ),
 
-                  // Beauty effect button icon
-                  beautyEffectButtonIcon: const Icon(
-                    Icons.face,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  // Beauty effect button icon - REMOVED to improve camera switching performance
+                  // beautyEffectButtonIcon: const Icon(
+                  //   Icons.face,
+                  //   color: Colors.white,
+                  //   size: 24,
+                  // ),
 
                   // Sound effect button icon
                   soundEffectButtonIcon: const Icon(
@@ -2311,12 +2311,12 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     size: 24,
                   ),
 
-                  // Beauty effect button icon
-                  beautyEffectButtonIcon: const Icon(
-                    Icons.face,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  // Beauty effect button icon - REMOVED to improve camera switching performance
+                  // beautyEffectButtonIcon: const Icon(
+                  //   Icons.face,
+                  //   color: Colors.white,
+                  //   size: 24,
+                  // ),
 
                   // Sound effect button icon
                   soundEffectButtonIcon: const Icon(
