@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:camera/camera.dart'
-    show
-        CameraController,
-        CameraDescription,
-        CameraPreview,
-        ResolutionPreset,
-        availableCameras;
+// import 'package:camera/camera.dart'
+//     show
+//         CameraController,
+//         CameraDescription,
+//         CameraPreview,
+//         ResolutionPreset,
+//         availableCameras;
 import 'package:just_audio/just_audio.dart';
 import 'package:finalchat/pk_widgets/config.dart';
 import 'package:finalchat/pk_widgets/events.dart';
