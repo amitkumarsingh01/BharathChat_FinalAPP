@@ -220,7 +220,17 @@ class _GiftPanelState extends State<GiftPanel> {
                 await _audioPlayer.play();
               }
             } catch (e) {
-              debugPrint('🎁 [$requestId] Error playing gift audio: $e');
+              debugPrint(
+                '🎁 [$requestId] Error playing gift audio (network). Falling back to asset: $e',
+              );
+              try {
+                await _audioPlayer.setAsset('assets/gift_sound.mp3');
+                await _audioPlayer.play();
+              } catch (assetError) {
+                debugPrint(
+                  '🎁 [$requestId] Fallback asset playback failed: $assetError',
+                );
+              }
             }
           }
 

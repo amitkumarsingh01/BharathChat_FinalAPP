@@ -1791,7 +1791,16 @@ class _LivePageState extends State<LivePage>
         await _giftAudioPlayer.play();
       }
     } catch (e) {
-      debugPrint('🎁 Error playing gift audio with delay: $e');
+      debugPrint(
+        '🎁 Error playing gift audio with delay (network). Falling back to asset: $e',
+      );
+      try {
+        // Fallback to bundled asset to ensure UX isn't silent in release
+        await _giftAudioPlayer.setAsset('assets/gift_sound.mp3');
+        await _giftAudioPlayer.play();
+      } catch (assetError) {
+        debugPrint('🎁 Fallback asset playback failed: $assetError');
+      }
     }
   }
 

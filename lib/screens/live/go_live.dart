@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../services/api_service.dart';
-import 'package:camera/camera.dart'
-    show
-        CameraController,
-        CameraDescription,
-        CameraPreview,
-        ResolutionPreset,
-        availableCameras;
+
 import 'package:just_audio/just_audio.dart';
 import '../live/live_video_screen.dart';
 import '../live/live_audio_screen_new.dart';
@@ -379,7 +373,6 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController chatroomController = TextEditingController();
 
-  CameraController? _cameraController;
   List<dynamic> backgroundImages = [];
   List<dynamic> musicList = [];
   List<dynamic> gifts = [];
@@ -432,23 +425,23 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+
     _loadBackgroundData();
     _fetchHostProfilePicture();
   }
 
-  Future<void> _initializeCamera() async {
-    final cameras = await availableCameras();
-    if (cameras.isNotEmpty) {
-      _cameraController = CameraController(
-        cameras.first,
-        ResolutionPreset.high,
-        enableAudio: true,
-      );
-      await _cameraController!.initialize();
-      if (mounted) setState(() {});
-    }
-  }
+  // Future<void> _initializeCamera() async {
+  //   final cameras = await availableCameras();
+  //   if (cameras.isNotEmpty) {
+  //     _cameraController = CameraController(
+  //       cameras.first,
+  //       ResolutionPreset.high,
+  //       enableAudio: true,
+  //     );
+  //     await _cameraController!.initialize();
+  //     if (mounted) setState(() {});
+  //   }
+  // }
 
   Future<void> _loadBackgroundData() async {
     final images = await ApiService.getBackgroundImages();
@@ -504,7 +497,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+ 
     _audioPlayer.dispose();
     super.dispose();
   }
